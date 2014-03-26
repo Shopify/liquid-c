@@ -1,4 +1,5 @@
 # Liquid::C
+[![Build Status](https://api.travis-ci.org/Shopify/liquid-c.png?branch=master)](https://travis-ci.org/Shopify/liquid-c)
 
 Partial native implementation of the liquid ruby gem in C.
 

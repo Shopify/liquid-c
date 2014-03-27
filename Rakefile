@@ -30,3 +30,28 @@ namespace :test do
     Rake::Task['test:base_liquid'].invoke
   end
 end
+
+namespace :benchmark do
+  desc "Run the liquid benchmark with lax parsing"
+  task :run do
+    ruby "./performance.rb benchmark lax"
+  end
+
+  desc "Run the liquid benchmark with strict parsing"
+  task :strict do
+    ruby "./performance.rb benchmark strict"
+  end
+end
+
+
+namespace :profile do
+  desc "Run the liquid profile/performance coverage"
+  task :run do
+    ruby "./performance.rb profile lax"
+  end
+
+  desc "Run the liquid profile/performance coverage with strict parsing"
+  task :strict do
+    ruby "./performance.rb profile strict"
+  end
+end

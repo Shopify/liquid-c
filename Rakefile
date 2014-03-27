@@ -7,27 +7,26 @@ Rake::ExtensionTask.new("liquid_c")
 
 task :default => :test
 
-liquid_lib_dir = $LOAD_PATH.detect{ |p| File.exists?(File.join(p, 'liquid.rb')) }
+task :test => ['test:unit', 'test:liquid']
 
-desc 'run test suite with default parser'
-Rake::TestTask.new(:base_test => :compile) do |t|
-  t.libs << 'lib' << 'test' << liquid_lib_dir
-  t.ruby_opts = ["-rliquid/c"]
-  t.test_files = FileList['test/**/*_test.rb']
-  t.verbose = false
-end
+namespace :test do
+  Rake::TestTask.new(:unit => :compile) do |t|
+    t.libs << 'lib' << 'test'
+    t.test_files = FileList['test/unit/**/*_test.rb']
+  end
 
-desc 'run test suite with warn error mode'
-task :warn_test do
-  ENV['LIQUID_PARSER_MODE'] = 'warn'
-  Rake::Task['base_test'].invoke
-end
+  desc 'run test suite with default parser'
+  Rake::TestTask.new(:base_liquid => :compile) do |t|
+    t.libs << 'lib'
+    t.test_files = ['test/liquid_test.rb']
+  end
 
-desc 'runs test suite with both strict and lax parsers'
-task :test do
-  ENV['LIQUID_PARSER_MODE'] = 'lax'
-  Rake::Task['base_test'].invoke
-  ENV['LIQUID_PARSER_MODE'] = 'strict'
-  Rake::Task['base_test'].reenable
-  Rake::Task['base_test'].invoke
+  desc 'runs test suite with both strict and lax parsers'
+  task :liquid do
+    ENV['LIQUID_PARSER_MODE'] = 'lax'
+    Rake::Task['test:base_liquid'].invoke
+    ENV['LIQUID_PARSER_MODE'] = 'strict'
+    Rake::Task['test:base_liquid'].reenable
+    Rake::Task['test:base_liquid'].invoke
+  end
 end

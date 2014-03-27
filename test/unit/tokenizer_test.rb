@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'test_helper'
 
 class TokenizerTest < MiniTest::Unit::TestCase
@@ -19,6 +20,14 @@ class TokenizerTest < MiniTest::Unit::TestCase
 
     assert_equal [' ', '{%comment%}', ' ', '{%endcomment%}', ' '], tokenize(' {%comment%} {%endcomment%} ')
     assert_equal ['  ', '{% comment %}', ' ', '{% endcomment %}', ' '], tokenize("  {% comment %} {% endcomment %} ")
+  end
+
+  def test_utf8_encoded_template
+    source = 'auswählen'
+    assert_equal Encoding::UTF_8, source.encoding
+    output = tokenize(source)
+    assert_equal [Encoding::UTF_8], output.map(&:encoding)
+    assert_equal [source], output
   end
 
   private

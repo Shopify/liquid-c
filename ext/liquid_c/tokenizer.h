@@ -1,6 +1,9 @@
 #ifndef LIQUID_TOKENIZER_H
 #define LIQUID_TOKENIZER_H
 
+#include <ruby.h>
+#include <ruby/encoding.h>
+
 enum token_type {
     TOKEN_NONE,
     TOKEN_INVALID,

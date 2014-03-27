@@ -25,6 +25,7 @@ then just use the documented API for the liquid Gem.
 
 ## Restrictions
 
+* Input strings are assumed to be UTF-8 encoded strings
 * Tag#parse(tokens) is given a Liquid::Tokenizer object, instead
   of an array of strings, which only implements the shift method
   to get the next token.

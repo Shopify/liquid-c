@@ -5,17 +5,14 @@ Partial native implementation of the liquid ruby gem in C.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add these lines to your application's Gemfile:
 
-    gem 'liquid-c'
+    gem 'liquid', github: 'Shopify/liquid', branch: 'master'
+    gem 'liquid-c', github: 'Shopify/liquid-c', branch: 'master'
 
 And then execute:
 
     $ bundle
-
-Or install it yourself as:
-
-    $ gem install liquid-c
 
 ## Usage
 

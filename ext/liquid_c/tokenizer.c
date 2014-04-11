@@ -1,7 +1,6 @@
 #include "liquid.h"
 
 VALUE cLiquidTokenizer;
-rb_encoding *utf8_encoding;
 
 static void tokenizer_mark(void *ptr) {
     tokenizer_t *tokenizer = ptr;
@@ -125,7 +124,7 @@ static VALUE tokenizer_shift_method(VALUE self)
     if (token.type == TOKEN_NONE)
         return Qnil;
 
-    return rb_enc_str_new(token.str, token.length, utf8_encoding);
+    return rb_enc_str_new(token.str, token.length, rb_utf8_encoding());
 }
 
 void init_liquid_tokenizer()
@@ -134,5 +133,4 @@ void init_liquid_tokenizer()
     rb_define_alloc_func(cLiquidTokenizer, tokenizer_allocate);
     rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 1);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
-    utf8_encoding = rb_utf8_encoding();
 }

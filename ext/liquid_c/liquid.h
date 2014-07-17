@@ -1,11 +1,11 @@
-#ifndef LIQUID_H
+#if !defined(LIQUID_H)
 #define LIQUID_H
 
 #include <ruby.h>
+#include <ruby/encoding.h>
 #include <stdbool.h>
 
-#include "tokenizer.h"
-
 extern VALUE mLiquid;
+extern rb_encoding *utf8_encoding;
 
 #endif

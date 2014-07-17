@@ -1,9 +1,10 @@
 #include "liquid.h"
+#include "tokenizer.h"
 
 VALUE cLiquidTokenizer;
-rb_encoding *utf8_encoding;
 
-static void tokenizer_mark(void *ptr) {
+static void tokenizer_mark(void *ptr)
+{
     tokenizer_t *tokenizer = ptr;
     rb_gc_mark(tokenizer->source);
 }
@@ -21,8 +22,8 @@ static size_t tokenizer_memsize(const void *ptr)
 
 const rb_data_type_t tokenizer_data_type = {
     "liquid_tokenizer",
-    {tokenizer_mark, tokenizer_free, tokenizer_memsize,},
-#ifdef RUBY_TYPED_FREE_IMMEDIATELY
+    { tokenizer_mark, tokenizer_free, tokenizer_memsize, },
+#if defined(RUBY_TYPED_FREE_IMMEDIATELY)
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 #endif
 };
@@ -134,5 +135,4 @@ void init_liquid_tokenizer()
     rb_define_alloc_func(cLiquidTokenizer, tokenizer_allocate);
     rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 1);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
-    utf8_encoding = rb_utf8_encoding();
 }

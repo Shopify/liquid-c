@@ -2,6 +2,7 @@ require 'rake'
 require 'rake/testtask'
 require 'bundler/gem_tasks'
 require 'rake/extensiontask'
+require 'benchmark'
 
 Rake::ExtensionTask.new("liquid_c")
 
@@ -34,12 +35,12 @@ end
 namespace :benchmark do
   desc "Run the liquid benchmark with lax parsing"
   task :run do
-    ruby "./performance.rb benchmark lax"
+    ruby "./performance.rb c benchmark lax"
   end
 
   desc "Run the liquid benchmark with strict parsing"
   task :strict do
-    ruby "./performance.rb benchmark strict"
+    ruby "./performance.rb c benchmark strict"
   end
 end
 
@@ -47,11 +48,28 @@ end
 namespace :profile do
   desc "Run the liquid profile/performance coverage"
   task :run do
-    ruby "./performance.rb profile lax"
+    ruby "./performance.rb c profile lax"
   end
 
   desc "Run the liquid profile/performance coverage with strict parsing"
   task :strict do
-    ruby "./performance.rb profile strict"
+    ruby "./performance.rb c profile strict"
+  end
+end
+
+namespace :compare do
+  include Benchmark
+  desc "Compare Liquid to Liquid + Liquid-C"
+  task :run do
+    bare = Benchmark.measure do
+      ruby "./performance.rb bare profile lax"
+    end
+    liquid_c = Benchmark.measure do
+      ruby "./performance.rb c profile lax"
+    end
+    Benchmark.benchmark(CAPTION, 10, FORMAT, "Liquid:", "Liquid-C:") do |x|
+      [bare, liquid_c]
+    end
+    puts "Ratio: #{liquid_c.real / bare.real * 100}%"
   end
 end

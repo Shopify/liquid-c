@@ -60,32 +60,36 @@ static const unsigned char char_lookup[256] = {
     ['\"'] = 4,
 };
 
-inline static unsigned char is_quoted_fragment_terminator(char c) {
-    return char_lookup[(unsigned)c] & 1;
+inline static int is_white(char c) {
+    return char_lookup[(unsigned)c] == 1;
 }
 
-inline static unsigned char is_word_char(char c) {
+inline static int is_word_char(char c) {
     return char_lookup[(unsigned)c] == 2;
 }
 
-inline static unsigned char is_quote_delimiter(char c) {
+inline static int is_quote_delimiter(char c) {
     return char_lookup[(unsigned)c] == 4;
+}
+
+inline static int is_quoted_fragment_terminator(char c) {
+    return char_lookup[(unsigned)c] & 1;
 }
 
 inline static const char *scan_past(const char *cur, const char *end, char target) {
     ++cur;
     while (cur < end && *cur != target) ++cur;
-    if (cur == end) return NULL;
+    if (cur >= end) return NULL;
     ++cur;
     return cur;
 }
 
-#define TRY_PARSE(x) do { if ((cur = (x)) == NULL) return NULL; } while (0)
-
 inline static const char *skip_white(const char *cur, const char *end) {
-    while (cur < end && char_lookup[(unsigned)*cur] == 1) ++cur;
+    while (cur < end && is_white(*cur)) ++cur;
     return cur;
 }
+
+#define TRY_PARSE(x) do { if ((cur = (x)) == NULL) return NULL; } while (0)
 
 /*
  * A "quoted fragment" is either a quoted string, e.g., 'the "quick" brown fox'
@@ -95,9 +99,7 @@ inline static const char *skip_white(const char *cur, const char *end) {
  */
 const char *parse_quoted_fragment(const char *cur, const char *end)
 {
-    if (cur >= end) {
-        return NULL;
-    }
+    if (cur >= end) return NULL;
     char start = *cur;
     if (is_quote_delimiter(start)) {
         return scan_past(cur, end, start);

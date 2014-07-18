@@ -58,6 +58,10 @@ static const unsigned char char_lookup[256] = {
     ['\"'] = 4,
 };
 
+inline static unsigned char is_quoted_fragment_terminator(char c) {
+    return char_lookup[(unsigned)c] & 1;
+}
+
 /*
  * A "quoted fragment" is either a quoted string, e.g., 'the "quick" brown fox'
  * or a sequence of characters that ends in whitespace, ',', or '|'. However,
@@ -68,7 +72,7 @@ const char *parse_quoted_fragment(const char *cur, const char *end)
 {
     if (cur >= end) return NULL;
     char start = *cur;
-    if (char_lookup[(unsigned)start] == 4) {
+    if (start == '\'' || start == '\"') {
         ++cur;
         while (cur < end && *cur != start) ++cur;
         if (cur == end) return NULL;
@@ -76,8 +80,9 @@ const char *parse_quoted_fragment(const char *cur, const char *end)
         return cur;
     }
     // While we're looking at a character not in groups 1 and 3
-    while (cur < end && !(char_lookup[(unsigned)*cur] & 1)) {
-        if (char_lookup[(unsigned)(start = *cur)] == 4) {
+    while (cur < end && !is_quoted_fragment_terminator(*cur)) {
+        start = *cur;
+        if (start == '\'' || start == '\"') {
             ++cur;
             while (cur < end && *cur != start) ++cur;
             if (cur == end) return NULL;

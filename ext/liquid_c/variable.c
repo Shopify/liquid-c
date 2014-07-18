@@ -109,7 +109,7 @@ void variable_parser_parse(variable_parser_t *parser, const char* markup, size_t
         while (cur < end && char_lookup[(unsigned char)*cur] == 2) ++cur;
         size_t filter_name_len = cur - filter_name_start;
         VALUE args = rb_ary_new();
-        rb_ary_push(parser->filters, rb_ary_new_from_args(2,
+        rb_ary_push(parser->filters, rb_ary_new3(2,
                     rb_enc_str_new(filter_name_start, filter_name_len, utf8_encoding), args));
         SKIP_WHITE;
         while (cur < end) {

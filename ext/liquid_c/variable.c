@@ -1,6 +1,7 @@
 
 #include "liquid.h"
 #include "variable.h"
+#include <stdio.h>
 
 VALUE cLiquidVariableParser;
 
@@ -70,6 +71,16 @@ inline static unsigned char is_quote_delimiter(char c) {
     return char_lookup[(unsigned)c] == 4;
 }
 
+inline static const char *scan_past(const char *cur, const char *end, char target) {
+    ++cur;
+    while (cur < end && *cur != target) ++cur;
+    if (cur == end) return NULL;
+    ++cur;
+    return cur;
+}
+
+#define TRY_PARSE(x) do { if ((cur = (x)) == NULL) return NULL; } while (0)
+
 inline static const char *skip_white(const char *cur, const char *end) {
     while (cur < end && char_lookup[(unsigned)*cur] == 1) ++cur;
     return cur;
@@ -83,23 +94,17 @@ inline static const char *skip_white(const char *cur, const char *end) {
  */
 const char *parse_quoted_fragment(const char *cur, const char *end)
 {
-    if (cur >= end) return NULL;
+    if (cur >= end) {
+        return NULL;
+    }
     char start = *cur;
     if (is_quote_delimiter(start)) {
-        ++cur;
-        while (cur < end && *cur != start) ++cur;
-        if (cur == end) return NULL;
-        ++cur;
-        return cur;
+        return scan_past(cur, end, start);
     }
-    // While we're looking at a character not in groups 1 and 3
     while (cur < end && !is_quoted_fragment_terminator(*cur)) {
         start = *cur;
         if (is_quote_delimiter(start)) {
-            ++cur;
-            while (cur < end && *cur != start) ++cur;
-            if (cur == end) return NULL;
-            ++cur;
+            TRY_PARSE(scan_past(cur, end, start));
         } else {
             ++cur;
         }
@@ -124,21 +129,16 @@ static const char *parse_filter_item(VALUE args, const char *cur, const char *en
         cur = skip_white(cur, end);
     }
     const char *arg_begin = cur;
-    cur = parse_quoted_fragment(cur, end);
-    if (!cur) return NULL;
+    TRY_PARSE(parse_quoted_fragment(cur, end));
     size_t arg_len = cur - arg_begin;
-    if (is_quote_delimiter(*arg_begin)) {
-        rb_ary_push(args, rb_enc_str_new(arg_begin, arg_len, utf8_encoding));
+    if (!is_quote_delimiter(*arg_begin)) {
         cur = skip_white(cur, end);
-        return cur;
-    }
-    cur = skip_white(cur, end);
-    if (cur < end && *cur == ':') {
-        ++cur;
-        cur = skip_white(cur, end);
-        cur = parse_quoted_fragment(cur, end);
-        if (!cur) return NULL;
-        arg_len = cur - arg_begin;
+        if (cur < end && *cur == ':') {
+            ++cur;
+            cur = skip_white(cur, end);
+            TRY_PARSE(parse_quoted_fragment(cur, end));
+            arg_len = cur - arg_begin;
+        }
     }
     rb_ary_push(args, rb_enc_str_new(arg_begin, arg_len, utf8_encoding));
     cur = skip_white(cur, end);

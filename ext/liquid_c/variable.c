@@ -62,6 +62,19 @@ inline static unsigned char is_quoted_fragment_terminator(char c) {
     return char_lookup[(unsigned)c] & 1;
 }
 
+inline static unsigned char is_word_char(char c) {
+    return char_lookup[(unsigned)c] == 2;
+}
+
+inline static unsigned char is_quote_delimiter(char c) {
+    return char_lookup[(unsigned)c] == 4;
+}
+
+inline static const char *skip_white(const char *cur, const char *end) {
+    while (cur < end && char_lookup[(unsigned)*cur] == 1) ++cur;
+    return cur;
+}
+
 /*
  * A "quoted fragment" is either a quoted string, e.g., 'the "quick" brown fox'
  * or a sequence of characters that ends in whitespace, ',', or '|'. However,
@@ -72,7 +85,7 @@ const char *parse_quoted_fragment(const char *cur, const char *end)
 {
     if (cur >= end) return NULL;
     char start = *cur;
-    if (start == '\'' || start == '\"') {
+    if (is_quote_delimiter(start)) {
         ++cur;
         while (cur < end && *cur != start) ++cur;
         if (cur == end) return NULL;
@@ -82,7 +95,7 @@ const char *parse_quoted_fragment(const char *cur, const char *end)
     // While we're looking at a character not in groups 1 and 3
     while (cur < end && !is_quoted_fragment_terminator(*cur)) {
         start = *cur;
-        if (start == '\'' || start == '\"') {
+        if (is_quote_delimiter(start)) {
             ++cur;
             while (cur < end && *cur != start) ++cur;
             if (cur == end) return NULL;
@@ -91,11 +104,6 @@ const char *parse_quoted_fragment(const char *cur, const char *end)
             ++cur;
         }
     }
-    return cur;
-}
-
-inline static const char *skip_white(const char *cur, const char *end) {
-    while (cur < end && char_lookup[(unsigned)*cur] == 1) ++cur;
     return cur;
 }
 
@@ -119,7 +127,7 @@ static const char *parse_filter_item(VALUE args, const char *cur, const char *en
     cur = parse_quoted_fragment(cur, end);
     if (!cur) return NULL;
     size_t arg_len = cur - arg_begin;
-    if (char_lookup[(unsigned)*arg_begin] == 4) {
+    if (is_quote_delimiter(*arg_begin)) {
         rb_ary_push(args, rb_enc_str_new(arg_begin, arg_len, utf8_encoding));
         cur = skip_white(cur, end);
         return cur;
@@ -150,7 +158,7 @@ static const char *parse_filter(variable_parser_t *parser, const char *cur, cons
     if (cur >= end) return NULL;
     // Parse filter name
     const char *filter_name_start = cur;
-    while (cur < end && char_lookup[(unsigned)*cur] == 2) ++cur;
+    while (cur < end && is_word_char(*cur)) ++cur;
     size_t filter_name_len = cur - filter_name_start;
     // Build arguments
     VALUE args = rb_ary_new();

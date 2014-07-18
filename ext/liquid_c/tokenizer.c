@@ -1,7 +1,7 @@
 #include "liquid.h"
 #include "tokenizer.h"
 
-static VALUE cLiquidTokenizer;
+VALUE cLiquidTokenizer;
 
 static void tokenizer_mark(void *ptr)
 {

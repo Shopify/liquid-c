@@ -7,6 +7,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal ['"what"', []], variable_parse(' "what" ')
     assert_equal ['hello["what"]', []], variable_parse(' hello["what"] ')
     assert_equal [nil, []], variable_parse('')
+    assert_equal ['hello["what\']"', []], variable_parse(' hello["what\']" ')
   end
 
   def test_variable_filter

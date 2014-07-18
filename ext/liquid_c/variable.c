@@ -3,7 +3,7 @@
 #include "variable.h"
 #include "stdio.h"
 
-VALUE cLiquidVariableParser;
+static VALUE cLiquidVariableParser;
 
 static void variable_parser_mark(void *ptr)
 {

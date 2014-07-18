@@ -37,6 +37,7 @@ static VALUE variable_parser_allocate(VALUE klass)
     VALUE obj;
     variable_parser_t *variable_parser;
     obj = TypedData_Make_Struct(klass, variable_parser_t, &variable_parser_data_type, variable_parser);
+    variable_parser->name = Qnil;
     variable_parser->filters = rb_ary_new();
     return obj;
 }

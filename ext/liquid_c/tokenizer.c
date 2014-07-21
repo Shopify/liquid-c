@@ -1,4 +1,3 @@
-#include "liquid.h"
 #include "tokenizer.h"
 
 VALUE cLiquidTokenizer;

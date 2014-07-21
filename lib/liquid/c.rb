@@ -27,3 +27,12 @@ Liquid::Variable.class_eval do
     @filters = parser.filters
   end
 end
+
+Liquid::Block.class_eval do
+  def parse(tokens)
+    parser = Liquid::BlockParser.new(tokens, @options, self);
+    @blank = parser.blank
+    @nodelist = parser.nodelist
+    @children = parser.children
+  end
+end

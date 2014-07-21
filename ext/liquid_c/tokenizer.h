@@ -1,6 +1,8 @@
 #if !defined(LIQUID_TOKENIZER_H)
 #define LIQUID_TOKENIZER_H
 
+#include "liquid.h"
+
 enum token_type {
     TOKEN_NONE,
     TOKEN_INVALID,

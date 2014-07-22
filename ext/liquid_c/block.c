@@ -1,7 +1,6 @@
 #include "block.h"
 #include "parse.h"
 #include <string.h>
-#include <stdio.h>
 
 VALUE cLiquidBlockParser;
 static VALUE cLiquidSyntaxError;
@@ -45,15 +44,14 @@ static VALUE block_parser_allocate(VALUE klass)
     block_parser->tokens = Qnil;
     block_parser->options = Qnil;
     block_parser->iBlock = Qnil;
-    block_parser->blank = Qfalse;
-    block_parser->nodelist = rb_ary_new();
-    block_parser->children = rb_ary_new();
+    block_parser->blank = Qnil;
+    block_parser->nodelist = Qnil;
+    block_parser->children = Qnil;
     return obj;
 }
 
 static void parse(block_parser_t *parser)
 {
-    parser->blank = Qtrue;
     for (;;) {
         VALUE token = rb_funcall(parser->tokens, rb_intern("shift"), 0);
         if (token == Qnil) break;
@@ -72,12 +70,9 @@ static void parse(block_parser_t *parser)
             }
             const char *word_begin = skip_white(token_begin + 2, token_end);
             const char *word_end = scan_word(word_begin, token_end);
-            printf("Word(%d): \"%.*s\"\n", (int)(word_end - word_begin), (int)(word_end - word_begin), word_begin);
 
             // Check if end tag
             VALUE delimiter = rb_funcall(parser->iBlock, rb_intern("block_delimiter"), 0);
-            printf("#Type: %d\n", TYPE(delimiter));
-            printf("#Delimiter: \"%.*s\"\n", (int)RSTRING_LEN(delimiter), RSTRING_PTR(delimiter));
             if (word_end - word_begin == RSTRING_LEN(delimiter) &&
                 !strncmp(RSTRING_PTR(delimiter), word_begin, word_end - word_begin)) {
                 rb_funcall(parser->iBlock, rb_intern("end_tag"), 0);
@@ -85,7 +80,6 @@ static void parse(block_parser_t *parser)
             }
 
             const char *rem_begin = skip_white(word_end, token_end);
-            printf("Rem(%d): \"%.*s\"\n", (int)(token_end - rem_begin - 2), (int)(token_end - rem_begin - 2), rem_begin);
 
             VALUE key = rb_enc_str_new(word_begin, word_end - word_begin, utf8_encoding);
             VALUE rem = rb_enc_str_new(rem_begin, token_end - rem_begin - 2, utf8_encoding);
@@ -98,16 +92,16 @@ static void parse(block_parser_t *parser)
             } else {
                 VALUE new_tag = rb_funcall(tag, rb_intern("parse"), 4, key, rem, parser->tokens, parser->options);
                 parser->blank = parser->blank && rb_funcall(new_tag, rb_intern("blank?"), 0) == Qtrue;
-                rb_ary_push(parser->nodelist, new_tag);
-                rb_ary_push(parser->children, new_tag);
+                rb_funcall(parser->nodelist, rb_intern("<<"), 1, new_tag);
+                rb_funcall(parser->children, rb_intern("<<"), 1, new_tag);
             }
         } else if (token_len >= 2 && token_begin[0] == '{' && token_begin[1] == '{') {
             VALUE val = rb_funcall(parser->iBlock, rb_intern("create_variable"), 1, token);
-            rb_ary_push(parser->nodelist, val);
-            rb_ary_push(parser->children, val);
+            rb_funcall(parser->nodelist, rb_intern("<<"), 1, val);
+            rb_funcall(parser->children, rb_intern("<<"), 1, val);
             parser->blank = Qfalse;
         } else {
-            rb_ary_push(parser->nodelist, token);
+            rb_funcall(parser->nodelist, rb_intern("<<"), 1, token);
             parser->blank = all_blank(token_begin, token_begin + token_len) ? Qtrue : Qfalse;
         }
     }
@@ -115,16 +109,18 @@ static void parse(block_parser_t *parser)
     rb_funcall(parser->iBlock, rb_intern("assert_missing_delimitation!"), 0);
 }
 
-static VALUE block_parser_initialize_method(VALUE self, VALUE tokens, VALUE options, VALUE block)
+static VALUE block_parser_initialize_method(VALUE self,
+        VALUE blank, VALUE nodelist, VALUE children,
+        VALUE tokens, VALUE options, VALUE block)
 {
     block_parser_t *parser;
     Block_Parser_Get_Struct(self, parser);
+    parser->blank = blank;
+    parser->nodelist = nodelist;
+    parser->children = children;
     parser->tokens = tokens;
     parser->options = options;
     parser->iBlock = block;
-    rb_iv_set(self, "@blank", parser->blank);
-    rb_iv_set(self, "@nodelist", parser->nodelist);
-    rb_iv_set(self, "@children", parser->children);
     parse(parser);
     return Qnil;
 }
@@ -135,8 +131,5 @@ void init_liquid_block(void)
     mLiquidTemplate = rb_path2class("Liquid::Template");
     cLiquidSyntaxError = rb_path2class("Liquid::SyntaxError");
     rb_define_alloc_func(cLiquidBlockParser, block_parser_allocate);
-    rb_define_method(cLiquidBlockParser, "initialize", block_parser_initialize_method, 3);
-    rb_define_attr(cLiquidBlockParser, "blank", 1, 0);
-    rb_define_attr(cLiquidBlockParser, "nodelist", 1, 0);
-    rb_define_attr(cLiquidBlockParser, "children", 1, 0);
+    rb_define_method(cLiquidBlockParser, "initialize", block_parser_initialize_method, 6);
 }

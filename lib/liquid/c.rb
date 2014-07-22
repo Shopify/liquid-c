@@ -30,9 +30,9 @@ end
 
 Liquid::Block.class_eval do
   def parse(tokens)
-    parser = Liquid::BlockParser.new(tokens, @options, self);
-    @blank = parser.blank
-    @nodelist = parser.nodelist
-    @children = parser.children
+    @nodelist ||= []
+    @nodelist.clear
+    @children = []
+    parser = Liquid::BlockParser.new(@blank, @nodelist, @children, tokens, @options, self)
   end
 end

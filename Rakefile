@@ -4,6 +4,7 @@ require 'bundler/gem_tasks'
 require 'rake/extensiontask'
 require 'benchmark'
 
+ENV['DEBUG'] = 'true'
 Rake::ExtensionTask.new("liquid_c")
 
 task :default => :test

@@ -6,3 +6,4 @@ tmp
 *.o
 *.bundle
 ext/*/Makefile
+*.so

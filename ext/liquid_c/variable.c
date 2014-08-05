@@ -60,23 +60,23 @@ static const unsigned char char_lookup[256] = {
     ['\"'] = 4,
 };
 
-inline static int is_white(char c) {
+inline static int is_white(unsigned char c) {
     return char_lookup[(unsigned)c] == 1;
 }
 
-inline static int is_word_char(char c) {
+inline static int is_word_char(unsigned char c) {
     return char_lookup[(unsigned)c] == 2;
 }
 
-inline static int is_quote_delimiter(char c) {
+inline static int is_quote_delimiter(unsigned char c) {
     return char_lookup[(unsigned)c] == 4;
 }
 
-inline static int is_quoted_fragment_terminator(char c) {
+inline static int is_quoted_fragment_terminator(unsigned char c) {
     return char_lookup[(unsigned)c] & 1;
 }
 
-inline static const char *scan_past(const char *cur, const char *end, char target) {
+inline static const unsigned char *scan_past(const unsigned char *cur, const unsigned char *end, unsigned char target) {
     ++cur;
     while (cur < end && *cur != target) ++cur;
     if (cur >= end) return NULL;
@@ -84,7 +84,7 @@ inline static const char *scan_past(const char *cur, const char *end, char targe
     return cur;
 }
 
-inline static const char *skip_white(const char *cur, const char *end) {
+inline static const unsigned char *skip_white(const unsigned char *cur, const unsigned char *end) {
     while (cur < end && is_white(*cur)) ++cur;
     return cur;
 }
@@ -97,10 +97,10 @@ inline static const char *skip_white(const char *cur, const char *end) {
  * this sequence can contain in it quoted strings in which whitespace, ',', or
  * '|' can appear.
  */
-const char *parse_quoted_fragment(const char *cur, const char *end)
+const unsigned char *parse_quoted_fragment(const unsigned char *cur, const unsigned char *end)
 {
     if (cur >= end) return NULL;
-    char start = *cur;
+    unsigned char start = *cur;
     if (is_quote_delimiter(start)) {
         return scan_past(cur, end, start);
     }
@@ -115,7 +115,7 @@ const char *parse_quoted_fragment(const char *cur, const char *end)
     return cur;
 }
 
-static const char *parse_filter_item(VALUE args, const char *cur, const char *end)
+static const unsigned char *parse_filter_item(VALUE args, const unsigned char *cur, const unsigned char *end)
 {
     /*
      * Arguments are separated by ethier : or ,
@@ -131,7 +131,7 @@ static const char *parse_filter_item(VALUE args, const char *cur, const char *en
         ++cur;
         cur = skip_white(cur, end);
     }
-    const char *arg_begin = cur;
+    const unsigned char *arg_begin = cur;
     TRY_PARSE(parse_quoted_fragment(cur, end));
     size_t arg_len = cur - arg_begin;
     if (!is_quote_delimiter(*arg_begin)) {
@@ -143,12 +143,12 @@ static const char *parse_filter_item(VALUE args, const char *cur, const char *en
             arg_len = cur - arg_begin;
         }
     }
-    rb_ary_push(args, rb_enc_str_new(arg_begin, arg_len, utf8_encoding));
+    rb_ary_push(args, rb_enc_str_new((const char *)arg_begin, arg_len, utf8_encoding));
     cur = skip_white(cur, end);
     return cur;
 }
 
-static const char *parse_filter(variable_parser_t *parser, const char *cur, const char *end)
+static const unsigned char *parse_filter(variable_parser_t *parser, const unsigned char *cur, const unsigned char *end)
 {
     /*
      * Filters are separated by any number of |s
@@ -160,13 +160,13 @@ static const char *parse_filter(variable_parser_t *parser, const char *cur, cons
     }
     if (cur >= end) return NULL;
     // Parse filter name
-    const char *filter_name_start = cur;
+    const unsigned char *filter_name_start = cur;
     while (cur < end && is_word_char(*cur)) ++cur;
     size_t filter_name_len = cur - filter_name_start;
     // Build arguments
     VALUE args = rb_ary_new();
     rb_ary_push(parser->filters, rb_ary_new3(2,
-                rb_enc_str_new(filter_name_start, filter_name_len, utf8_encoding), args));
+                rb_enc_str_new((const char *)filter_name_start, filter_name_len, utf8_encoding), args));
     cur = skip_white(cur, end);
     while (cur && cur < end) {
         if (*cur == '|') break;
@@ -175,17 +175,17 @@ static const char *parse_filter(variable_parser_t *parser, const char *cur, cons
     return cur;
 }
 
-static void parse(variable_parser_t *parser, const char *markup, size_t markup_len)
+static void parse(variable_parser_t *parser, const unsigned char *markup, size_t markup_len)
 {
-    const char *end = markup + markup_len;
-    const char *cur = markup;
+    const unsigned char *end = markup + markup_len;
+    const unsigned char *cur = markup;
     cur = skip_white(cur, end);
     // Parse name
-    const char *name_begin = cur;
+    const unsigned char *name_begin = cur;
     cur = parse_quoted_fragment(cur, end);
     if (!cur) return;
     size_t name_len = cur - name_begin;
-    parser->name = rb_enc_str_new(name_begin, name_len, utf8_encoding);
+    parser->name = rb_enc_str_new((const char *)name_begin, name_len, utf8_encoding);
     cur = skip_white(cur, end);
     // Parse filters
     while (cur && cur < end) {
@@ -197,7 +197,7 @@ static VALUE variable_parser_initialize_method(VALUE self, VALUE markup)
 {
     variable_parser_t *parser;
     Variable_Parser_Get_Struct(self, parser);
-    parse(parser, RSTRING_PTR(markup), RSTRING_LEN(markup));
+    parse(parser, (const unsigned char *)RSTRING_PTR(markup), RSTRING_LEN(markup));
     rb_iv_set(self, "@name", parser->name);
     rb_iv_set(self, "@filters", parser->filters);
     return Qnil;

@@ -22,6 +22,10 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal ['name', [['filter', ['a', 'b : c', 'd : e']]]], variable_parse('name | filter : a , b : c , d : e')
   end
 
+  def test_unicode
+    assert_equal ['å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ', []], variable_parse('å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ')
+  end
+
   private
 
   def variable_parse(markup)

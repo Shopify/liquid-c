@@ -27,6 +27,19 @@ then just use the documented API for the liquid Gem.
   of an array of strings, which only implements the shift method
   to get the next token.
 
+## Performance
+
+To compare Liquid-C's performance with plain Liquid run
+
+    bundle exec rake compare:run
+
+The latest benchmark results are shown below:
+
+                     user     system      total        real
+    Liquid:      0.000000   0.000000 246.950000 (247.499526)
+    Liquid-C:    0.000000   0.010000 224.270000 (224.794395)
+    Ratio: 90.82619215891624%
+
 ## Contributing
 
 1. Fork it ( http://github.com/Shopify/liquid-c/fork )

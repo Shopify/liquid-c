@@ -55,34 +55,34 @@ static void parse(block_parser_t *parser)
     for (;;) {
         VALUE token = rb_funcall(parser->tokens, rb_intern("shift"), 0);
         if (token == Qnil) break;
-        const char *token_begin = RSTRING_PTR(token);
+        const unsigned char *token_begin = (const unsigned char *)RSTRING_PTR(token);
         size_t token_len = RSTRING_LEN(token);
         if (!token_len) {
             continue;
         }
         if (token_len >= 2 && token_begin[0] == '{' && token_begin[1] == '%') {
-            const char *token_end = token_begin + token_len;
+            const unsigned char *token_end = token_begin + token_len;
             if (token_len < 4 || token_end[-2] != '%' || token_end[-1] != '}') {
                 // TODO: Use locale
                 VALUE err = rb_class_new_instance(0, NULL, cLiquidSyntaxError);
                 rb_raise(err, " ");
                 return;
             }
-            const char *word_begin = skip_white(token_begin + 2, token_end);
-            const char *word_end = scan_word(word_begin, token_end);
+            const unsigned char *word_begin = skip_white(token_begin + 2, token_end);
+            const unsigned char *word_end = scan_word(word_begin, token_end);
 
             // Check if end tag
             VALUE delimiter = rb_funcall(parser->iBlock, rb_intern("block_delimiter"), 0);
             if (word_end - word_begin == RSTRING_LEN(delimiter) &&
-                !strncmp(RSTRING_PTR(delimiter), word_begin, word_end - word_begin)) {
+                !strncmp(RSTRING_PTR(delimiter), (const char *)word_begin, word_end - word_begin)) {
                 rb_funcall(parser->iBlock, rb_intern("end_tag"), 0);
                 return;
             }
 
-            const char *rem_begin = skip_white(word_end, token_end);
+            const unsigned char *rem_begin = skip_white(word_end, token_end);
 
-            VALUE key = rb_enc_str_new(word_begin, word_end - word_begin, utf8_encoding);
-            VALUE rem = rb_enc_str_new(rem_begin, token_end - rem_begin - 2, utf8_encoding);
+            VALUE key = rb_enc_str_new((const char *)word_begin, word_end - word_begin, utf8_encoding);
+            VALUE rem = rb_enc_str_new((const char *)rem_begin, token_end - rem_begin - 2, utf8_encoding);
 
             // Fetch from registered blocks
             VALUE tags = rb_funcall(mLiquidTemplate, rb_intern("tags"), 0);

@@ -1,6 +1,7 @@
 require 'mkmf'
 $CFLAGS << ' -Wall -Werror'
-if ENV['DEBUG'] == 'true'
+compiler = RbConfig::MAKEFILE_CONFIG['CC']
+if ENV['DEBUG'] == 'true' && compiler =~ /gcc|g\+\+/
   $CFLAGS << ' -fbounds-check'
 end
 $warnflags.gsub!(/-Wdeclaration-after-statement/, "")

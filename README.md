@@ -40,6 +40,12 @@ The latest benchmark results are shown below:
     Liquid-C:    0.000000   0.010000 224.270000 (224.794395)
     Ratio: 90.82619215891624%
 
+## Developing
+
+    bundle install
+    # run tests
+    bundle exec rake
+
 ## Contributing
 
 1. Fork it ( http://github.com/Shopify/liquid-c/fork )

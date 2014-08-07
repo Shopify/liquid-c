@@ -30,6 +30,7 @@ end
 
 Liquid::Block.class_eval do
   def parse(tokens)
+    @blank = true
     @nodelist ||= []
     @nodelist.clear
     @children = []

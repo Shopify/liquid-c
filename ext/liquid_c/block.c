@@ -90,7 +90,7 @@ static void parse(block_parser_t *parser)
                 rb_funcall(parser->iBlock, rb_intern("unknown_tag"), 3, key, rem, parser->tokens);
             } else {
                 VALUE new_tag = rb_funcall(tag, rb_intern("parse"), 4, key, rem, parser->tokens, parser->options);
-                parser->blank = parser->blank && rb_funcall(new_tag, rb_intern("blank?"), 0) == Qtrue;
+                parser->blank = (parser->blank == Qtrue && rb_funcall(new_tag, rb_intern("blank?"), 0) == Qtrue) ? Qtrue : Qfalse;
                 rb_funcall(parser->nodelist, rb_intern("<<"), 1, new_tag);
                 rb_funcall(parser->children, rb_intern("<<"), 1, new_tag);
             }
@@ -101,8 +101,9 @@ static void parse(block_parser_t *parser)
             parser->blank = Qfalse;
         } else {
             rb_funcall(parser->nodelist, rb_intern("<<"), 1, token);
-            parser->blank = all_blank(token_begin, token_begin + token_len) ? Qtrue : Qfalse;
+            parser->blank = (parser->blank == Qtrue && all_blank(token_begin, token_begin + token_len) == Qtrue) ? Qtrue : Qfalse;
         }
+        rb_iv_set(parser->iBlock, "@blank", parser->blank);
     }
     
     rb_funcall(parser->iBlock, rb_intern("assert_missing_delimitation!"), 0);

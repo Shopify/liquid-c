@@ -101,7 +101,7 @@ static void parse(block_parser_t *parser)
             parser->blank = Qfalse;
         } else {
             rb_funcall(parser->nodelist, rb_intern("<<"), 1, token);
-            parser->blank = (parser->blank == Qtrue && all_blank(token_begin, token_begin + token_len) == Qtrue) ? Qtrue : Qfalse;
+            parser->blank = (parser->blank == Qtrue && all_blank(token_begin, token_begin + token_len)) ? Qtrue : Qfalse;
         }
         rb_iv_set(parser->iBlock, "@blank", parser->blank);
     }

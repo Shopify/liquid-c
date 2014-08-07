@@ -64,8 +64,7 @@ static void parse(block_parser_t *parser)
             const unsigned char *token_end = token_begin + token_len;
             if (token_len < 4 || token_end[-2] != '%' || token_end[-1] != '}') {
                 // TODO: Use locale
-                VALUE err = rb_class_new_instance(0, NULL, cLiquidSyntaxError);
-                rb_raise(err, " ");
+                rb_raise(cLiquidSyntaxError, " ");
                 return;
             }
             const unsigned char *word_begin = skip_white(token_begin + 2, token_end);

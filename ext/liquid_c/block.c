@@ -50,6 +50,13 @@ static VALUE block_parser_allocate(VALUE klass)
     return obj;
 }
 
+// Some external method calls can change what these instance variables point to
+// Example: if.rb push_block sets @nodelist
+static void update_instance_vars(block_parser_t *parser) {
+    parser->nodelist = rb_iv_get(parser->iBlock, "@nodelist");
+    parser->children = rb_iv_get(parser->iBlock, "@children");
+}
+
 static void parse(block_parser_t *parser)
 {
     for (;;) {
@@ -88,8 +95,10 @@ static void parse(block_parser_t *parser)
             VALUE tag = rb_funcall(tags, rb_intern("[]"), 1, key);
             if (tag == Qnil) {
                 rb_funcall(parser->iBlock, rb_intern("unknown_tag"), 3, key, rem, parser->tokens);
+                update_instance_vars(parser);
             } else {
                 VALUE new_tag = rb_funcall(tag, rb_intern("parse"), 4, key, rem, parser->tokens, parser->options);
+                update_instance_vars(parser);
                 parser->blank = (parser->blank == Qtrue && rb_funcall(new_tag, rb_intern("blank?"), 0) == Qtrue) ? Qtrue : Qfalse;
                 rb_funcall(parser->nodelist, rb_intern("<<"), 1, new_tag);
                 rb_funcall(parser->children, rb_intern("<<"), 1, new_tag);

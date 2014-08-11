@@ -16,8 +16,8 @@ class VariableTest < MiniTest::Unit::TestCase
   end
 
   def test_variable_filter_args
-    assert_equal ['name', [['filter', ['aoeu']]]], variable_parse(' name | filter aoeu ')
-    assert_equal ['name', [['filter1', ['aoeu']], ['filter2', ['aoeu']]]], variable_parse(' name | filter1 aoeu | filter2: aoeu ')
+    assert_equal ['name', [['filter', ['aoeu']]]], variable_parse(' name | filter: aoeu ')
+    assert_equal ['name', [['filter1', ['aoeu']], ['filter2', ['aoeu']]]], variable_parse(' name | filter1: aoeu | filter2: aoeu ')
     assert_equal ['name', [['filter', ['a : b', 'c : d', 'e']]]], variable_parse('name | filter : a : b : c : d : e')
     assert_equal ['name', [['filter', ['a', 'b : c', 'd : e']]]], variable_parse('name | filter : a , b : c , d : e')
   end

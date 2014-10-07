@@ -1,7 +1,7 @@
 #include "liquid.h"
 #include "tokenizer.h"
 
-VALUE cLiquidTokenizer;
+VALUE cLiquidTokenizer, cLiquidToken;
 
 static void tokenizer_mark(void *ptr)
 {
@@ -38,9 +38,21 @@ static VALUE tokenizer_allocate(VALUE klass)
     return obj;
 }
 
-static VALUE tokenizer_initialize_method(VALUE self, VALUE source)
+static VALUE tokenizer_initialize_method(int argc, VALUE *argv, VALUE self)
 {
+    if (argc > 2 || argc == 0)
+        rb_raise(rb_eArgError, "wrong number of arguments");
+
+    VALUE source = argv[0];
     tokenizer_t *tokenizer;
+
+    bool use_line_numbers = false;
+
+    if (argc == 2) {
+        VALUE options = argv[1];
+        Check_Type(options, T_HASH);
+        use_line_numbers = RTEST(rb_hash_aref(options, ID2SYM(rb_intern("line_numbers"))));
+    }
 
     Check_Type(source, T_STRING);
     Tokenizer_Get_Struct(self, tokenizer);
@@ -48,6 +60,8 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source)
     tokenizer->source = source;
     tokenizer->cursor = RSTRING_PTR(source);
     tokenizer->length = RSTRING_LEN(source);
+    tokenizer->current_line_number = 1;
+    tokenizer->use_line_numbers = use_line_numbers;
     return Qnil;
 }
 
@@ -64,7 +78,13 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
     token->str = cursor;
     token->type = TOKEN_STRING;
 
-    while (cursor < last) {
+    while (cursor <= last) {
+        if (*cursor == '\n')
+            tokenizer->current_line_number++;
+
+        if (cursor >= last)
+            break;
+
         if (*cursor++ != '{')
             continue;
 
@@ -126,13 +146,21 @@ static VALUE tokenizer_shift_method(VALUE self)
     if (token.type == TOKEN_NONE)
         return Qnil;
 
-    return rb_enc_str_new(token.str, token.length, utf8_encoding);
+    VALUE token_str = rb_enc_str_new(token.str, token.length, utf8_encoding);
+
+    if (tokenizer->use_line_numbers) {
+        VALUE line_nr = INT2FIX(tokenizer->current_line_number);
+        VALUE args[] = {token_str, line_nr};
+        return rb_class_new_instance(2, args, cLiquidToken);
+    }
+    return token_str;
 }
 
 void init_liquid_tokenizer()
 {
     cLiquidTokenizer = rb_define_class_under(mLiquid, "Tokenizer", rb_cObject);
+    cLiquidToken = rb_const_get(mLiquid, rb_intern("Token"));
     rb_define_alloc_func(cLiquidTokenizer, tokenizer_allocate);
-    rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 1);
+    rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, -1);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
 }

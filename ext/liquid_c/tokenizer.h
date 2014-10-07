@@ -18,7 +18,10 @@ typedef struct token {
 typedef struct tokenizer {
     VALUE source;
     const char *cursor;
+    bool use_line_numbers;
+
     long length;
+    long current_line_number;
 } tokenizer_t;
 
 extern VALUE cLiquidTokenizer;

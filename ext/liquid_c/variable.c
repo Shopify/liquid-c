@@ -127,10 +127,9 @@ static const unsigned char *parse_filter_item(VALUE args, const unsigned char *c
      *      * lang : latin
      *      * upsidedown : yes
      */
-    if (*cur == ':' || *cur == ',') {
-        ++cur;
-        cur = skip_white(cur, end);
-    }
+    if (*cur != ':' && *cur != ',') return NULL;
+    ++cur;
+    cur = skip_white(cur, end);
     const unsigned char *arg_begin = cur;
     TRY_PARSE(parse_quoted_fragment(cur, end));
     size_t arg_len = cur - arg_begin;
@@ -146,6 +145,17 @@ static const unsigned char *parse_filter_item(VALUE args, const unsigned char *c
     rb_ary_push(args, rb_enc_str_new((const char *)arg_begin, arg_len, utf8_encoding));
     cur = skip_white(cur, end);
     return cur;
+}
+
+static const unsigned char *scan_filter_item(VALUE args, const unsigned char *cur, const unsigned char *end)
+{
+    const unsigned char *tmp;
+    tmp = cur + 1;
+    cur = parse_filter_item(args, cur, end);
+    if (cur) return cur;
+    if (cur >= end) return end;
+    if (tmp >= end) return end;
+    return scan_filter_item(args, tmp, end);
 }
 
 static const unsigned char *parse_filter(variable_parser_t *parser, const unsigned char *cur, const unsigned char *end)
@@ -170,7 +180,7 @@ static const unsigned char *parse_filter(variable_parser_t *parser, const unsign
     cur = skip_white(cur, end);
     while (cur && cur < end) {
         if (*cur == '|') break;
-        cur = parse_filter_item(args, cur, end);
+        cur = scan_filter_item(args, cur, end);
     }
     return cur;
 }

@@ -149,11 +149,9 @@ static const unsigned char *parse_filter_item(VALUE args, const unsigned char *c
 
 static const unsigned char *scan_filter_item(VALUE args, const unsigned char *cur, const unsigned char *end)
 {
-    const unsigned char *tmp;
-    tmp = cur + 1;
+    const unsigned char *tmp = cur + 1;
     cur = parse_filter_item(args, cur, end);
     if (cur) return cur;
-    if (cur >= end) return end;
     if (tmp >= end) return end;
     return scan_filter_item(args, tmp, end);
 }

@@ -5,8 +5,14 @@ require 'liquid_c'
 Liquid::Template.class_eval do
   private
 
+  alias_method :ruby_tokenize, :tokenize
+
   def tokenize(source)
-    Liquid::Tokenizer.new(source.to_s, :line_numbers => @line_numbers)
+    if @line_numbers
+      ruby_tokenize(source)
+    else
+      Liquid::Tokenizer.new(source.to_s)
+    end
   end
 end
 

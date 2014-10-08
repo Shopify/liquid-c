@@ -40,19 +40,11 @@ static VALUE tokenizer_allocate(VALUE klass)
 
 static VALUE tokenizer_initialize_method(int argc, VALUE *argv, VALUE self)
 {
-    if (argc > 2 || argc == 0)
+    if (argc > 2 || argc <= 0)
         rb_raise(rb_eArgError, "wrong number of arguments");
 
     VALUE source = argv[0];
     tokenizer_t *tokenizer;
-
-    bool use_line_numbers = false;
-
-    if (argc == 2) {
-        VALUE options = argv[1];
-        Check_Type(options, T_HASH);
-        use_line_numbers = RTEST(rb_hash_aref(options, ID2SYM(rb_intern("line_numbers"))));
-    }
 
     Check_Type(source, T_STRING);
     Tokenizer_Get_Struct(self, tokenizer);
@@ -61,7 +53,13 @@ static VALUE tokenizer_initialize_method(int argc, VALUE *argv, VALUE self)
     tokenizer->cursor = RSTRING_PTR(source);
     tokenizer->length = RSTRING_LEN(source);
     tokenizer->current_line_number = 1;
-    tokenizer->use_line_numbers = use_line_numbers;
+    tokenizer->use_line_numbers = false;
+
+    if (argc == 2) {
+        VALUE options = argv[1];
+        Check_Type(options, T_HASH);
+        tokenizer->use_line_numbers = RTEST(rb_hash_aref(options, ID2SYM(rb_intern("line_numbers"))));
+    }
     return Qnil;
 }
 

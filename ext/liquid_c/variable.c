@@ -77,11 +77,8 @@ inline static int is_quoted_fragment_terminator(unsigned char c) {
 }
 
 inline static const unsigned char *scan_past(const unsigned char *cur, const unsigned char *end, unsigned char target) {
-    ++cur;
-    while (cur < end && *cur != target) ++cur;
-    if (cur >= end) return NULL;
-    ++cur;
-    return cur;
+    while (++cur < end && *cur != target);
+    return cur >= end ? NULL : cur + 1;
 }
 
 inline static const unsigned char *skip_white(const unsigned char *cur, const unsigned char *end) {
@@ -118,9 +115,9 @@ const unsigned char *parse_quoted_fragment(const unsigned char *cur, const unsig
 static const unsigned char *parse_filter_item(VALUE args, const unsigned char *cur, const unsigned char *end)
 {
     /*
-     * Arguments are separated by ethier : or ,
-     * Arguments can sometimes contain one :, e.g.:
-     * "hello" | translate lang : latin : upsidedown : yes"
+     * Arguments are separated by either ':' or ','
+     * Arguments can sometimes contain one ':' e.g.
+     * "hello" | translate lang : latin : upsidedown : yes
      *                          ^a      ^b           ^c
      * ^a and ^c are part of the arguments themselves, while ^b is a separator.
      * The arguments would then be:

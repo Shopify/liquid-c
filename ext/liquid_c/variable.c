@@ -226,7 +226,7 @@ static const char *parse_filter(VALUE filters, const char *cur, const char *end)
     // Parse filter arguments
     cur = start;
     VALUE args = rb_ary_new();
-    rb_ary_push(filters, rb_ary_new_from_args(2, filter_name, args));
+    rb_ary_push(filters, rb_ary_new3(2, filter_name, args));
     while (cur < filter_end) {
         cur = scan_filter_arg(args, cur, filter_end);
     }

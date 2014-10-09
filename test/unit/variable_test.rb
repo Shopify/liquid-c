@@ -29,7 +29,7 @@ class VariableTest < MiniTest::Unit::TestCase
   private
 
   def variable_parse(markup)
-    result = Liquid::VariableParse.new(markup)
+    result = Liquid::Variable.new(markup)
     [ result.name, result.filters ]
   end
 end

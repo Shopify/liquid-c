@@ -3,45 +3,6 @@
 #include "variable.h"
 #include <stdio.h>
 
-VALUE cLiquidVariableParser;
-
-static void variable_parser_mark(void *ptr)
-{
-    variable_parser_t *parser = ptr;
-    rb_gc_mark(parser->name);
-    rb_gc_mark(parser->filters);
-}
-
-static void variable_parser_free(void *ptr)
-{
-    variable_parser_t *parser = ptr;
-    xfree(parser);
-}
-
-static size_t variable_parser_memsize(const void *ptr)
-{
-    return ptr ? sizeof(variable_parser_t) : 0;
-}
-
-const rb_data_type_t variable_parser_data_type =
-{
-    "liquid_variable_parser",
-    { variable_parser_mark, variable_parser_free, variable_parser_memsize, },
-#if defined(RUBY_TYPED_FREE_IMMEDIATELY)
-    NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
-#endif
-};
-
-static VALUE variable_parser_allocate(VALUE klass)
-{
-    VALUE obj;
-    variable_parser_t *variable_parser;
-    obj = TypedData_Make_Struct(klass, variable_parser_t, &variable_parser_data_type, variable_parser);
-    variable_parser->name = Qnil;
-    variable_parser->filters = rb_ary_new();
-    return obj;
-}
-
 /*
  * Character type lookup table
  * 1: Whitespace (Characters that would be matched by \s in regexp's)
@@ -60,33 +21,35 @@ static const unsigned char char_lookup[256] = {
     ['\"'] = 4,
 };
 
-inline static int is_white(unsigned char c) {
-    return char_lookup[(unsigned)c] == 1;
+inline static unsigned char is_white(char c) {
+    return char_lookup[(unsigned char)c] == 1;
 }
 
-inline static int is_word_char(unsigned char c) {
-    return char_lookup[(unsigned)c] == 2;
+inline static unsigned char is_word_char(char c) {
+    return char_lookup[(unsigned char)c] == 2;
 }
 
-inline static int is_quote_delimiter(unsigned char c) {
-    return char_lookup[(unsigned)c] == 4;
+inline static unsigned char is_quote_delimiter(char c) {
+    return char_lookup[(unsigned char)c] == 4;
 }
 
-inline static int is_quoted_fragment_terminator(unsigned char c) {
-    return char_lookup[(unsigned)c] & 1;
+inline static unsigned char is_quoted_fragment_terminator(char c) {
+    return char_lookup[(unsigned char)c] & 1;
 }
 
-inline static const unsigned char *scan_past(const unsigned char *cur, const unsigned char *end, unsigned char target) {
-    while (++cur < end && *cur != target);
-    return cur >= end ? NULL : cur + 1;
+inline static const char *scan_past(const char *cur, const char *end, char target) {
+    while (cur < end) {
+        if (*cur++ == target) {
+            return cur;
+        }
+    }
+    return NULL;
 }
 
-inline static const unsigned char *skip_white(const unsigned char *cur, const unsigned char *end) {
+inline static const char *skip_white(const char *cur, const char *end) {
     while (cur < end && is_white(*cur)) ++cur;
     return cur;
 }
-
-#define TRY_PARSE(x) do { if ((cur = (x)) == NULL) return NULL; } while (0)
 
 /*
  * A "quoted fragment" is either a quoted string, e.g., 'the "quick" brown fox'
@@ -94,25 +57,78 @@ inline static const unsigned char *skip_white(const unsigned char *cur, const un
  * this sequence can contain in it quoted strings in which whitespace, ',', or
  * '|' can appear.
  */
-const unsigned char *parse_quoted_fragment(const unsigned char *cur, const unsigned char *end)
+const char *scan_for_quoted_fragment(const char **cur_ptr, const char *end)
 {
-    if (cur >= end) return NULL;
-    unsigned char start = *cur;
-    if (is_quote_delimiter(start)) {
-        return scan_past(cur, end, start);
+    const char *cur = *cur_ptr;
+    const char *fragment_start;
+
+    while (cur < end) {
+        char c = *cur;
+        if (is_quoted_fragment_terminator(c)) {
+            cur++;
+            continue;
+        } else if (is_quote_delimiter(c)) {
+            fragment_start = cur++;
+            const char *fragment_end = scan_past(cur, end, c);
+            if (fragment_end) {
+                *cur_ptr = fragment_end;
+                return fragment_start;
+            }
+            cur++;
+            continue;
+        }
+        break;
     }
-    while (cur < end && !is_quoted_fragment_terminator(*cur)) {
-        start = *cur;
-        if (is_quote_delimiter(start)) {
-            TRY_PARSE(scan_past(cur, end, start));
+    if (cur >= end) {
+        return NULL;
+    }
+    fragment_start = cur;
+
+    while (cur < end) {
+        char c = *cur;
+        if (is_quoted_fragment_terminator(c)) {
+            break;
+        } else if (is_quote_delimiter(c)) {
+            const char *quote_end = scan_past(cur + 1, end, c);
+            if (!quote_end) {
+                break;
+            }
+            cur = quote_end;
         } else {
-            ++cur;
+            cur++;
+        }
+    }
+    *cur_ptr = cur;
+
+    return fragment_start;
+}
+
+const char *parse_bare_fragment(const char *cur, const char *end)
+{
+    while (cur < end && !is_quoted_fragment_terminator(*cur)) {
+        char c = *cur++;
+        if (is_quote_delimiter(c)) {
+            const char *quote_end = scan_past(cur, end, c);
+            if (!quote_end) {
+                return cur;
+            }
+            cur = quote_end;
         }
     }
     return cur;
 }
 
-static const unsigned char *parse_filter_item(VALUE args, const unsigned char *cur, const unsigned char *end)
+const char *parse_quoted_fragment(const char *cur, const char *end)
+{
+    if (cur >= end) return NULL;
+    char c = *cur;
+    if (is_quote_delimiter(c)) {
+        return scan_past(cur + 1, end, c);
+    }
+    return parse_bare_fragment(cur, end);
+}
+
+static const char *parse_filter_arg(VALUE args, const char *cur, const char *end)
 {
     /*
      * Arguments are separated by either ':' or ','
@@ -124,95 +140,131 @@ static const unsigned char *parse_filter_item(VALUE args, const unsigned char *c
      *      * lang : latin
      *      * upsidedown : yes
      */
-    if (*cur != ':' && *cur != ',') return NULL;
-    ++cur;
     cur = skip_white(cur, end);
-    const unsigned char *arg_begin = cur;
-    TRY_PARSE(parse_quoted_fragment(cur, end));
-    size_t arg_len = cur - arg_begin;
-    if (!is_quote_delimiter(*arg_begin)) {
+    if (cur >= end) return cur;
+
+    const char *arg_begin = cur;
+
+    /* optional keyword argument */
+    if (is_word_char(*cur)) {
+        cur++;
+        while (is_word_char(*cur)) cur++;
+
+        const char *word_chars_end = cur;
+
         cur = skip_white(cur, end);
-        if (cur < end && *cur == ':') {
-            ++cur;
-            cur = skip_white(cur, end);
-            TRY_PARSE(parse_quoted_fragment(cur, end));
-            arg_len = cur - arg_begin;
+
+        if (cur + 1 < end && *cur == ':') {
+            cur++;
+            cur = skip_white(cur + 1, end);
+
+            cur = parse_quoted_fragment(cur, end);
+            if (cur) {
+                rb_ary_push(args, rb_enc_str_new(arg_begin, cur - arg_begin, utf8_encoding));
+                return cur;
+            }
         }
+        /* not a keyword argument, so parse the rest of the positional argument */
+        cur = parse_bare_fragment(word_chars_end - 1, end);
+        rb_ary_push(args, rb_enc_str_new(arg_begin, cur - arg_begin, utf8_encoding));
+        return cur;
     }
-    rb_ary_push(args, rb_enc_str_new((const char *)arg_begin, arg_len, utf8_encoding));
-    cur = skip_white(cur, end);
+    /* positional argument */
+    cur = parse_quoted_fragment(cur, end);
+    if (!cur) return arg_begin;
+
+    rb_ary_push(args, rb_enc_str_new(arg_begin, cur - arg_begin, utf8_encoding));
     return cur;
 }
 
-static const unsigned char *scan_filter_item(VALUE args, const unsigned char *cur, const unsigned char *end)
+static const char *scan_filter_arg(VALUE args, const char *cur, const char *filter_end)
 {
-    const unsigned char *tmp = cur + 1;
-    cur = parse_filter_item(args, cur, end);
-    if (cur) return cur;
-    if (tmp >= end) return end;
-    return scan_filter_item(args, tmp, end);
+    while (cur < filter_end) {
+        char c = *cur++;
+        if (c == ':' || c == ',') {
+            return parse_filter_arg(args, cur, filter_end);
+        }
+    }
+    return cur;
 }
 
-static const unsigned char *parse_filter(variable_parser_t *parser, const unsigned char *cur, const unsigned char *end)
+static const char *parse_filter(VALUE filters, const char *cur, const char *end)
 {
     /*
      * Filters are separated by any number of |s
      * Filters can have either a : or , before their arguments list
      */
-    while (cur < end && *cur == '|') {
-        ++cur;
-        cur = skip_white(cur, end);
+
+    const char *start = cur;
+
+    // Find end of filter
+    while (cur < end) {
+        char c = *cur;
+        if (c == '|') {
+            break;
+        } else if (is_quote_delimiter(c)) {
+            const char *quote_end = scan_past(cur + 1, end, c);
+            if (!quote_end) {
+                break;
+            }
+            cur = quote_end;
+        } else {
+            cur++;
+        }
     }
-    if (cur >= end) return NULL;
+    const char *filter_end = cur;
+    cur = start;
+
     // Parse filter name
-    const unsigned char *filter_name_start = cur;
-    while (cur < end && is_word_char(*cur)) ++cur;
+    while (cur < filter_end && !is_word_char(*cur)) ++cur;
+    if (cur >= filter_end) return filter_end;
+    const char *filter_name_start = cur;
+    while (cur < filter_end && is_word_char(*cur)) ++cur;
     size_t filter_name_len = cur - filter_name_start;
-    // Build arguments
+    VALUE filter_name = rb_enc_str_new((const char *)filter_name_start, filter_name_len, utf8_encoding);
+
+    // Parse filter arguments
+    cur = start;
     VALUE args = rb_ary_new();
-    rb_ary_push(parser->filters, rb_ary_new3(2,
-                rb_enc_str_new((const char *)filter_name_start, filter_name_len, utf8_encoding), args));
-    cur = skip_white(cur, end);
-    while (cur && cur < end) {
-        if (*cur == '|') break;
-        cur = scan_filter_item(args, cur, end);
+    rb_ary_push(filters, rb_ary_new_from_args(2, filter_name, args));
+    while (cur < filter_end) {
+        cur = scan_filter_arg(args, cur, filter_end);
     }
-    return cur;
+
+    return filter_end;
 }
 
-static void parse(variable_parser_t *parser, const unsigned char *markup, size_t markup_len)
+static VALUE lax_parse(VALUE self, VALUE markup)
 {
-    const unsigned char *end = markup + markup_len;
-    const unsigned char *cur = markup;
-    cur = skip_white(cur, end);
+    const char *markup_ptr = RSTRING_PTR(markup);
+    size_t markup_len = RSTRING_LEN(markup);
+
+    VALUE filters = rb_ary_new();
+    rb_iv_set(self, "@filters", filters);
+
+    const char *end = markup_ptr + markup_len;
+    const char *cur = markup_ptr;
+
     // Parse name
-    const unsigned char *name_begin = cur;
-    cur = parse_quoted_fragment(cur, end);
-    if (!cur) return;
+    const char *name_begin = scan_for_quoted_fragment(&cur, end);
+    if (!name_begin) return Qnil;
     size_t name_len = cur - name_begin;
-    parser->name = rb_enc_str_new((const char *)name_begin, name_len, utf8_encoding);
-    cur = skip_white(cur, end);
-    // Parse filters
-    while (cur && cur < end) {
-        cur = parse_filter(parser, cur, end);
-    }
-}
+    rb_iv_set(self, "@name", rb_enc_str_new(name_begin, name_len, utf8_encoding));
 
-static VALUE variable_parser_initialize_method(VALUE self, VALUE markup)
-{
-    variable_parser_t *parser;
-    Variable_Parser_Get_Struct(self, parser);
-    parse(parser, (const unsigned char *)RSTRING_PTR(markup), RSTRING_LEN(markup));
-    rb_iv_set(self, "@name", parser->name);
-    rb_iv_set(self, "@filters", parser->filters);
+    // Parse filters
+    cur = scan_past(cur, end, '|');
+    if (!cur) return Qnil;
+    while (cur < end) {
+        cur = skip_white(cur, end);
+        cur = parse_filter(filters, cur, end);
+        cur++; /* skip filter separator */
+    }
+
     return Qnil;
 }
 
 void init_liquid_variable(void)
 {
-    cLiquidVariableParser = rb_define_class_under(mLiquid, "VariableParse", rb_cObject);
-    rb_define_alloc_func(cLiquidVariableParser, variable_parser_allocate);
-    rb_define_method(cLiquidVariableParser, "initialize", variable_parser_initialize_method, 1);
-    rb_define_attr(cLiquidVariableParser, "filters", 1, 0);
-    rb_define_attr(cLiquidVariableParser, "name", 1, 0);
+    VALUE cLiquidVariable = rb_define_class_under(mLiquid, "Variable", rb_cObject);
+    rb_define_method(cLiquidVariable, "lax_parse", lax_parse, 1);
 }

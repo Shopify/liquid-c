@@ -15,4 +15,3 @@ Liquid::Template.class_eval do
     end
   end
 end
-

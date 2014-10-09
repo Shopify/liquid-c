@@ -26,6 +26,37 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal ['å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ', []], variable_parse('å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ')
   end
 
+  # contrived examples to test edge cases
+  def test_parsing_quirks
+    # pipe and commas before the filter name are ignored, as well as unterminated quote characters
+    assert_equal ['name', []], variable_parse(%{ |'",name })
+
+    # ignore anything between the filter name and the filter seperator
+    assert_equal ['name', [['filter', []]]], variable_parse(%{ name ignored | filter })
+
+    # ignore filters without word characters
+    assert_equal ['name', [['filter', []]]], variable_parse(%{ name | "" | '' | , | || ? | filter })
+
+    # filter name is the first consecutive word characters
+    filters = [
+      ['quote', []],
+      ['question', []],
+      ['arg', ['arg']]
+    ]
+    assert_equal ['name', filters], variable_parse(%{ name | 'quote' | question? | ???: arg })
+
+    # ignore characters between the filter argument and the filter seperator
+    assert_equal ['name', [['filter', ['arg1', 'arg2']]]], variable_parse(%{ name | filter: arg1 ignored, arg2 })
+
+    # unquoted strings may be used as filter seperators
+    filters = [
+      ['filter1', []],
+      ['filter2', []],
+      ['filter3', []],
+    ]
+    assert_equal ['name', filters], variable_parse(%{name | filter1 " filter2 ' filter3})
+  end
+
   private
 
   def variable_parse(markup)

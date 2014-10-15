@@ -16,6 +16,16 @@ Liquid::Template.class_eval do
   end
 end
 
+Liquid::Lexer.class_eval do
+  def initialize(input)
+    @input = input
+  end
+
+  def tokenize
+    Liquid.c_lex([], @input)
+  end
+end
+
 Liquid::Variable.class_eval do
   private
 

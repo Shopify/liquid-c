@@ -1,6 +1,7 @@
 #include "liquid.h"
 #include "tokenizer.h"
 #include "variable.h"
+#include "lexer.h"
 
 VALUE mLiquid;
 rb_encoding *utf8_encoding;
@@ -11,4 +12,5 @@ void Init_liquid_c(void)
     mLiquid = rb_define_module("Liquid");
     init_liquid_tokenizer();
     init_liquid_variable();
+    init_liquid_lexer();
 }

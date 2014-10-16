@@ -67,7 +67,7 @@ VALUE parse_expression(parser_t *parser) {
         rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[parser->cur.type]);
     } else {
         rb_raise(cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
-                symbol_names[parser->cur.type], (int)(parser->cur.val_end - parser->cur.val), parser->cur.val);
+                 symbol_names[parser->cur.type], (int)(parser->cur.val_end - parser->cur.val), parser->cur.val);
     }
     return Qnil;
 }

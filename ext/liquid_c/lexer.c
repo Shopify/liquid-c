@@ -79,11 +79,11 @@ inline static char is_escaped(const char *start, const char *cur) {
     return escaped;
 }
 
-#define PUSH_TOKEN(t, n) { \
-                             token->type = (t); \
-                             token->val = start; \
-                             return (token->val_end = start + (n)); \
-                         }
+#define RETURN_TOKEN(t, n) { \
+                               token->type = (t); \
+                               token->val = start; \
+                               return (token->val_end = start + (n)); \
+                           }
 
 const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
     str = skip_white(str, end);
@@ -97,16 +97,16 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
     // Comparison.
     if (c == '<') {
         if (cn == '>' || cn == '=') {
-            PUSH_TOKEN(TOKEN_COMPARISON, 2);
+            RETURN_TOKEN(TOKEN_COMPARISON, 2);
         } else {
-            PUSH_TOKEN(TOKEN_COMPARISON, 1);
+            RETURN_TOKEN(TOKEN_COMPARISON, 1);
         }
     } else if (c == '>') {
-        PUSH_TOKEN(TOKEN_COMPARISON, cn == '=' ? 2 : 1);
+        RETURN_TOKEN(TOKEN_COMPARISON, cn == '=' ? 2 : 1);
     } else if ((c == '=' || c == '!') && cn == '=') {
-        PUSH_TOKEN(TOKEN_COMPARISON, 2);
+        RETURN_TOKEN(TOKEN_COMPARISON, 2);
     } else if ((str = matches(start, end, "contains"))) {
-        PUSH_TOKEN(TOKEN_COMPARISON, str - start);
+        RETURN_TOKEN(TOKEN_COMPARISON, str - start);
     }
 
     // Quotations.
@@ -119,7 +119,7 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
             }
         }
 
-        if (str) PUSH_TOKEN(TOKEN_QUOTE, str - start);
+        if (str) RETURN_TOKEN(TOKEN_QUOTE, str - start);
     }
 
     // Numbers.
@@ -135,31 +135,31 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
             }
         }
         if (cn == '.') str--;
-        PUSH_TOKEN(TOKEN_NUMBER, str - start);
+        RETURN_TOKEN(TOKEN_NUMBER, str - start);
     }
 
     // Identifiers.
     if (is_identifier(c)) {
         str = start;
         while (++str < end && is_identifier(*str)) {}
-        PUSH_TOKEN(TOKEN_IDENTIFIER, str - start);
+        RETURN_TOKEN(TOKEN_IDENTIFIER, str - start);
     }
 
     // Double dots.
     if (c == '.' && cn == '.') {
-        PUSH_TOKEN(TOKEN_DOTDOT, 2);
+        RETURN_TOKEN(TOKEN_DOTDOT, 2);
     }
 
     // Specials.
     if (is_special(c)) {
-        PUSH_TOKEN(c, 1);
+        RETURN_TOKEN(c, 1);
     }
 
     raise_error(c);
     return NULL;
 }
 
-#undef PUSH_TOKEN
+#undef RETURN_TOKEN
 
 VALUE rb_lex(VALUE self, VALUE markup) {
     StringValue(markup);
@@ -175,9 +175,7 @@ VALUE rb_lex(VALUE self, VALUE markup) {
         str = lex_one(str, end, &token);
 
         if (token.type) {
-            VALUE rb_token = rb_ary_new();
-            rb_ary_push(rb_token, get_rb_type(token.type));
-            rb_ary_push(rb_token, rb_utf8_str_new_range(token.val, token.val_end));
+            VALUE rb_token = rb_ary_new3(2, get_rb_type(token.type), rb_utf8_str_new_range(token.val, token.val_end));
             rb_ary_push(output, rb_token);
         }
     }

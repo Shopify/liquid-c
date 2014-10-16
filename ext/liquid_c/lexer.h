@@ -47,7 +47,6 @@ typedef struct lexer_token_list {
     unsigned int len, cap;
 } lexer_token_list_t;
 
-void lex(const char *start, const char *end, lexer_token_list_t *tokens);
 VALUE rb_lex(VALUE self, VALUE markup);
 lexer_token_t *consume(lexer_token_list_t *tokens, unsigned char type);
 lexer_token_list_t *new_token_list();

@@ -20,19 +20,6 @@ static void raise_error(char unexpected) {
     rb_raise(cLiquidSyntaxError, "Unexpected character %c", unexpected);
 }
 
-static void append_token(lexer_token_list_t *tokens, unsigned char type, const char *val, unsigned int val_len) {
-    if (tokens->len >= tokens->cap) {
-        tokens->cap <<= 1;
-        tokens->list = realloc(tokens->list, tokens->cap * sizeof(lexer_token_t));
-    }
-
-    lexer_token_t token;
-    token.type = type;
-    token.val = val;
-    token.val_len = val_len;
-    tokens->list[tokens->len++] = token;
-}
-
 inline static char is_white(unsigned char c) {
     switch (c) {
         case ' ':
@@ -93,12 +80,14 @@ inline static char is_escaped(const char *start, const char *cur) {
     return escaped;
 }
 
-#define PUSH_TOKEN(type, n) { \
-                                append_token(tokens, (type), start, (n)); \
+#define PUSH_TOKEN(t, n) { \
+                                token->type = (t); \
+                                token->val = start; \
+                                token->val_len = (n); \
                                 return start + (n); \
                             }
 
-const char *lex_one(const char *str, const char *end, lexer_token_list_t *tokens) {
+const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
     str = skip_white(str, end);
     if (str >= end) return str;
 
@@ -174,39 +163,29 @@ const char *lex_one(const char *str, const char *end, lexer_token_list_t *tokens
 
 #undef PUSH_TOKEN
 
-void lex(const char *start, const char *end, lexer_token_list_t *tokens)
-{
-    const char *cur = start;
-
-    while (cur < end) {
-        cur = lex_one(cur, end, tokens);
-    }
-
-    append_token(tokens, TOKEN_EOS, NULL, 0);
-}
-
 VALUE rb_lex(VALUE self, VALUE markup) {
-    lexer_token_list_t *tokens = new_token_list();
-
     const char *str = RSTRING_PTR(markup);
-    lex(str, str + RSTRING_LEN(markup), tokens);
+    const char *end = str + RSTRING_LEN(markup);
 
+    lexer_token_t token;
     VALUE output = rb_ary_new();
-    lexer_token_t *cur = tokens->list;
 
-    for (int i = 0; i < tokens->len; i++) {
-        // fprintf(stderr, "%s:%.*s, ", symbol_names[cur[i].type], cur[i].val_len, cur[i].val);
+    while (str < end) {
+        token.type = 0;
+        str = lex_one(str, end, &token);
 
-        VALUE rb_token = rb_ary_new();
-        rb_ary_push(rb_token, get_rb_type(cur[i].type));
-
-        if (cur[i].val) {
-            rb_ary_push(rb_token, rb_str_new(cur[i].val, cur[i].val_len));
+        if (token.type) {
+            /* fprintf(stderr, "%s:%.*s, ", symbol_names[token.type], token.val_len, token.val); */
+            VALUE rb_token = rb_ary_new();
+            rb_ary_push(rb_token, get_rb_type(token.type));
+            rb_ary_push(rb_token, rb_str_new(token.val, token.val_len));
+            rb_ary_push(output, rb_token);
         }
-
-        rb_ary_push(output, rb_token);
     }
 
+    VALUE rb_eos = rb_ary_new();
+    rb_ary_push(rb_eos, get_rb_type(TOKEN_EOS));
+    rb_ary_push(output, rb_eos);
     return output;
 }
 

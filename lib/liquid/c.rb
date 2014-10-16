@@ -22,7 +22,7 @@ Liquid::Lexer.class_eval do
   end
 
   def tokenize
-    Liquid.c_lex(@input)
+    Liquid::Lexer.c_lex(@input)
   end
 end
 
@@ -39,6 +39,6 @@ Liquid::Variable.class_eval do
 
   def strict_parse(markup)
     @filters = []
-    @name = Liquid.c_variable_parse(markup, @filters)
+    @name = Liquid::Variable.c_strict_parse(markup, @filters)
   end
 end

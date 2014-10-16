@@ -43,7 +43,10 @@ VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
     return name;
 }
 
+static VALUE cLiquidVariable;
+
 void init_liquid_variable(void)
 {
-    rb_define_singleton_method(mLiquid, "c_variable_parse", rb_variable_parse, 2);
+    cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
+    rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 2);
 }

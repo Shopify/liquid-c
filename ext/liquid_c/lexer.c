@@ -313,8 +313,11 @@ VALUE rb_lex(VALUE self, VALUE markup) {
     return output;
 }
 
+static VALUE cLiquidLexer;
+
 void init_liquid_lexer(void)
 {
+    cLiquidLexer = rb_const_get(mLiquid, rb_intern("Lexer"));
     cLiquidSyntaxError = rb_const_get(mLiquid, rb_intern("SyntaxError"));
-    rb_define_singleton_method(mLiquid, "c_lex", rb_lex, 1);
+    rb_define_singleton_method(cLiquidLexer, "c_lex", rb_lex, 1);
 }

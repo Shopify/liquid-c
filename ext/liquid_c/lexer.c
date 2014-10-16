@@ -1,6 +1,7 @@
 #include "liquid.h"
 #include "lexer.h"
 #include <stdio.h>
+#include <ctype.h>
 
 const char *symbol_names[256] = {
     [0] = "nil",
@@ -36,26 +37,8 @@ static void raise_error(char unexpected) {
     rb_raise(cLiquidSyntaxError, "Unexpected character %c", unexpected);
 }
 
-inline static char is_white(unsigned char c) {
-    switch (c) {
-        case ' ':
-        case '\n': case '\r':
-        case '\t': case '\f':
-            return 1;
-    }
-    return 0;
-}
-
-inline static char is_digit(char c) {
-    return c >= '0' && c <= '9';
-}
-
-inline static char is_alpha(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
 inline static char is_identifier(char c) {
-    return is_digit(c) || is_alpha(c) || c == '_' || c == '-' || c == '?' || c == '!';
+    return isalnum(c) || c == '_' || c == '-' || c == '?' || c == '!';
 }
 
 inline static char is_special(char c) {
@@ -68,7 +51,7 @@ inline static char is_special(char c) {
 }
 
 inline static const char *skip_white(const char *cur, const char *end) {
-    while (cur < end && is_white(*cur)) ++cur;
+    while (cur < end && isspace(*cur)) ++cur;
     return cur;
 }
 
@@ -140,14 +123,14 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
     }
 
     // Numbers.
-    if (is_digit(c) || c == '-') {
+    if (isdigit(c) || c == '-') {
         char has_dot = 0;
         str = start;
         while (++str < end) {
             cn = *str;
             if (!has_dot && cn == '.') {
                 has_dot = 1;
-            } else if (!is_digit(cn)) {
+            } else if (!isdigit(cn)) {
                 break;
             }
         }

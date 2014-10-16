@@ -19,22 +19,7 @@ enum lexer_token_type {
     TOKEN_CLOSE_ROUND = ')'
 };
 
-static const char *symbol_names[256] = {
-    [TOKEN_COMPARISON] = "comparison",
-    [TOKEN_QUOTE] = "string",
-    [TOKEN_NUMBER] = "number",
-    [TOKEN_IDENTIFIER] = "id",
-    [TOKEN_DOTDOT] = "dotdot",
-    [TOKEN_EOS] = "end_of_string",
-    [TOKEN_PIPE] = "pipe",
-    [TOKEN_DOT] = "dot",
-    [TOKEN_COLON] = "colon",
-    [TOKEN_COMMA] = "comma",
-    [TOKEN_OPEN_SQUARE] = "open_square",
-    [TOKEN_CLOSE_SQUARE] = "close_square",
-    [TOKEN_OPEN_ROUND] = "open_round",
-    [TOKEN_CLOSE_ROUND] = "close_round"
-};
+extern const char *symbol_names[256];
 
 typedef struct lexer_token {
     unsigned char type;
@@ -42,14 +27,7 @@ typedef struct lexer_token {
     unsigned int val_len;
 } lexer_token_t;
 
-typedef struct lexer_token_list {
-    lexer_token_t *list;
-    unsigned int len, cap;
-} lexer_token_list_t;
-
 VALUE rb_lex(VALUE self, VALUE markup);
-lexer_token_t *consume(lexer_token_list_t *tokens, unsigned char type);
-lexer_token_list_t *new_token_list();
 void init_liquid_lexer(void);
 
 #endif

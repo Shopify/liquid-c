@@ -3,6 +3,23 @@
 #include "tokenizer.h"
 #include <stdio.h>
 
+const char *symbol_names[256] = {
+    [TOKEN_COMPARISON] = "comparison",
+    [TOKEN_QUOTE] = "string",
+    [TOKEN_NUMBER] = "number",
+    [TOKEN_IDENTIFIER] = "id",
+    [TOKEN_DOTDOT] = "dotdot",
+    [TOKEN_EOS] = "end_of_string",
+    [TOKEN_PIPE] = "pipe",
+    [TOKEN_DOT] = "dot",
+    [TOKEN_COLON] = "colon",
+    [TOKEN_COMMA] = "comma",
+    [TOKEN_OPEN_SQUARE] = "open_square",
+    [TOKEN_CLOSE_SQUARE] = "close_square",
+    [TOKEN_OPEN_ROUND] = "open_round",
+    [TOKEN_CLOSE_ROUND] = "close_round"
+};
+
 static VALUE symbols[256] = {0};
 
 static VALUE get_rb_type(unsigned char type) {
@@ -187,29 +204,6 @@ VALUE rb_lex(VALUE self, VALUE markup) {
     rb_ary_push(rb_eos, get_rb_type(TOKEN_EOS));
     rb_ary_push(output, rb_eos);
     return output;
-}
-
-lexer_token_t *consume(lexer_token_list_t *tokens, unsigned char type)
-{
-    if (tokens->len <= 0) {
-        rb_raise(cLiquidSyntaxError, "Expected %s but found nothing", symbol_names[type]);
-    }
-
-    lexer_token_t *token = tokens->list++;
-    if (token->type != type) {
-        rb_raise(cLiquidSyntaxError, "Expected %s but found %s", symbol_names[type], symbol_names[token->type]);
-    }
-
-    return token;
-}
-
-lexer_token_list_t *new_token_list()
-{
-    lexer_token_list_t *tokens = malloc(sizeof(lexer_token_list_t));
-    tokens->len = 0;
-    tokens->cap = 4;
-    tokens->list = malloc(4 * sizeof(lexer_token_t));
-    return tokens;
 }
 
 void init_liquid_lexer(void)

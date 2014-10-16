@@ -1,44 +1,44 @@
 
 #include "liquid.h"
 #include "variable.h"
-#include "lexer.h"
+#include "parser.h"
 #include <stdio.h>
 
 VALUE rb_variable_parse(VALUE self, VALUE markup)
 {
     StringValue(markup);
 
-    lexer_t lexer;
+    parser_t parser;
     char *start = RSTRING_PTR(markup);
-    init_lexer(&lexer, start, start + RSTRING_LEN(markup));
+    init_parser(&parser, start, start + RSTRING_LEN(markup));
 
     VALUE name, filters = rb_ary_new();
 
-    if (lexer.cur.type == TOKEN_EOS) {
+    if (parser.cur.type == TOKEN_EOS) {
         return rb_ary_new3(2, Qnil, filters);
-    } else if (lexer.cur.type == TOKEN_PIPE) {
+    } else if (parser.cur.type == TOKEN_PIPE) {
         name = rb_str_new2("");
     } else {
-        name = lexer_expression(&lexer);
+        name = parse_expression(&parser);
     }
 
-    while (lexer_consume(&lexer, TOKEN_PIPE).type) {
-        lexer_token_t filter_name = lexer_must_consume(&lexer, TOKEN_IDENTIFIER);
+    while (parser_consume(&parser, TOKEN_PIPE).type) {
+        lexer_token_t filter_name = parser_must_consume(&parser, TOKEN_IDENTIFIER);
 
         VALUE filter_args = rb_ary_new();
 
-        if (lexer_consume(&lexer, TOKEN_COLON).type) {
-            rb_ary_push(filter_args, lexer_argument(&lexer));
+        if (parser_consume(&parser, TOKEN_COLON).type) {
+            rb_ary_push(filter_args, parse_argument(&parser));
 
-            while (lexer_consume(&lexer, TOKEN_COMMA).type) {
-                rb_ary_push(filter_args, lexer_argument(&lexer));
+            while (parser_consume(&parser, TOKEN_COMMA).type) {
+                rb_ary_push(filter_args, parse_argument(&parser));
             }
         }
 
         rb_ary_push(filters, rb_ary_new3(2, rb_utf8_str_new_range(filter_name.val, filter_name.val_end), filter_args));
     }
 
-    lexer_must_consume(&lexer, TOKEN_EOS);
+    parser_must_consume(&parser, TOKEN_EOS);
     return rb_ary_new3(2, name, filters);
 }
 

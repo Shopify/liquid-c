@@ -1,6 +1,5 @@
 #include "liquid.h"
 #include "lexer.h"
-#include "tokenizer.h"
 #include <stdio.h>
 
 const char *symbol_names[256] = {
@@ -21,6 +20,7 @@ const char *symbol_names[256] = {
     [TOKEN_CLOSE_ROUND] = "close_round"
 };
 
+static VALUE cLiquidLexer;
 static VALUE symbols[256] = {0};
 
 static VALUE get_rb_type(unsigned char type) {
@@ -31,8 +31,6 @@ static VALUE get_rb_type(unsigned char type) {
     symbols[type] = ret;
     return ret;
 }
-
-static VALUE cLiquidSyntaxError;
 
 static void raise_error(char unexpected) {
     rb_raise(cLiquidSyntaxError, "Unexpected character %c", unexpected);
@@ -180,114 +178,6 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
 
 #undef PUSH_TOKEN
 
-void init_lexer(lexer_t *lexer, const char *str, const char *end) {
-    lexer->str = str;
-    lexer->str_end = end;
-    lexer->cur.type = TOKEN_EOS;
-    lexer->next.type = TOKEN_EOS;
-    lexer->str = lex_one(lexer->str, lexer->str_end, &lexer->cur);
-    lexer->str = lex_one(lexer->str, lexer->str_end, &lexer->next);
-}
-
-lexer_token_t lexer_consume_any(lexer_t *lexer) {
-    lexer_token_t cur = lexer->cur;
-    lexer->cur = lexer->next;
-    lexer->next.type = TOKEN_EOS;
-    lexer->str = lex_one(lexer->str, lexer->str_end, &lexer->next);
-    return cur;
-}
-
-lexer_token_t lexer_must_consume(lexer_t *lexer, unsigned char type) {
-    if (lexer->cur.type != type) {
-        rb_raise(cLiquidSyntaxError, "Expected %s but found %s", symbol_names[type], symbol_names[lexer->cur.type]);
-    }
-    return lexer_consume_any(lexer);
-}
-
-lexer_token_t lexer_consume(lexer_t *lexer, unsigned char type) {
-    if (lexer->cur.type != type) {
-        lexer_token_t zero;
-        zero.type = 0;
-        return zero;
-    }
-    return lexer_consume_any(lexer);
-}
-
-VALUE lexer_expression(lexer_t *lexer) {
-    lexer_token_t token;
-
-    switch (lexer->cur.type) {
-        case TOKEN_IDENTIFIER:
-            return lexer_variable_signature(lexer);
-
-        case TOKEN_STRING:
-        case TOKEN_NUMBER:
-            token = lexer_consume_any(lexer);
-            return rb_utf8_str_new_range(token.val, token.val_end);
-
-        case TOKEN_OPEN_ROUND:
-        {
-            lexer_consume_any(lexer);
-            VALUE first = lexer_expression(lexer);
-            lexer_must_consume(lexer, TOKEN_DOTDOT);
-            VALUE last = lexer_expression(lexer);
-            lexer_must_consume(lexer, TOKEN_CLOSE_ROUND);
-
-            VALUE out = rb_enc_str_new("(", 1, utf8_encoding);
-            rb_str_append(out, first);
-            rb_str_append(out, rb_str_new2(".."));
-            rb_str_append(out, last);
-            rb_str_append(out, rb_str_new2(")"));
-            return out;
-        }
-    }
-    if (lexer->cur.type == TOKEN_EOS) {
-        rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[lexer->cur.type]);
-    } else {
-        rb_raise(cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
-                symbol_names[lexer->cur.type], (int)(lexer->cur.val_end - lexer->cur.val), lexer->cur.val);
-    }
-    return Qnil;
-}
-
-VALUE lexer_argument(lexer_t *lexer) {
-    VALUE str = rb_enc_str_new("", 0, utf8_encoding);
-
-    if (lexer->cur.type == TOKEN_IDENTIFIER && lexer->next.type == TOKEN_COLON) {
-        lexer_token_t token = lexer_consume_any(lexer);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
-
-        lexer_consume_any(lexer);
-        rb_str_append(str, rb_str_new2(": "));
-    }
-
-    return rb_str_append(str, lexer_expression(lexer));
-}
-
-VALUE lexer_variable_signature(lexer_t *lexer) {
-    lexer_token_t token = lexer_must_consume(lexer, TOKEN_IDENTIFIER);
-    VALUE str = rb_utf8_str_new_range(token.val, token.val_end);
-
-    if (lexer->cur.type == TOKEN_OPEN_SQUARE) {
-        token = lexer_consume_any(lexer);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
-
-        rb_str_append(str, lexer_expression(lexer));
-
-        token = lexer_must_consume(lexer, TOKEN_CLOSE_SQUARE);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
-    }
-
-    if (lexer->cur.type == TOKEN_DOT) {
-        token = lexer_consume_any(lexer);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
-
-        rb_str_append(str, lexer_variable_signature(lexer));
-    }
-
-    return str;
-}
-
 VALUE rb_lex(VALUE self, VALUE markup) {
     StringValue(markup);
 
@@ -315,11 +205,8 @@ VALUE rb_lex(VALUE self, VALUE markup) {
     return output;
 }
 
-static VALUE cLiquidLexer;
-
 void init_liquid_lexer(void)
 {
     cLiquidLexer = rb_const_get(mLiquid, rb_intern("Lexer"));
-    cLiquidSyntaxError = rb_const_get(mLiquid, rb_intern("SyntaxError"));
     rb_define_singleton_method(cLiquidLexer, "c_lex", rb_lex, 1);
 }

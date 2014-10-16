@@ -38,7 +38,6 @@ Liquid::Variable.class_eval do
   end
 
   def strict_parse(markup)
-    @filters = []
-    @name = Liquid::Variable.c_strict_parse(markup, @filters)
+    @name, @filters = Liquid::Variable.c_strict_parse(markup)
   end
 end

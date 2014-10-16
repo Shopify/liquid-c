@@ -35,8 +35,6 @@ class VariableTest < MiniTest::Unit::TestCase
   private
 
   def variable_parse(markup)
-    filters = []
-    name = Liquid::Variable.c_strict_parse(markup, filters)
-    [ name, filters ]
+    Liquid::Variable.c_strict_parse(markup)
   end
 end

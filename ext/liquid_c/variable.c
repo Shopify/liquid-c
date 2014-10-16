@@ -4,19 +4,18 @@
 #include "lexer.h"
 #include <stdio.h>
 
-VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
+VALUE rb_variable_parse(VALUE self, VALUE markup)
 {
     StringValue(markup);
-    Check_Type(filters, T_ARRAY);
 
     lexer_t lexer;
     char *start = RSTRING_PTR(markup);
     init_lexer(&lexer, start, start + RSTRING_LEN(markup));
 
-    VALUE name;
+    VALUE name, filters = rb_ary_new();
 
     if (lexer.cur.type == TOKEN_EOS) {
-        return Qnil;
+        return rb_ary_new3(2, Qnil, filters);
     } else if (lexer.cur.type == TOKEN_PIPE) {
         name = rb_str_new2("");
     } else {
@@ -40,7 +39,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
     }
 
     lexer_must_consume(&lexer, TOKEN_EOS);
-    return name;
+    return rb_ary_new3(2, name, filters);
 }
 
 static VALUE cLiquidVariable;
@@ -48,5 +47,5 @@ static VALUE cLiquidVariable;
 void init_liquid_variable(void)
 {
     cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
-    rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 2);
+    rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 1);
 }

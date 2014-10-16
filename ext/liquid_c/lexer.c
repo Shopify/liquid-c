@@ -99,10 +99,10 @@ inline static char is_escaped(const char *start, const char *cur) {
 }
 
 #define PUSH_TOKEN(t, n) { \
-                                token->type = (t); \
-                                token->val = start; \
-                                return (token->val_end = start + (n)); \
-                            }
+                             token->type = (t); \
+                             token->val = start; \
+                             return (token->val_end = start + (n)); \
+                         }
 
 const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
     str = skip_white(str, end);
@@ -289,6 +289,8 @@ VALUE lexer_variable_signature(lexer_t *lexer) {
 }
 
 VALUE rb_lex(VALUE self, VALUE markup) {
+    StringValue(markup);
+
     const char *str = RSTRING_PTR(markup);
     const char *end = str + RSTRING_LEN(markup);
 

@@ -63,10 +63,10 @@ namespace :compare do
   desc "Compare Liquid to Liquid + Liquid-C"
   task :run do
     bare = Benchmark.measure do
-      ruby "./performance.rb bare profile lax"
+      ruby "./performance.rb bare benchmark lax"
     end
     liquid_c = Benchmark.measure do
-      ruby "./performance.rb c profile lax"
+      ruby "./performance.rb c benchmark lax"
     end
     Benchmark.benchmark(CAPTION, 10, FORMAT, "Liquid:", "Liquid-C:") do |x|
       [bare, liquid_c]

@@ -33,19 +33,14 @@ static void append_token(lexer_token_list_t *tokens, unsigned char type, const c
     tokens->list[tokens->len++] = token;
 }
 
-static const unsigned char char_lookup[256] = {
-    [' '] = 1, ['\n'] = 1, ['\r'] = 1, ['\t'] = 1, ['\f'] = 1,
-    ['a'] = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    ['A'] = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    ['0'] = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    ['_'] = 2,
-    [','] = 3, ['|'] = 3,
-    ['\''] = 4,
-    ['\"'] = 4,
-};
-
 inline static char is_white(unsigned char c) {
-    return char_lookup[(unsigned)c] == 1;
+    switch (c) {
+        case ' ':
+        case '\n': case '\r':
+        case '\t': case '\f':
+            return 1;
+    }
+    return 0;
 }
 
 inline static char is_digit(char c) {

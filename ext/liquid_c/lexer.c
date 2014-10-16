@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 const char *symbol_names[256] = {
+    [0] = "nil",
     [TOKEN_COMPARISON] = "comparison",
     [TOKEN_QUOTE] = "string",
     [TOKEN_NUMBER] = "number",
@@ -100,8 +101,7 @@ inline static char is_escaped(const char *start, const char *cur) {
 #define PUSH_TOKEN(t, n) { \
                                 token->type = (t); \
                                 token->val = start; \
-                                token->val_len = (n); \
-                                return start + (n); \
+                                return (token->val_end = start + (n)); \
                             }
 
 const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
@@ -180,6 +180,114 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
 
 #undef PUSH_TOKEN
 
+void init_lexer(lexer_t *lexer, const char *str, const char *end) {
+    lexer->str = str;
+    lexer->str_end = end;
+    lexer->cur.type = TOKEN_EOS;
+    lexer->next.type = TOKEN_EOS;
+    lexer->str = lex_one(lexer->str, lexer->str_end, &lexer->cur);
+    lexer->str = lex_one(lexer->str, lexer->str_end, &lexer->next);
+}
+
+lexer_token_t lexer_consume_any(lexer_t *lexer) {
+    lexer_token_t cur = lexer->cur;
+    lexer->cur = lexer->next;
+    lexer->next.type = TOKEN_EOS;
+    lexer->str = lex_one(lexer->str, lexer->str_end, &lexer->next);
+    return cur;
+}
+
+lexer_token_t lexer_must_consume(lexer_t *lexer, unsigned char type) {
+    if (lexer->cur.type != type) {
+        rb_raise(cLiquidSyntaxError, "Expected %s but found %s", symbol_names[type], symbol_names[lexer->cur.type]);
+    }
+    return lexer_consume_any(lexer);
+}
+
+lexer_token_t lexer_consume(lexer_t *lexer, unsigned char type) {
+    if (lexer->cur.type != type) {
+        lexer_token_t zero;
+        zero.type = 0;
+        return zero;
+    }
+    return lexer_consume_any(lexer);
+}
+
+VALUE lexer_expression(lexer_t *lexer) {
+    lexer_token_t token;
+
+    switch (lexer->cur.type) {
+        case TOKEN_IDENTIFIER:
+            return lexer_variable_signature(lexer);
+
+        case TOKEN_STRING:
+        case TOKEN_NUMBER:
+            token = lexer_consume_any(lexer);
+            return rb_utf8_str_new_range(token.val, token.val_end);
+
+        case TOKEN_OPEN_ROUND:
+        {
+            lexer_consume_any(lexer);
+            VALUE first = lexer_expression(lexer);
+            lexer_must_consume(lexer, TOKEN_DOTDOT);
+            VALUE last = lexer_expression(lexer);
+            lexer_must_consume(lexer, TOKEN_CLOSE_ROUND);
+
+            VALUE out = rb_enc_str_new("(", 1, utf8_encoding);
+            rb_str_append(out, first);
+            rb_str_append(out, rb_str_new2(".."));
+            rb_str_append(out, last);
+            rb_str_append(out, rb_str_new2(")"));
+            return out;
+        }
+    }
+    if (lexer->cur.type == TOKEN_EOS) {
+        rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[lexer->cur.type]);
+    } else {
+        rb_raise(cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
+                symbol_names[lexer->cur.type], (int)(lexer->cur.val_end - lexer->cur.val), lexer->cur.val);
+    }
+    return Qnil;
+}
+
+VALUE lexer_argument(lexer_t *lexer) {
+    VALUE str = rb_enc_str_new("", 0, utf8_encoding);
+
+    if (lexer->cur.type == TOKEN_IDENTIFIER && lexer->next.type == TOKEN_COLON) {
+        lexer_token_t token = lexer_consume_any(lexer);
+        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+
+        lexer_consume_any(lexer);
+        rb_str_append(str, rb_str_new2(": "));
+    }
+
+    return rb_str_append(str, lexer_expression(lexer));
+}
+
+VALUE lexer_variable_signature(lexer_t *lexer) {
+    lexer_token_t token = lexer_must_consume(lexer, TOKEN_IDENTIFIER);
+    VALUE str = rb_utf8_str_new_range(token.val, token.val_end);
+
+    if (lexer->cur.type == TOKEN_OPEN_SQUARE) {
+        token = lexer_consume_any(lexer);
+        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+
+        rb_str_append(str, lexer_expression(lexer));
+
+        token = lexer_must_consume(lexer, TOKEN_CLOSE_SQUARE);
+        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+    }
+
+    if (lexer->cur.type == TOKEN_DOT) {
+        token = lexer_consume_any(lexer);
+        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+
+        rb_str_append(str, lexer_variable_signature(lexer));
+    }
+
+    return str;
+}
+
 VALUE rb_lex(VALUE self, VALUE markup) {
     const char *str = RSTRING_PTR(markup);
     const char *end = str + RSTRING_LEN(markup);
@@ -192,10 +300,9 @@ VALUE rb_lex(VALUE self, VALUE markup) {
         str = lex_one(str, end, &token);
 
         if (token.type) {
-            /* fprintf(stderr, "%s:%.*s, ", symbol_names[token.type], token.val_len, token.val); */
             VALUE rb_token = rb_ary_new();
             rb_ary_push(rb_token, get_rb_type(token.type));
-            rb_ary_push(rb_token, rb_str_new(token.val, token.val_len));
+            rb_ary_push(rb_token, rb_utf8_str_new_range(token.val, token.val_end));
             rb_ary_push(output, rb_token);
         }
     }

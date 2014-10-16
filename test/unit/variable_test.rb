@@ -7,7 +7,10 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal ['"what"', []], variable_parse(' "what" ')
     assert_equal ['hello["what"]', []], variable_parse(' hello["what"] ')
     assert_equal [nil, []], variable_parse('')
-    assert_equal ['hello["what\']"', []], variable_parse(' hello["what\']" ')
+
+    assert_raises Liquid::SyntaxError do
+      variable_parse(' hello["what\']" ')
+    end
   end
 
   def test_variable_filter
@@ -18,18 +21,22 @@ class VariableTest < MiniTest::Unit::TestCase
   def test_variable_filter_args
     assert_equal ['name', [['filter', ['aoeu']]]], variable_parse(' name | filter: aoeu ')
     assert_equal ['name', [['filter1', ['aoeu']], ['filter2', ['aoeu']]]], variable_parse(' name | filter1: aoeu | filter2: aoeu ')
-    assert_equal ['name', [['filter', ['a : b', 'c : d', 'e']]]], variable_parse('name | filter : a : b : c : d : e')
-    assert_equal ['name', [['filter', ['a', 'b : c', 'd : e']]]], variable_parse('name | filter : a , b : c , d : e')
+    assert_equal ['name', [['filter', ['a', 'b: c', 'd: e']]]], variable_parse('name | filter : a , b : c , d : e')
+
+    assert_raises Liquid::SyntaxError do
+      assert_equal ['name', [['filter', ['a : b', 'c : d', 'e']]]], variable_parse('name | filter : a : b : c : d : e')
+    end
   end
 
   def test_unicode
-    assert_equal ['å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ', []], variable_parse('å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ')
+    assert_equal ['"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"', []], variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"')
   end
 
   private
 
   def variable_parse(markup)
-    result = Liquid::VariableParse.new(markup)
-    [ result.name, result.filters ]
+    filters = []
+    name = Liquid.c_variable_parse(markup, filters)
+    [ name, filters ]
   end
 end

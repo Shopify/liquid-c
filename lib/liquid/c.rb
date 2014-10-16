@@ -26,12 +26,19 @@ Liquid::Lexer.class_eval do
   end
 end
 
-# Liquid::Variable.class_eval do
-#   private
+Liquid::Variable.class_eval do
+  alias_method :ruby_lax_parse, :lax_parse
 
-#   def lax_parse(markup)
-#     parser = Liquid::VariableParse.new(markup)
-#     @name = parser.name
-#     @filters = parser.filters
-#   end
-# end
+  def lax_parse(markup)
+    begin
+      strict_parse(markup)
+    rescue
+      ruby_lax_parse(markup)
+    end
+  end
+
+  def strict_parse(markup)
+    @filters = []
+    @name = Liquid.c_variable_parse(markup, @filters)
+  end
+end

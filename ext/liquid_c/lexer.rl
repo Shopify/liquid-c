@@ -3,29 +3,6 @@
 #include "tokenizer.h"
 #include <stdio.h>
 
-typedef struct lexer_token {
-    unsigned char type;
-    char *val;
-    unsigned int val_len;
-} lexer_token_t;
-
-static const char *symbol_names[256] = {
-    [TOKEN_COMPARISON] = "comparison",
-    [TOKEN_QUOTE] = "string",
-    [TOKEN_NUMBER] = "number",
-    [TOKEN_IDENTIFIER] = "id",
-    [TOKEN_DOTDOT] = "dotdot",
-    [TOKEN_EOS] = "end_of_string",
-    ['|'] = "pipe",
-    ['.'] = "dot",
-    [':'] = "colon",
-    [','] = "comma",
-    ['['] = "open_square",
-    [']'] = "close_square",
-    ['('] = "open_round",
-    [')'] = "close_round"
-};
-
 VALUE symbols[256] = {0};
 
 VALUE get_rb_type(unsigned char type) {
@@ -39,13 +16,7 @@ VALUE get_rb_type(unsigned char type) {
 
 VALUE cLiquidSyntaxError;
 
-#define PUSH_TOKEN(type) \
-    { \
-        VALUE rb_token = rb_ary_new(); \
-        rb_ary_push(rb_token, get_rb_type(type)); \
-        rb_ary_push(rb_token, rb_str_new(ts, te - ts)); \
-        rb_ary_push(tokens, rb_token); \
-    }
+#define PUSH_TOKEN(type) append_token(tokens, type, ts, te - ts);
 
 %%{
     machine liquid_lexer;
@@ -74,29 +45,57 @@ VALUE cLiquidSyntaxError;
 
 %% write data;
 
-static VALUE lex(VALUE self, VALUE tokens, VALUE rb_input)
-{
-    fprintf(stderr, "Y");
-    unsigned int len = RSTRING_LEN(rb_input);
-    char *str = RSTRING_PTR(rb_input);
+void append_token(lexer_token_list_t *tokens, unsigned char type, const char *val, unsigned int val_len) {
+    if (tokens->len >= tokens->cap) {
+        tokens->cap <<= 1;
+        tokens->list = realloc(tokens->list, tokens->cap * sizeof(lexer_token_t));
+    }
 
+    lexer_token_t token;
+    fprintf(stderr, "[%s]\n", symbol_names[type]);
+    token.type = type;
+    token.val = val;
+    token.val_len = val_len;
+    tokens->list[tokens->len++] = token;
+}
+
+void lex(const char *start, const char *end, lexer_token_list_t *tokens)
+{
+    // Ragel variables.
     int cs, act;
-    char *p = str, *ts, *te;
-    char *pe = str + len + 1;
-    char *eof = pe;
+    const char *p = start, *pe = end, *eof = end;
+    const char *ts, *te;
 
     %% write init;
     %% write exec;
 
     if (p < eof - 1) {
         rb_raise(cLiquidSyntaxError, "Unexpected character %c", *ts);
-        return Qnil;
     }
 
-    VALUE rb_eof = rb_ary_new();
-    rb_ary_push(rb_eof, get_rb_type(TOKEN_EOS));
-    rb_ary_push(tokens, rb_eof);
+    append_token(tokens, TOKEN_EOS, NULL, 0);
+}
 
+lexer_token_t *consume(lexer_token_list_t *tokens, unsigned char type)
+{
+    if (tokens->len <= 0) {
+        rb_raise(cLiquidSyntaxError, "Expected %s but found nothing", symbol_names[type]);
+    }
+
+    lexer_token_t *token = tokens->list++;
+    if (token->type != type) {
+        rb_raise(cLiquidSyntaxError, "Expected %s but found %s", symbol_names[type], symbol_names[token->type]);
+    }
+
+    return token;
+}
+
+lexer_token_list_t *new_token_list()
+{
+    lexer_token_list_t *tokens = malloc(sizeof(lexer_token_list_t));
+    tokens->len = 0;
+    tokens->cap = 4;
+    tokens->list = malloc(4 * sizeof(lexer_token_t));
     return tokens;
 }
 

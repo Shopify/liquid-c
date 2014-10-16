@@ -22,16 +22,16 @@ Liquid::Lexer.class_eval do
   end
 
   def tokenize
-    Liquid.c_lex([], @input)
+    Liquid.c_lex(@input)
   end
 end
 
-Liquid::Variable.class_eval do
-  private
+# Liquid::Variable.class_eval do
+#   private
 
-  def lax_parse(markup)
-    parser = Liquid::VariableParse.new(markup)
-    @name = parser.name
-    @filters = parser.filters
-  end
-end
+#   def lax_parse(markup)
+#     parser = Liquid::VariableParse.new(markup)
+#     @name = parser.name
+#     @filters = parser.filters
+#   end
+# end

@@ -102,6 +102,17 @@ VALUE parse_variable_signature(parser_t *parser)
     lexer_token_t token = parser_must_consume(parser, TOKEN_IDENTIFIER);
     VALUE str = TOKEN_STR(token);
 
+    while (parser_consume(parser, TOKEN_DASH).type) {
+        rb_str_append(str, rb_str_new2("-"));
+
+        token = parser_must_consume(parser, TOKEN_IDENTIFIER);
+        rb_str_append(str, TOKEN_STR(token));
+    }
+
+    if (parser_consume(parser, TOKEN_QUESTION).type) {
+        rb_str_append(str, rb_str_new2("?"));
+    }
+
     if (parser->cur.type == TOKEN_OPEN_SQUARE) {
         token = parser_consume_any(parser);
         rb_str_append(str, TOKEN_STR(token));

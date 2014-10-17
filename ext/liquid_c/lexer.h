@@ -18,6 +18,8 @@ enum lexer_token_type {
     TOKEN_CLOSE_SQUARE = ']',
     TOKEN_OPEN_ROUND = '(',
     TOKEN_CLOSE_ROUND = ')',
+    TOKEN_QUESTION = '?',
+    TOKEN_DASH = '-',
 
     TOKEN_END = 256
 };

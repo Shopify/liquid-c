@@ -17,7 +17,9 @@ const char *symbol_names[TOKEN_END] = {
     [TOKEN_OPEN_SQUARE] = "open_square",
     [TOKEN_CLOSE_SQUARE] = "close_square",
     [TOKEN_OPEN_ROUND] = "open_round",
-    [TOKEN_CLOSE_ROUND] = "close_round"
+    [TOKEN_CLOSE_ROUND] = "close_round",
+    [TOKEN_QUESTION] = "question",
+    [TOKEN_DASH] = "dash"
 };
 
 static VALUE cLiquidLexer;
@@ -35,7 +37,7 @@ static VALUE get_rb_type(unsigned char type)
 
 inline static int is_identifier(char c)
 {
-    return ISALNUM(c) || c == '_' || c == '-';
+    return ISALNUM(c) || c == '_';
 }
 
 inline static int is_special(char c)
@@ -43,6 +45,7 @@ inline static int is_special(char c)
     switch (c) {
         case '|': case '.': case ':': case ',':
         case '[': case ']': case '(': case ')':
+        case '?': case '-':
             return 1;
     }
     return 0;
@@ -140,10 +143,9 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
             RETURN_TOKEN(TOKEN_NUMBER, str - start);
     }
 
-    if (is_identifier(c) && c != '-') {
+    if (is_identifier(c)) {
         str = start;
         while (++str < end && is_identifier(*str)) {}
-        if (str < end && *str == '?') str++;
         RETURN_TOKEN(TOKEN_IDENTIFIER, str - start);
     }
 

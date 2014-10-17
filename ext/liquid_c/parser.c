@@ -45,7 +45,7 @@ VALUE parse_expression(parser_t *parser) {
         case TOKEN_QUOTE:
         case TOKEN_NUMBER:
             token = parser_consume_any(parser);
-            return rb_utf8_str_new_range(token.val, token.val_end);
+            return TOKEN_STR(token);
 
         case TOKEN_OPEN_ROUND:
         {
@@ -77,7 +77,7 @@ VALUE parse_argument(parser_t *parser) {
 
     if (parser->cur.type == TOKEN_IDENTIFIER && parser->next.type == TOKEN_COLON) {
         lexer_token_t token = parser_consume_any(parser);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+        rb_str_append(str, TOKEN_STR(token));
 
         parser_consume_any(parser);
         rb_str_append(str, rb_str_new2(": "));
@@ -88,21 +88,21 @@ VALUE parse_argument(parser_t *parser) {
 
 VALUE parse_variable_signature(parser_t *parser) {
     lexer_token_t token = parser_must_consume(parser, TOKEN_IDENTIFIER);
-    VALUE str = rb_utf8_str_new_range(token.val, token.val_end);
+    VALUE str = TOKEN_STR(token);
 
     if (parser->cur.type == TOKEN_OPEN_SQUARE) {
         token = parser_consume_any(parser);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+        rb_str_append(str, TOKEN_STR(token));
 
         rb_str_append(str, parse_expression(parser));
 
         token = parser_must_consume(parser, TOKEN_CLOSE_SQUARE);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+        rb_str_append(str, TOKEN_STR(token));
     }
 
     if (parser->cur.type == TOKEN_DOT) {
         token = parser_consume_any(parser);
-        rb_str_append(str, rb_utf8_str_new_range(token.val, token.val_end));
+        rb_str_append(str, TOKEN_STR(token));
 
         rb_str_append(str, parse_variable_signature(parser));
     }

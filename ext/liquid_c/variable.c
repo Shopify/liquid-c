@@ -35,7 +35,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
             }
         }
 
-        rb_ary_push(filters, rb_ary_new3(2, rb_utf8_str_new_range(filter_name.val, filter_name.val_end), filter_args));
+        rb_ary_push(filters, rb_ary_new3(2, TOKEN_STR(filter_name), filter_args));
     }
 
     parser_must_consume(&parser, TOKEN_EOS);

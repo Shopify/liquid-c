@@ -56,13 +56,13 @@ inline static const char *skip_white(const char *cur, const char *end) {
 }
 
 // Returns a pointer to the character after the end of the match.
-inline static const char *matches(const char *cur, const char *end, const char *pattern) {
-    while (cur < end && *pattern != '\0') {
-        if (*cur != *pattern) return 0;
-        cur++;
-        pattern++;
-    }
-    return *pattern == '\0' ? cur : 0; // True if the entire pattern was matched.
+inline static const char *prefix_matches(const char *cur, const char *end, const char *pattern) {
+    size_t pattern_len = strlen(pattern);
+
+    if (pattern_len > (size_t)(end - cur)) return NULL;
+    if (memcmp(cur, pattern, pattern_len) != 0) return NULL;
+
+    return cur + pattern_len;
 }
 
 inline static const char *scan_past(const char *cur, const char *end, char target) {
@@ -105,7 +105,7 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
         RETURN_TOKEN(TOKEN_COMPARISON, cn == '=' ? 2 : 1);
     } else if ((c == '=' || c == '!') && cn == '=') {
         RETURN_TOKEN(TOKEN_COMPARISON, 2);
-    } else if ((str = matches(start, end, "contains"))) {
+    } else if ((str = prefix_matches(start, end, "contains"))) {
         RETURN_TOKEN(TOKEN_COMPARISON, str - start);
     }
 
@@ -175,7 +175,7 @@ VALUE rb_lex(VALUE self, VALUE markup) {
         str = lex_one(str, end, &token);
 
         if (token.type) {
-            VALUE rb_token = rb_ary_new3(2, get_rb_type(token.type), rb_utf8_str_new_range(token.val, token.val_end));
+            VALUE rb_token = rb_ary_new3(2, get_rb_type(token.type), TOKEN_STR(token));
             rb_ary_push(output, rb_token);
         }
     }

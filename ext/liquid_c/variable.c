@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static VALUE cLiquidVariable, cLiquidExpression;
-static ID iParse;
+static ID idParse;
 
 VALUE rb_variable_parse(VALUE self, VALUE markup)
 {
@@ -22,7 +22,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
     } else if (parser.cur.type == TOKEN_PIPE) {
         name = Qnil;
     } else {
-        name = rb_funcall(cLiquidExpression, iParse, 1, parse_expression(&parser));
+        name = parse_expression(&parser);
     }
 
     while (parser_consume(&parser, TOKEN_PIPE).type) {
@@ -32,26 +32,22 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
 
         if (parser_consume(&parser, TOKEN_COLON).type) {
             do {
-                VALUE value;
-
                 if (parser.cur.type == TOKEN_IDENTIFIER && parser.next.type == TOKEN_COLON) {
                     lexer_token_t key_token = parser_consume_any(&parser);
                     parser_consume_any(&parser);
-
-                    value = rb_funcall(cLiquidExpression, iParse, 1, parse_expression(&parser));
-                    rb_hash_aset(keyword_args, TOKEN_STR(key_token), value);
+                    rb_hash_aset(keyword_args, TOKEN_STR(key_token), parse_expression(&parser));
                 } else {
-                    value = rb_funcall(cLiquidExpression, iParse, 1, parse_expression(&parser));
-                    rb_ary_push(filter_args, value);
+                    rb_ary_push(filter_args, parse_expression(&parser));
                 }
             }
             while (parser_consume(&parser, TOKEN_COMMA).type);
         }
 
         VALUE filter = rb_ary_new3(2, TOKEN_STR(filter_name), filter_args);
-        if (RHASH_SIZE(keyword_args)) {
+
+        if (RHASH_SIZE(keyword_args))
             rb_ary_push(filter, keyword_args);
-        }
+
         rb_ary_push(filters, filter);
     }
 
@@ -61,7 +57,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
 
 void init_liquid_variable(void)
 {
-    iParse = rb_intern("parse");
+    idParse = rb_intern("parse");
     cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
     cLiquidExpression = rb_const_get(mLiquid, rb_intern("Expression"));
     rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 1);

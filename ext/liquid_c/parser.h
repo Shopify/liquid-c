@@ -15,8 +15,8 @@ lexer_token_t parser_consume(parser_t *parser, unsigned char type);
 lexer_token_t parser_consume_any(parser_t *parser);
 
 VALUE parse_expression(parser_t *parser);
-VALUE parse_argument(parser_t *parser);
-VALUE parse_variable_signature(parser_t *parser);
+
+void init_liquid_parser(void);
 
 #endif
 

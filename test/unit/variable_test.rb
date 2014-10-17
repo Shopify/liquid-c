@@ -24,6 +24,11 @@ class VariableTest < MiniTest::Unit::TestCase
     end
   end
 
+  def test_literals
+    assert_equal [true, []], variable_parse('true')
+    assert_equal [nil, [['filter', []]]], variable_parse(' | filter')
+  end
+
   def test_variable_filter
     name = lookup('name')
     assert_equal [name, [['filter', []]]], variable_parse(' name | filter ')

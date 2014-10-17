@@ -41,3 +41,17 @@ Liquid::Variable.class_eval do
     @name, @filters = Liquid::Variable.c_strict_parse(markup)
   end
 end
+
+Liquid::VariableLookup.class_eval do
+  alias_method :ruby_initialize, :initialize
+
+  def initialize(markup, name = nil, lookups = nil, command_flags = nil)
+    if markup == false
+      @name = name
+      @lookups = lookups
+      @command_flags = command_flags
+    else
+      ruby_initialize(markup)
+    end
+  end
+end

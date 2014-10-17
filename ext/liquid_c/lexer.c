@@ -1,7 +1,6 @@
 #include "liquid.h"
 #include "lexer.h"
 #include <stdio.h>
-#include <ctype.h>
 
 const char *symbol_names[TOKEN_END] = {
     [LEXER_TOKEN_NONE] = "none",
@@ -36,7 +35,7 @@ static VALUE get_rb_type(unsigned char type)
 
 inline static int is_identifier(char c)
 {
-    return isalnum(c) || c == '_' || c == '-' || c == '?' || c == '!';
+    return ISALNUM(c) || c == '_' || c == '-' || c == '?' || c == '!';
 }
 
 inline static int is_special(char c)
@@ -51,7 +50,7 @@ inline static int is_special(char c)
 
 inline static const char *skip_white(const char *cur, const char *end)
 {
-    while (cur < end && isspace(*cur)) ++cur;
+    while (cur < end && ISSPACE(*cur)) ++cur;
     return cur;
 }
 
@@ -128,17 +127,19 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
         }
     }
 
-    if (isdigit(c) || c == '-') {
+    if (ISDIGIT(c) || c == '-') {
         int has_dot = 0;
         str = start;
         while (++str < end) {
             if (!has_dot && *str == '.') {
                 has_dot = 1;
-            } else if (!isdigit(*str)) {
+            } else if (!ISDIGIT(*str)) {
                 break;
             }
         }
-        if (*str == '.') str--; // Ignore any trailing dot.
+
+        if (*str == '.')
+            str--; // Ignore any trailing dot.
 
         if (str[-1] != '-')
             RETURN_TOKEN(TOKEN_NUMBER, str - start);

@@ -3,15 +3,15 @@ require 'test_helper'
 
 class VariableTest < MiniTest::Unit::TestCase
   def test_variable_parse
-    assert_equal ['hello', []], variable_parse(' hello ')
-    assert_equal ['"what"', []], variable_parse(' "what" ')
-    assert_equal ['hello["what"]', []], variable_parse(' hello["what"] ')
+    assert_equal ['hello', []], variable_parse('hello')
+    assert_equal ['"world"', []], variable_parse(' "world" ')
+    assert_equal ['hello["world"]', []], variable_parse(' hello["world"] ')
     assert_equal [nil, []], variable_parse('')
   end
 
   def test_strictness
     assert_raises Liquid::SyntaxError do
-      variable_parse(' hello["what\']" ')
+      variable_parse(' hello["world\']" ')
     end
 
     assert_raises Liquid::SyntaxError do
@@ -34,8 +34,9 @@ class VariableTest < MiniTest::Unit::TestCase
     end
   end
 
-  def test_unicode
-    assert_equal ['"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"', []], variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"')
+  def test_unicode_strings
+    out = variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"')
+    assert_equal ['"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"', []], out
   end
 
   private

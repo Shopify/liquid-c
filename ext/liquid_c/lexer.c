@@ -35,7 +35,7 @@ static VALUE get_rb_type(unsigned char type)
 
 inline static int is_identifier(char c)
 {
-    return ISALNUM(c) || c == '_' || c == '-' || c == '?' || c == '!';
+    return ISALNUM(c) || c == '_' || c == '-';
 }
 
 inline static int is_special(char c)
@@ -46,12 +46,6 @@ inline static int is_special(char c)
             return 1;
     }
     return 0;
-}
-
-inline static const char *skip_white(const char *cur, const char *end)
-{
-    while (cur < end && ISSPACE(*cur)) ++cur;
-    return cur;
 }
 
 // Returns a pointer to the character after the end of the match.
@@ -91,7 +85,8 @@ inline static int is_escaped(const char *start, const char *cur)
 // Returns the start of the next token if any, otherwise the end of the string.
 const char *lex_one(const char *str, const char *end, lexer_token_t *token)
 {
-    str = skip_white(str, end);
+    while (str < end && ISSPACE(*str)) ++str;
+
     if (str >= end) return str;
 
     const char *start = str;
@@ -148,6 +143,7 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
     if (is_identifier(c) && c != '-') {
         str = start;
         while (++str < end && is_identifier(*str)) {}
+        if (str < end && *str == '?') str++;
         RETURN_TOKEN(TOKEN_IDENTIFIER, str - start);
     }
 

@@ -7,9 +7,15 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal ['"what"', []], variable_parse(' "what" ')
     assert_equal ['hello["what"]', []], variable_parse(' hello["what"] ')
     assert_equal [nil, []], variable_parse('')
+  end
 
+  def test_strictness
     assert_raises Liquid::SyntaxError do
       variable_parse(' hello["what\']" ')
+    end
+
+    assert_raises Liquid::SyntaxError do
+      variable_parse('-..')
     end
   end
 

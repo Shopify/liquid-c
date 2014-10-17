@@ -68,8 +68,8 @@ inline static const char *prefix_end(const char *cur, const char *end, const cha
 
 inline static const char *scan_past(const char *cur, const char *end, char target)
 {
-    while (++cur < end && *cur != target);
-    return cur >= end ? NULL : cur + 1;
+    const char *match = memchr(cur + 1, target, end - cur - 1);
+    return match ? match + 1 : NULL;
 }
 
 inline static int is_escaped(const char *start, const char *cur)
@@ -118,10 +118,10 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
 
     if (c == '\'' || c == '"') {
         str = start;
-        while (true) {
+        do {
             str = scan_past(str, end, c);
-            if (!str || !is_escaped(start, str)) break;
-        }
+        } while (str && is_escaped(start, str));
+
         if (str) {
             // Quote was properly terminated.
             RETURN_TOKEN(TOKEN_QUOTE, str - start);
@@ -139,10 +139,12 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
             }
         }
         if (*str == '.') str--; // Ignore any trailing dot.
-        RETURN_TOKEN(TOKEN_NUMBER, str - start);
+
+        if (str[-1] != '-')
+            RETURN_TOKEN(TOKEN_NUMBER, str - start);
     }
 
-    if (is_identifier(c)) {
+    if (is_identifier(c) && c != '-') {
         str = start;
         while (++str < end && is_identifier(*str)) {}
         RETURN_TOKEN(TOKEN_IDENTIFIER, str - start);

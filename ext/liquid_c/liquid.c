@@ -15,3 +15,4 @@ void Init_liquid_c(void)
     init_liquid_variable();
     init_liquid_lexer();
 }
+

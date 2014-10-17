@@ -136,3 +136,4 @@ void init_liquid_tokenizer()
     rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 1);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
 }
+

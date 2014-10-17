@@ -11,3 +11,4 @@ extern VALUE mLiquid, cLiquidSyntaxError;
 extern rb_encoding *utf8_encoding;
 
 #endif
+

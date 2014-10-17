@@ -19,3 +19,4 @@ VALUE parse_argument(parser_t *parser);
 VALUE parse_variable_signature(parser_t *parser);
 
 #endif
+

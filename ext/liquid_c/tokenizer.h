@@ -29,3 +29,4 @@ void init_liquid_tokenizer();
 void tokenizer_next(tokenizer_t *tokenizer, token_t *token);
 
 #endif
+

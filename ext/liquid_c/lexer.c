@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
-const char *symbol_names[256] = {
+const char *symbol_names[TOKEN_END] = {
     [0] = "nil",
     [TOKEN_COMPARISON] = "comparison",
     [TOKEN_QUOTE] = "string",
@@ -22,9 +22,10 @@ const char *symbol_names[256] = {
 };
 
 static VALUE cLiquidLexer;
-static VALUE symbols[256] = {0};
+static VALUE symbols[TOKEN_END] = {0};
 
-static VALUE get_rb_type(unsigned char type) {
+static VALUE get_rb_type(unsigned char type)
+{
     VALUE ret = symbols[type];
     if (ret) return ret;
 
@@ -33,15 +34,18 @@ static VALUE get_rb_type(unsigned char type) {
     return ret;
 }
 
-static void raise_error(char unexpected) {
+static void raise_error(char unexpected)
+{
     rb_raise(cLiquidSyntaxError, "Unexpected character %c", unexpected);
 }
 
-inline static char is_identifier(char c) {
+inline static int is_identifier(char c)
+{
     return isalnum(c) || c == '_' || c == '-' || c == '?' || c == '!';
 }
 
-inline static char is_special(char c) {
+inline static int is_special(char c)
+{
     switch (c) {
         case '|': case '.': case ':': case ',':
         case '[': case ']': case '(': case ')':
@@ -50,13 +54,15 @@ inline static char is_special(char c) {
     return 0;
 }
 
-inline static const char *skip_white(const char *cur, const char *end) {
+inline static const char *skip_white(const char *cur, const char *end)
+{
     while (cur < end && isspace(*cur)) ++cur;
     return cur;
 }
 
 // Returns a pointer to the character after the end of the match.
-inline static const char *prefix_matches(const char *cur, const char *end, const char *pattern) {
+inline static const char *prefix_end(const char *cur, const char *end, const char *pattern)
+{
     size_t pattern_len = strlen(pattern);
 
     if (pattern_len > (size_t)(end - cur)) return NULL;
@@ -65,12 +71,14 @@ inline static const char *prefix_matches(const char *cur, const char *end, const
     return cur + pattern_len;
 }
 
-inline static const char *scan_past(const char *cur, const char *end, char target) {
+inline static const char *scan_past(const char *cur, const char *end, char target)
+{
     while (++cur < end && *cur != target);
     return cur >= end ? NULL : cur + 1;
 }
 
-inline static char is_escaped(const char *start, const char *cur) {
+inline static int is_escaped(const char *start, const char *cur)
+{
     char escaped = 0;
 
     while (--cur >= start && *cur == '\\')
@@ -85,7 +93,10 @@ inline static char is_escaped(const char *start, const char *cur) {
                                return (token->val_end = start + (n)); \
                            }
 
-const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
+// Reads one token from str, and fills it into the token argument.
+// Returns the start of the next token if any, otherwise the end of the string.
+const char *lex_one(const char *str, const char *end, lexer_token_t *token)
+{
     str = skip_white(str, end);
     if (str >= end) return str;
 
@@ -105,7 +116,7 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
         RETURN_TOKEN(TOKEN_COMPARISON, cn == '=' ? 2 : 1);
     } else if ((c == '=' || c == '!') && cn == '=') {
         RETURN_TOKEN(TOKEN_COMPARISON, 2);
-    } else if ((str = prefix_matches(start, end, "contains"))) {
+    } else if ((str = prefix_end(start, end, "contains"))) {
         RETURN_TOKEN(TOKEN_COMPARISON, str - start);
     }
 
@@ -114,27 +125,26 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
         str = start;
         while (true) {
             str = scan_past(str, end, c);
-            if (!str || !is_escaped(start, str)) {
-                break;
-            }
+            if (!str || !is_escaped(start, str)) break;
         }
-
-        if (str) RETURN_TOKEN(TOKEN_QUOTE, str - start);
+        if (str) {
+            // Quote was properly terminated.
+            RETURN_TOKEN(TOKEN_QUOTE, str - start);
+        }
     }
 
     // Numbers.
     if (isdigit(c) || c == '-') {
-        char has_dot = 0;
+        int has_dot = 0;
         str = start;
         while (++str < end) {
-            cn = *str;
-            if (!has_dot && cn == '.') {
+            if (!has_dot && *str == '.') {
                 has_dot = 1;
-            } else if (!isdigit(cn)) {
+            } else if (!isdigit(*str)) {
                 break;
             }
         }
-        if (cn == '.') str--;
+        if (*str == '.') str--; // Ignore any trailing dot.
         RETURN_TOKEN(TOKEN_NUMBER, str - start);
     }
 
@@ -161,7 +171,10 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token) {
 
 #undef RETURN_TOKEN
 
-VALUE rb_lex(VALUE self, VALUE markup) {
+// Lexes the entire input string into a Ruby array.
+// Should only be called from Ruby, otherwise use lex_one.
+VALUE rb_lex(VALUE self, VALUE markup)
+{
     StringValue(markup);
 
     const char *str = RSTRING_PTR(markup);
@@ -180,10 +193,7 @@ VALUE rb_lex(VALUE self, VALUE markup) {
         }
     }
 
-    VALUE rb_eos = rb_ary_new();
-    rb_ary_push(rb_eos, get_rb_type(TOKEN_EOS));
-    rb_ary_push(output, rb_eos);
-    return output;
+    return rb_ary_push(output, rb_ary_new3(1, get_rb_type(TOKEN_EOS)));
 }
 
 void init_liquid_lexer(void)
@@ -191,3 +201,4 @@ void init_liquid_lexer(void)
     cLiquidLexer = rb_const_get(mLiquid, rb_intern("Lexer"));
     rb_define_singleton_method(cLiquidLexer, "c_lex", rb_lex, 1);
 }
+

@@ -49,3 +49,4 @@ void init_liquid_variable(void)
     cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
     rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 1);
 }
+

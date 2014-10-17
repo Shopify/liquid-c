@@ -2,7 +2,8 @@
 #include "parser.h"
 #include "lexer.h"
 
-void init_parser(parser_t *parser, const char *str, const char *end) {
+void init_parser(parser_t *parser, const char *str, const char *end)
+{
     parser->str = str;
     parser->str_end = end;
     parser->cur.type = TOKEN_EOS;
@@ -11,7 +12,8 @@ void init_parser(parser_t *parser, const char *str, const char *end) {
     parser->str = lex_one(parser->str, parser->str_end, &parser->next);
 }
 
-lexer_token_t parser_consume_any(parser_t *parser) {
+lexer_token_t parser_consume_any(parser_t *parser)
+{
     lexer_token_t cur = parser->cur;
     parser->cur = parser->next;
     parser->next.type = TOKEN_EOS;
@@ -19,14 +21,19 @@ lexer_token_t parser_consume_any(parser_t *parser) {
     return cur;
 }
 
-lexer_token_t parser_must_consume(parser_t *parser, unsigned char type) {
+lexer_token_t parser_must_consume(parser_t *parser, unsigned char type)
+{
     if (parser->cur.type != type) {
-        rb_raise(cLiquidSyntaxError, "Expected %s but found %s", symbol_names[type], symbol_names[parser->cur.type]);
+        rb_raise(
+            cLiquidSyntaxError, "Expected %s but found %s",
+            symbol_names[type], symbol_names[parser->cur.type]
+        );
     }
     return parser_consume_any(parser);
 }
 
-lexer_token_t parser_consume(parser_t *parser, unsigned char type) {
+lexer_token_t parser_consume(parser_t *parser, unsigned char type)
+{
     if (parser->cur.type != type) {
         lexer_token_t zero;
         zero.type = 0;
@@ -35,7 +42,8 @@ lexer_token_t parser_consume(parser_t *parser, unsigned char type) {
     return parser_consume_any(parser);
 }
 
-VALUE parse_expression(parser_t *parser) {
+VALUE parse_expression(parser_t *parser)
+{
     lexer_token_t token;
 
     switch (parser->cur.type) {
@@ -66,13 +74,16 @@ VALUE parse_expression(parser_t *parser) {
     if (parser->cur.type == TOKEN_EOS) {
         rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[parser->cur.type]);
     } else {
-        rb_raise(cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
-                 symbol_names[parser->cur.type], (int)(parser->cur.val_end - parser->cur.val), parser->cur.val);
+        rb_raise(
+            cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
+            symbol_names[parser->cur.type], (int)(parser->cur.val_end - parser->cur.val), parser->cur.val
+        );
     }
     return Qnil;
 }
 
-VALUE parse_argument(parser_t *parser) {
+VALUE parse_argument(parser_t *parser)
+{
     VALUE str = rb_enc_str_new("", 0, utf8_encoding);
 
     if (parser->cur.type == TOKEN_IDENTIFIER && parser->next.type == TOKEN_COLON) {
@@ -86,7 +97,8 @@ VALUE parse_argument(parser_t *parser) {
     return rb_str_append(str, parse_expression(parser));
 }
 
-VALUE parse_variable_signature(parser_t *parser) {
+VALUE parse_variable_signature(parser_t *parser)
+{
     lexer_token_t token = parser_must_consume(parser, TOKEN_IDENTIFIER);
     VALUE str = TOKEN_STR(token);
 

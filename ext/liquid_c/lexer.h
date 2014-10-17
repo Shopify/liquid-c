@@ -16,10 +16,12 @@ enum lexer_token_type {
     TOKEN_OPEN_SQUARE = '[',
     TOKEN_CLOSE_SQUARE = ']',
     TOKEN_OPEN_ROUND = '(',
-    TOKEN_CLOSE_ROUND = ')'
+    TOKEN_CLOSE_ROUND = ')',
+
+    TOKEN_END = 256
 };
 
-extern const char *symbol_names[256];
+extern const char *symbol_names[TOKEN_END];
 
 typedef struct lexer_token {
     unsigned char type;

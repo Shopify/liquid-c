@@ -123,7 +123,7 @@ static VALUE tokenizer_shift_method(VALUE self)
 
     token_t token;
     tokenizer_next(tokenizer, &token);
-    if (token.type == TOKEN_NONE)
+    if (!token.type)
         return Qnil;
 
     return rb_enc_str_new(token.str, token.length, utf8_encoding);

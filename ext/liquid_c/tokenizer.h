@@ -2,7 +2,7 @@
 #define LIQUID_TOKENIZER_H
 
 enum token_type {
-    TOKEN_NONE,
+    TOKENIZER_TOKEN_NONE = 0,
     TOKEN_INVALID,
     TOKEN_STRING,
     TOKEN_TAG,

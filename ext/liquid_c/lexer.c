@@ -4,7 +4,7 @@
 #include <ctype.h>
 
 const char *symbol_names[TOKEN_END] = {
-    [0] = "nil",
+    [LEXER_TOKEN_NONE] = "none",
     [TOKEN_COMPARISON] = "comparison",
     [TOKEN_QUOTE] = "string",
     [TOKEN_NUMBER] = "number",
@@ -32,11 +32,6 @@ static VALUE get_rb_type(unsigned char type)
     ret = ID2SYM(rb_intern(symbol_names[type]));
     symbols[type] = ret;
     return ret;
-}
-
-static void raise_error(char unexpected)
-{
-    rb_raise(cLiquidSyntaxError, "Unexpected character %c", unexpected);
 }
 
 inline static int is_identifier(char c)
@@ -102,25 +97,25 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
 
     const char *start = str;
     char c = *str, cn = 0;
+    if (str + 1 < end) cn = str[1];
 
-    if (++str < end) cn = *str;
-
-    // Comparison.
-    if (c == '<') {
-        if (cn == '>' || cn == '=') {
-            RETURN_TOKEN(TOKEN_COMPARISON, 2);
-        } else {
-            RETURN_TOKEN(TOKEN_COMPARISON, 1);
-        }
-    } else if (c == '>') {
-        RETURN_TOKEN(TOKEN_COMPARISON, cn == '=' ? 2 : 1);
-    } else if ((c == '=' || c == '!') && cn == '=') {
-        RETURN_TOKEN(TOKEN_COMPARISON, 2);
-    } else if ((str = prefix_end(start, end, "contains"))) {
-        RETURN_TOKEN(TOKEN_COMPARISON, str - start);
+    switch (c) {
+        case '<':
+            RETURN_TOKEN(TOKEN_COMPARISON, cn == '>' || cn == '=' ? 2 : 1);
+        case '>':
+            RETURN_TOKEN(TOKEN_COMPARISON, cn == '=' ? 2 : 1);
+        case '=':
+        case '!':
+            if (cn == '=') RETURN_TOKEN(TOKEN_COMPARISON, 2);
+            break;
+        case '.':
+            if (cn == '.') RETURN_TOKEN(TOKEN_DOTDOT, 2);
+            break;
     }
 
-    // Quotations.
+    if ((str = prefix_end(start, end, "contains")))
+        RETURN_TOKEN(TOKEN_COMPARISON, str - start);
+
     if (c == '\'' || c == '"') {
         str = start;
         while (true) {
@@ -133,7 +128,6 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
         }
     }
 
-    // Numbers.
     if (isdigit(c) || c == '-') {
         int has_dot = 0;
         str = start;
@@ -148,24 +142,15 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
         RETURN_TOKEN(TOKEN_NUMBER, str - start);
     }
 
-    // Identifiers.
     if (is_identifier(c)) {
         str = start;
         while (++str < end && is_identifier(*str)) {}
         RETURN_TOKEN(TOKEN_IDENTIFIER, str - start);
     }
 
-    // Double dots.
-    if (c == '.' && cn == '.') {
-        RETURN_TOKEN(TOKEN_DOTDOT, 2);
-    }
+    if (is_special(c)) RETURN_TOKEN(c, 1);
 
-    // Specials.
-    if (is_special(c)) {
-        RETURN_TOKEN(c, 1);
-    }
-
-    raise_error(c);
+    rb_raise(cLiquidSyntaxError, "Unexpected character %c", c);
     return NULL;
 }
 

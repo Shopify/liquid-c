@@ -2,7 +2,8 @@
 #define LIQUID_LEXER_H
 
 enum lexer_token_type {
-    TOKEN_COMPARISON = 1,
+    LEXER_TOKEN_NONE,
+    TOKEN_COMPARISON,
     TOKEN_QUOTE,
     TOKEN_NUMBER,
     TOKEN_IDENTIFIER,
@@ -21,12 +22,12 @@ enum lexer_token_type {
     TOKEN_END = 256
 };
 
-extern const char *symbol_names[TOKEN_END];
-
 typedef struct lexer_token {
     unsigned char type;
     const char *val, *val_end;
 } lexer_token_t;
+
+extern const char *symbol_names[TOKEN_END];
 
 const char *lex_one(const char *str, const char *end, lexer_token_t *token);
 VALUE rb_lex(VALUE self, VALUE markup);

@@ -174,7 +174,7 @@ VALUE rb_lex(VALUE self, VALUE markup)
         str = lex_one(str, end, &token);
 
         if (token.type) {
-            VALUE rb_token = rb_ary_new3(2, get_rb_type(token.type), TOKEN_STR(token));
+            VALUE rb_token = rb_ary_new3(2, get_rb_type(token.type), TOKEN_TO_RSTR(token));
             rb_ary_push(output, rb_token);
         }
     }

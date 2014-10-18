@@ -11,21 +11,14 @@ class VariableTest < MiniTest::Unit::TestCase
   end
 
   def test_strictness
-    assert_raises Liquid::SyntaxError do
-      variable_parse(' hello["world\']" ')
-    end
-
-    assert_raises Liquid::SyntaxError do
-      variable_parse('-..')
-    end
-
-    assert_raises Liquid::SyntaxError do
-      variable_parse('question?mark')
-    end
+    assert_raises(Liquid::SyntaxError) { variable_parse(' hello["world\']" ') }
+    assert_raises(Liquid::SyntaxError) { variable_parse('-..') }
+    assert_raises(Liquid::SyntaxError) { variable_parse('question?mark') }
   end
 
   def test_literals
     assert_equal [true, []], variable_parse('true')
+    assert_equal [nil, []], variable_parse('nil')
     assert_equal [nil, [['filter', []]]], variable_parse(' | filter')
   end
 
@@ -40,12 +33,12 @@ class VariableTest < MiniTest::Unit::TestCase
     abc = lookup('abc')
 
     assert_equal [name, [['filter', [abc]]]], variable_parse(' name | filter: abc ')
-    assert_equal [name, [['filter1', [abc]], ['filter2', [abc]]]], variable_parse(' name | filter1: abc | filter2: abc ')
-    assert_equal [name, [[
-      'filter',
-      [lookup('a')],
-      {'b' => lookup('c'), 'd' => lookup('e')}
-    ]]], variable_parse('name | filter : a , b : c , d : e')
+
+    assert_equal [name, [['filter1', [abc]], ['filter2', [abc]]]],
+      variable_parse(' name | filter1: abc | filter2: abc ')
+
+    assert_equal [name, [['filter', [lookup('a')], {'b' => lookup('c'), 'd' => lookup('e')}]]],
+      variable_parse('name | filter : a , b : c , d : e')
 
     assert_raises Liquid::SyntaxError do
       variable_parse('name | filter : a : b : c : d : e')
@@ -53,8 +46,8 @@ class VariableTest < MiniTest::Unit::TestCase
   end
 
   def test_unicode_strings
-    out = variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ"')
-    assert_equal ['å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒϒｍХƃｒｏɯлｔɦëｑüｉｃｋƅｒòｗԉｆòｘյｕｍρѕ߀ѵëｒｔɦëｌâｚϒｄ߀ɢ', []], out
+    assert_equal ['å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒ', []],
+      variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒ"')
   end
 
   private

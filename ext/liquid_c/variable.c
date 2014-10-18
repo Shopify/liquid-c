@@ -10,40 +10,39 @@ static ID idParse;
 VALUE rb_variable_parse(VALUE self, VALUE markup)
 {
     StringValue(markup);
-
-    parser_t parser;
     char *start = RSTRING_PTR(markup);
-    init_parser(&parser, start, start + RSTRING_LEN(markup));
 
-    VALUE name, filters = rb_ary_new();
+    parser_t p;
+    init_parser(&p, start, start + RSTRING_LEN(markup));
 
-    if (parser.cur.type == TOKEN_EOS) {
+    VALUE name = Qnil, filters = rb_ary_new();
+
+    if (p.cur.type == TOKEN_EOS)
         return rb_ary_new3(2, Qnil, filters);
-    } else if (parser.cur.type == TOKEN_PIPE) {
-        name = Qnil;
-    } else {
-        name = parse_expression(&parser);
-    }
 
-    while (parser_consume(&parser, TOKEN_PIPE).type) {
-        lexer_token_t filter_name = parser_must_consume(&parser, TOKEN_IDENTIFIER);
+    if (p.cur.type != TOKEN_PIPE)
+        name = parse_expression(&p);
 
-        VALUE filter_args = rb_ary_new(), keyword_args = rb_hash_new();
+    while (parser_consume(&p, TOKEN_PIPE).type) {
+        lexer_token_t filter_name = parser_must_consume(&p, TOKEN_IDENTIFIER);
 
-        if (parser_consume(&parser, TOKEN_COLON).type) {
+        VALUE filter_args = rb_ary_new(),
+              keyword_args = rb_hash_new();
+
+        if (parser_consume(&p, TOKEN_COLON).type) {
             do {
-                if (parser.cur.type == TOKEN_IDENTIFIER && parser.next.type == TOKEN_COLON) {
-                    lexer_token_t key_token = parser_consume_any(&parser);
-                    parser_consume_any(&parser);
-                    rb_hash_aset(keyword_args, TOKEN_STR(key_token), parse_expression(&parser));
+                if (p.cur.type == TOKEN_IDENTIFIER && p.next.type == TOKEN_COLON) {
+                    lexer_token_t key_token = parser_consume_any(&p);
+                    parser_consume_any(&p);
+                    rb_hash_aset(keyword_args, TOKEN_TO_RSTR(key_token), parse_expression(&p));
                 } else {
-                    rb_ary_push(filter_args, parse_expression(&parser));
+                    rb_ary_push(filter_args, parse_expression(&p));
                 }
             }
-            while (parser_consume(&parser, TOKEN_COMMA).type);
+            while (parser_consume(&p, TOKEN_COMMA).type);
         }
 
-        VALUE filter = rb_ary_new3(2, TOKEN_STR(filter_name), filter_args);
+        VALUE filter = rb_ary_new3(2, TOKEN_TO_RSTR(filter_name), filter_args);
 
         if (RHASH_SIZE(keyword_args))
             rb_ary_push(filter, keyword_args);
@@ -51,7 +50,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
         rb_ary_push(filters, filter);
     }
 
-    parser_must_consume(&parser, TOKEN_EOS);
+    parser_must_consume(&p, TOKEN_EOS);
     return rb_ary_new3(2, name, filters);
 }
 

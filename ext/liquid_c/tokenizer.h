@@ -4,7 +4,7 @@
 enum token_type {
     TOKENIZER_TOKEN_NONE = 0,
     TOKEN_INVALID,
-    TOKEN_STRING,
+    TOKEN_RAW,
     TOKEN_TAG,
     TOKEN_VARIABLE
 };

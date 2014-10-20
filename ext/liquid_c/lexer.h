@@ -2,9 +2,9 @@
 #define LIQUID_LEXER_H
 
 enum lexer_token_type {
-    LEXER_TOKEN_NONE,
+    TOKEN_NONE,
     TOKEN_COMPARISON,
-    TOKEN_QUOTE,
+    TOKEN_STRING,
     TOKEN_NUMBER,
     TOKEN_IDENTIFIER,
     TOKEN_DOTDOT,

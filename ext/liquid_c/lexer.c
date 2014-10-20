@@ -3,9 +3,9 @@
 #include <stdio.h>
 
 const char *symbol_names[TOKEN_END] = {
-    [LEXER_TOKEN_NONE] = "none",
+    [TOKEN_NONE] = "none",
     [TOKEN_COMPARISON] = "comparison",
-    [TOKEN_QUOTE] = "string",
+    [TOKEN_STRING] = "string",
     [TOKEN_NUMBER] = "number",
     [TOKEN_IDENTIFIER] = "id",
     [TOKEN_DOTDOT] = "dotdot",
@@ -121,7 +121,7 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
 
         if (str) {
             // Quote was properly terminated.
-            RETURN_TOKEN(TOKEN_QUOTE, str - start);
+            RETURN_TOKEN(TOKEN_STRING, str - start);
         }
     }
 

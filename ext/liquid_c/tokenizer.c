@@ -62,7 +62,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
     const char *last = cursor + tokenizer->length - 1;
 
     token->str = cursor;
-    token->type = TOKEN_STRING;
+    token->type = TOKEN_RAW;
 
     while (cursor < last) {
         if (*cursor++ != '{')
@@ -72,7 +72,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
         if (c != '%' && c != '{')
             continue;
         if (cursor - tokenizer->cursor > 2) {
-            token->type = TOKEN_STRING;
+            token->type = TOKEN_RAW;
             cursor -= 2;
             goto found;
         }

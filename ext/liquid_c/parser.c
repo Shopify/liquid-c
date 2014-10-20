@@ -172,7 +172,7 @@ VALUE parse_expression(parser_t *p)
         case TOKEN_OPEN_ROUND:
             return parse_range(p);
 
-        case TOKEN_QUOTE:
+        case TOKEN_STRING:
         {
             lexer_token_t token = parser_consume_any(p);
             token.val++;

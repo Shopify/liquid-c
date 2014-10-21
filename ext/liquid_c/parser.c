@@ -44,8 +44,9 @@ lexer_token_t parser_consume(parser_t *p, unsigned char type)
 inline static int rstring_eq(VALUE rstr, const char *str) {
     size_t str_len = strlen(str);
 
-    if (str_len != (size_t)RSTRING_LEN(rstr)) return 0;
-    return memcmp(RSTRING_PTR(rstr), str, str_len) == 0;
+    return TYPE(rstr) == T_STRING &&
+           str_len == (size_t)RSTRING_LEN(rstr) &&
+           memcmp(RSTRING_PTR(rstr), str, str_len) == 0;
 }
 
 static VALUE parse_number(parser_t *p)
@@ -148,6 +149,7 @@ static VALUE parse_variable(parser_t *p)
     }
 
     if (RARRAY_LEN(lookups) == 0) {
+        if (TYPE(name) != T_STRING) return name;
         if (rstring_eq(name, "nil") || rstring_eq(name, "null")) return Qnil;
         if (rstring_eq(name, "true")) return Qtrue;
         if (rstring_eq(name, "false")) return Qfalse;

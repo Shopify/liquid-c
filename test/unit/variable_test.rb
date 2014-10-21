@@ -20,6 +20,11 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [true, []], variable_parse('true')
     assert_equal [nil, []], variable_parse('nil')
     assert_equal [nil, [['filter', []]]], variable_parse(' | filter')
+
+    assert_equal [:blank?, []], variable_parse('[blank]')
+    assert_equal [lookup(false, true, [:blank?], 0), []], variable_parse('[true][blank]')
+    assert_equal [lookup("[true][blank]"), []], variable_parse('[true][blank]')
+    assert_equal [lookup('x["size"]'), []], variable_parse('x["size"]')
   end
 
   def test_variable_filter
@@ -56,7 +61,7 @@ class VariableTest < MiniTest::Unit::TestCase
     Liquid::Variable.c_strict_parse(markup)
   end
 
-  def lookup(name)
-    Liquid::VariableLookup.new(name)
+  def lookup(*args)
+    Liquid::VariableLookup.new(*args)
   end
 end

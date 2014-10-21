@@ -148,8 +148,7 @@ static VALUE parse_variable(parser_t *p)
         break;
     }
 
-    if (RARRAY_LEN(lookups) == 0) {
-        if (TYPE(name) != T_STRING) return name;
+    if (RARRAY_LEN(lookups) == 0 && TYPE(name) == T_STRING) {
         if (rstring_eq(name, "nil") || rstring_eq(name, "null")) return Qnil;
         if (rstring_eq(name, "true")) return Qtrue;
         if (rstring_eq(name, "false")) return Qfalse;

@@ -8,6 +8,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [lookup('hello["world"]'), []], variable_parse(' hello["world"] ')
     assert_equal [nil, []], variable_parse('')
     assert_equal [lookup('question?'), []], variable_parse('question?')
+    assert_equal [lookup('[meta]'), []], variable_parse('[meta]')
   end
 
   def test_strictness
@@ -21,9 +22,9 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [nil, []], variable_parse('nil')
     assert_equal [nil, [['filter', []]]], variable_parse(' | filter')
 
-    assert_equal [:blank?, []], variable_parse('[blank]')
+    assert_equal [lookup('[blank]'), []], variable_parse('[blank]')
     assert_equal [lookup(false, true, [:blank?], 0), []], variable_parse('[true][blank]')
-    assert_equal [lookup("[true][blank]"), []], variable_parse('[true][blank]')
+    assert_equal [lookup('[true][blank]'), []], variable_parse('[true][blank]')
     assert_equal [lookup('x["size"]'), []], variable_parse('x["size"]')
   end
 

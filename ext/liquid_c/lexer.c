@@ -132,6 +132,7 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
             if (!has_dot && *str == '.') {
                 has_dot = 1;
             } else if (!ISDIGIT(*str)) {
+                str--;
                 break;
             }
         }
@@ -139,8 +140,8 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
         if (*str == '.')
             str--; // Ignore any trailing dot.
 
-        if (str[-1] != '-')
-            RETURN_TOKEN(TOKEN_NUMBER, str - start);
+        if (*str != '-')
+            RETURN_TOKEN(TOKEN_NUMBER, str + 1 - start);
     }
 
     if (is_identifier(c)) {

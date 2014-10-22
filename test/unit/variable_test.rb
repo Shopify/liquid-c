@@ -15,6 +15,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_raises(Liquid::SyntaxError) { variable_parse(' hello["world\']" ') }
     assert_raises(Liquid::SyntaxError) { variable_parse('-..') }
     assert_raises(Liquid::SyntaxError) { variable_parse('question?mark') }
+    assert_raises(Liquid::SyntaxError) { variable_parse('123.foo') }
   end
 
   def test_literals

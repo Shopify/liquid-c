@@ -9,6 +9,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [nil, []], variable_parse('')
     assert_equal [lookup('question?'), []], variable_parse('question?')
     assert_equal [lookup('[meta]'), []], variable_parse('[meta]')
+    assert_equal [lookup('a-b'), []], variable_parse('a-b')
   end
 
   def test_strictness
@@ -16,6 +17,10 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_raises(Liquid::SyntaxError) { variable_parse('-..') }
     assert_raises(Liquid::SyntaxError) { variable_parse('question?mark') }
     assert_raises(Liquid::SyntaxError) { variable_parse('123.foo') }
+
+    ['a -b', 'a- b', 'a - b'].each do |var|
+      assert_raises(Liquid::SyntaxError) { variable_parse(var) }
+    end
   end
 
   def test_literals

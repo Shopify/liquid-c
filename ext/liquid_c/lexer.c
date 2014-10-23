@@ -79,21 +79,27 @@ inline static int is_escaped(const char *start, const char *cur)
 }
 
 #define RETURN_TOKEN(t, n) { \
+                               const char *tok_end = str + (n); \
                                token->type = (t); \
-                               token->val = start; \
-                               return (token->val_end = start + (n)); \
+                               token->val = str; \
+                               token->space_affix = str != start || (tok_end < end && ISSPACE(*tok_end)); \
+                               return (token->val_end = tok_end); \
                            }
 
-// Reads one token from str, and fills it into the token argument.
+// Reads one token from start, and fills it into the token argument.
 // Returns the start of the next token if any, otherwise the end of the string.
-const char *lex_one(const char *str, const char *end, lexer_token_t *token)
+const char *lex_one(const char *start, const char *end, lexer_token_t *token)
 {
+    // str references the start of the token, after whitespace is skipped.
+    // cur references the currently processing character during iterative lexing.
+    const char *str = start, *cur;
+
     while (str < end && ISSPACE(*str)) ++str;
 
     if (str >= end) return str;
 
-    const char *start = str;
-    char c = *str, cn = 0;
+    char c = *str;  // First character of the token.
+    char cn = '\0'; // Second character if available, for lookahead.
     if (str + 1 < end) cn = str[1];
 
     switch (c) {
@@ -110,44 +116,44 @@ const char *lex_one(const char *str, const char *end, lexer_token_t *token)
             break;
     }
 
-    if ((str = prefix_end(start, end, "contains")))
-        RETURN_TOKEN(TOKEN_COMPARISON, str - start);
+    if ((cur = prefix_end(str, end, "contains")))
+        RETURN_TOKEN(TOKEN_COMPARISON, cur - str);
 
     if (c == '\'' || c == '"') {
-        str = start;
+        cur = str;
         do {
-            str = scan_past(str, end, c);
-        } while (str && is_escaped(start, str));
+            cur = scan_past(cur, end, c);
+        } while (cur && is_escaped(str, cur));
 
-        if (str) {
+        if (cur) {
             // Quote was properly terminated.
-            RETURN_TOKEN(TOKEN_STRING, str - start);
+            RETURN_TOKEN(TOKEN_STRING, cur - str);
         }
     }
 
     if (ISDIGIT(c) || c == '-') {
         int has_dot = 0;
-        str = start;
-        while (++str < end) {
-            if (!has_dot && *str == '.') {
+        cur = str;
+        while (++cur < end) {
+            if (!has_dot && *cur == '.') {
                 has_dot = 1;
-            } else if (!ISDIGIT(*str)) {
-                str--;
+            } else if (!ISDIGIT(*cur)) {
+                cur--;
                 break;
             }
         }
 
-        if (*str == '.')
-            str--; // Ignore any trailing dot.
+        if (*cur == '.')
+            cur--; // Ignore any trailing dot.
 
-        if (*str != '-')
-            RETURN_TOKEN(TOKEN_NUMBER, str + 1 - start);
+        if (*cur != '-')
+            RETURN_TOKEN(TOKEN_NUMBER, cur + 1 - str);
     }
 
     if (is_identifier(c)) {
-        str = start;
-        while (++str < end && is_identifier(*str)) {}
-        RETURN_TOKEN(TOKEN_IDENTIFIER, str - start);
+        cur = str;
+        while (++cur < end && is_identifier(*cur)) {}
+        RETURN_TOKEN(TOKEN_IDENTIFIER, cur - str);
     }
 
     if (is_special(c)) RETURN_TOKEN(c, 1);

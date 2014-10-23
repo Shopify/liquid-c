@@ -25,7 +25,7 @@ enum lexer_token_type {
 };
 
 typedef struct lexer_token {
-    unsigned char type;
+    unsigned char type, space_affix;
     const char *val, *val_end;
 } lexer_token_t;
 

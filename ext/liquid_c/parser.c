@@ -100,8 +100,18 @@ static VALUE parse_variable_name(parser_t *p)
     lexer_token_t token = parser_must_consume(p, TOKEN_IDENTIFIER);
     const char *start = token.val, *end = token.val_end;
 
-    while (parser_consume(p, TOKEN_DASH).type)
+    while (p->cur.type == TOKEN_DASH) {
+        if (parser_consume(p, TOKEN_DASH).space_affix) {
+            // A common mistake is to assume that math syntax works in Liquid.
+            // This leads people to attempting to subtract variables, i.e. 'a - b'
+            // Liquid allows dashes in variable names, and since the C lexer ignores
+            // whitespace, this case must be handled explicitly to prevent a variable
+            // with name 'a - b' from being parsed.
+            rb_raise(cLiquidSyntaxError, "Unexpected dash");
+        }
+
         end = parser_must_consume(p, TOKEN_IDENTIFIER).val_end;
+    }
 
     if (p->cur.type == TOKEN_QUESTION)
         end = parser_consume_any(p).val_end;

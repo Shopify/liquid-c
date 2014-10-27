@@ -31,10 +31,14 @@ Liquid::Variable.class_eval do
   alias_method :ruby_strict_parse, :strict_parse
 
   def lax_parse(markup)
+    stats = @options[:stats_callbacks]
+    stats[:variable_parse].call if stats
+
     if Liquid::C.enabled
       begin
         return strict_parse(markup)
       rescue Liquid::SyntaxError
+        stats[:variable_fallback].call if stats
       end
     end
 

@@ -101,7 +101,7 @@ static VALUE parse_variable_name(parser_t *p)
     const char *start = token.val, *end = token.val_end;
 
     while (p->cur.type == TOKEN_DASH) {
-        if (parser_consume(p, TOKEN_DASH).space_affix) {
+        if (parser_consume_any(p).space_affix) {
             // A common mistake is to assume that math syntax works in Liquid.
             // This leads people to attempting to subtract variables, i.e. 'a - b'
             // Liquid allows dashes in variable names, and since the C lexer ignores
@@ -152,7 +152,10 @@ static VALUE parse_variable(parser_t *p)
                 continue;
             case TOKEN_DOT:
                 must_have_id = 1;
-                parser_consume_any(p);
+                if (parser_consume_any(p).space_affix) {
+                    parser_must_consume(p, TOKEN_IDENTIFIER);
+                    rb_raise(cLiquidSyntaxError, "Unexpected dot");
+                }
                 continue;
         }
         break;

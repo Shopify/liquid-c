@@ -15,13 +15,12 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
     parser_t p;
     init_parser(&p, start, start + RSTRING_LEN(markup));
 
-    VALUE name = Qnil, filters = rb_ary_new();
+    VALUE filters = rb_ary_new();
 
     if (p.cur.type == TOKEN_EOS)
         return rb_ary_new3(2, Qnil, filters);
 
-    if (p.cur.type != TOKEN_PIPE)
-        name = parse_expression(&p);
+    VALUE name = parse_expression(&p);
 
     while (parser_consume(&p, TOKEN_PIPE).type) {
         lexer_token_t filter_name = parser_must_consume(&p, TOKEN_IDENTIFIER);

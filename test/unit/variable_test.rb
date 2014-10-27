@@ -17,6 +17,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_raises(Liquid::SyntaxError) { variable_parse('-..') }
     assert_raises(Liquid::SyntaxError) { variable_parse('question?mark') }
     assert_raises(Liquid::SyntaxError) { variable_parse('123.foo') }
+    assert_raises(Liquid::SyntaxError) { variable_parse(' | nothing') }
 
     ['a .b', 'a. b', 'a . b'].each do |var|
       assert_raises(Liquid::SyntaxError) { variable_parse(var) }
@@ -30,7 +31,6 @@ class VariableTest < MiniTest::Unit::TestCase
   def test_literals
     assert_equal [true, []], variable_parse('true')
     assert_equal [nil, []], variable_parse('nil')
-    assert_equal [nil, [['filter', []]]], variable_parse(' | filter')
 
     assert_equal [lookup('[blank]'), []], variable_parse('[blank]')
     assert_equal [lookup(false, true, [:blank?], 0), []], variable_parse('[true][blank]')

@@ -22,19 +22,6 @@ const char *symbol_names[TOKEN_END] = {
     [TOKEN_DASH] = "dash"
 };
 
-static VALUE cLiquidLexer;
-static VALUE symbols[TOKEN_END] = {0};
-
-static VALUE get_rb_type(unsigned char type)
-{
-    VALUE ret = symbols[type];
-    if (ret) return ret;
-
-    ret = ID2SYM(rb_intern(symbol_names[type]));
-    symbols[type] = ret;
-    return ret;
-}
-
 inline static int is_identifier(char c)
 {
     return ISALNUM(c) || c == '_';
@@ -79,12 +66,14 @@ inline static int is_escaped(const char *start, const char *cur)
 }
 
 #define RETURN_TOKEN(t, n) { \
-                               const char *tok_end = str + (n); \
-                               token->type = (t); \
-                               token->val = str; \
-                               token->space_affix = str != start || (tok_end < end && ISSPACE(*tok_end)); \
-                               return (token->val_end = tok_end); \
-                           }
+    const char *tok_end = str + (n); \
+    token->type = (t); \
+    token->val = str; \
+    token->flags = 0; \
+    if (str != start) token->flags |= TOKEN_SPACE_PREFIX; \
+    if (tok_end < end && ISSPACE(*tok_end)) token->flags |= TOKEN_SPACE_SUFFIX; \
+    return (token->val_end = tok_end); \
+}
 
 // Reads one token from start, and fills it into the token argument.
 // Returns the start of the next token if any, otherwise the end of the string.
@@ -163,35 +152,4 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
 }
 
 #undef RETURN_TOKEN
-
-// Lexes the entire input string into a Ruby array.
-// Should only be called from Ruby, otherwise use lex_one.
-VALUE rb_lex(VALUE self, VALUE markup)
-{
-    StringValue(markup);
-
-    const char *str = RSTRING_PTR(markup);
-    const char *end = str + RSTRING_LEN(markup);
-
-    lexer_token_t token;
-    VALUE output = rb_ary_new();
-
-    while (str < end) {
-        token.type = 0;
-        str = lex_one(str, end, &token);
-
-        if (token.type) {
-            VALUE rb_token = rb_ary_new3(2, get_rb_type(token.type), TOKEN_TO_RSTR(token));
-            rb_ary_push(output, rb_token);
-        }
-    }
-
-    return rb_ary_push(output, rb_ary_new3(1, get_rb_type(TOKEN_EOS)));
-}
-
-void init_liquid_lexer(void)
-{
-    cLiquidLexer = rb_const_get(mLiquid, rb_intern("Lexer"));
-    rb_define_singleton_method(cLiquidLexer, "c_lex", rb_lex, 1);
-}
 

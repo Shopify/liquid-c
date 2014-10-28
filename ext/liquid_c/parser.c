@@ -3,7 +3,7 @@
 #include "lexer.h"
 
 static VALUE cLiquidRangeLookup, cLiquidVariableLookup, cRange, symBlank, symEmpty;
-static ID idToI, idParse, idEvaluate;
+static ID idToI, idEvaluate;
 
 void init_parser(parser_t *p, const char *str, const char *end)
 {
@@ -101,7 +101,7 @@ static VALUE parse_variable_name(parser_t *p)
     const char *start = token.val, *end = token.val_end;
 
     while (p->cur.type == TOKEN_DASH) {
-        if (parser_consume_any(p).space_affix) {
+        if (parser_consume_any(p).flags & TOKEN_SPACE_AFFIX) {
             // A common mistake is to assume that math syntax works in Liquid.
             // This leads people to attempting to subtract variables, i.e. 'a - b'
             // Liquid allows dashes in variable names, and since the C lexer ignores
@@ -152,7 +152,7 @@ static VALUE parse_variable(parser_t *p)
                 continue;
             case TOKEN_DOT:
                 must_have_id = 1;
-                if (parser_consume_any(p).space_affix) {
+                if (parser_consume_any(p).flags & TOKEN_SPACE_AFFIX) {
                     parser_must_consume(p, TOKEN_IDENTIFIER);
                     rb_raise(cLiquidSyntaxError, "Unexpected dot");
                 }
@@ -207,7 +207,6 @@ VALUE parse_expression(parser_t *p)
 void init_liquid_parser(void)
 {
     idToI = rb_intern("to_i");
-    idParse = rb_intern("parse");
     idEvaluate = rb_intern("evaluate");
     symBlank = ID2SYM(rb_intern("blank?"));
     symEmpty = ID2SYM(rb_intern("empty?"));

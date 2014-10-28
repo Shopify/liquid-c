@@ -24,16 +24,18 @@ enum lexer_token_type {
     TOKEN_END = 256
 };
 
+#define TOKEN_SPACE_PREFIX 0x1
+#define TOKEN_SPACE_SUFFIX 0x2
+#define TOKEN_SPACE_AFFIX (TOKEN_SPACE_PREFIX | TOKEN_SPACE_SUFFIX)
+
 typedef struct lexer_token {
-    unsigned char type, space_affix;
+    unsigned char type, flags;
     const char *val, *val_end;
 } lexer_token_t;
 
 extern const char *symbol_names[TOKEN_END];
 
 const char *lex_one(const char *str, const char *end, lexer_token_t *token);
-VALUE rb_lex(VALUE self, VALUE markup);
-void init_liquid_lexer(void);
 
 #endif
 

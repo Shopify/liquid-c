@@ -4,9 +4,6 @@
 #include "parser.h"
 #include <stdio.h>
 
-static VALUE cLiquidVariable, cLiquidExpression;
-static ID idParse;
-
 VALUE rb_variable_parse(VALUE self, VALUE markup)
 {
     StringValue(markup);
@@ -55,9 +52,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
 
 void init_liquid_variable(void)
 {
-    idParse = rb_intern("parse");
-    cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
-    cLiquidExpression = rb_const_get(mLiquid, rb_intern("Expression"));
+    VALUE cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
     rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 1);
 }
 

@@ -31,6 +31,7 @@ class VariableTest < MiniTest::Unit::TestCase
   def test_literals
     assert_equal [true, []], variable_parse('true')
     assert_equal [nil, []], variable_parse('nil')
+    assert_equal [123.4, []], variable_parse('123.4')
 
     assert_equal [lookup('[blank]'), []], variable_parse('[blank]')
     assert_equal [lookup(false, true, [:blank?], 0), []], variable_parse('[true][blank]')

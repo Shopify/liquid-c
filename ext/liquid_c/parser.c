@@ -58,11 +58,9 @@ static VALUE parse_number(parser_t *p)
     char tmp = *token.val_end;
     *(char *)token.val_end = '\0';
 
-    if (memchr(token.val, '.', token.val_end - token.val)) {
-        // Float.
+    if (token.flags & TOKEN_FLOAT_NUMBER) {
         out = DBL2NUM(rb_cstr_to_dbl(token.val, 1));
     } else {
-        // Integer.
         out = rb_cstr_to_inum(token.val, 10, 1);
     }
 

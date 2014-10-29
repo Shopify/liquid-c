@@ -69,7 +69,6 @@ inline static int is_escaped(const char *start, const char *cur)
     const char *tok_end = str + (n); \
     token->type = (t); \
     token->val = str; \
-    token->flags = 0; \
     if (str != start) token->flags |= TOKEN_SPACE_PREFIX; \
     if (tok_end < end && ISSPACE(*tok_end)) token->flags |= TOKEN_SPACE_SUFFIX; \
     return (token->val_end = tok_end); \
@@ -86,6 +85,7 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
     while (str < end && ISSPACE(*str)) ++str;
 
     if (str >= end) return str;
+    token->flags = 0;
 
     char c = *str;  // First character of the token.
     char cn = '\0'; // Second character if available, for lookahead.
@@ -132,11 +132,14 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
             }
         }
 
-        if (*cur == '.')
+        if (*cur == '.') {
             cur--; // Ignore any trailing dot.
-
-        if (*cur != '-')
+            has_dot = 0;
+        }
+        if (*cur != '-') {
+            if (has_dot) token->flags |= TOKEN_FLOAT_NUMBER;
             RETURN_TOKEN(TOKEN_NUMBER, cur + 1 - str);
+        }
     }
 
     if (is_identifier(c)) {

@@ -38,5 +38,9 @@ extern const char *symbol_names[TOKEN_END];
 
 const char *lex_one(const char *str, const char *end, lexer_token_t *token);
 
+inline VALUE token_to_rstr(lexer_token_t token) {
+    return rb_enc_str_new(token.val, token.val_end - token.val, utf8_encoding);
+}
+
 #endif
 

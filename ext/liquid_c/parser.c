@@ -85,60 +85,39 @@ static VALUE parse_range(parser_t *p)
     return rb_class_new_instance(2, args, cRange);
 }
 
-static VALUE parse_variable_name(parser_t *p)
+static VALUE parse_variable(parser_t *p)
 {
-    VALUE name;
+    VALUE name, lookups = rb_ary_new(), lookup;
+    unsigned long long command_flags = 0;
 
     if (parser_consume(p, TOKEN_OPEN_SQUARE).type) {
         name = parse_expression(p);
         parser_must_consume(p, TOKEN_CLOSE_SQUARE);
-        return name;
+    } else {
+        name = token_to_rstr(parser_must_consume(p, TOKEN_IDENTIFIER));
     }
 
-    lexer_token_t token = parser_must_consume(p, TOKEN_IDENTIFIER);
-    return TOKEN_TO_RSTR(token);
-}
-
-static VALUE parse_variable(parser_t *p)
-{
-    VALUE name = parse_variable_name(p);
-
-    VALUE lookups = rb_ary_new(), lookup;
-    unsigned long long command_flags = 0;
-    unsigned char last_type, cur_type = 0;
-    int must_have_id = 0;
-
     while (true) {
-        last_type = cur_type;
-        cur_type = p->cur.type;
+        if (p->cur.type == TOKEN_OPEN_SQUARE) {
+            parser_consume_any(p);
+            lookup = parse_expression(p);
+            parser_must_consume(p, TOKEN_CLOSE_SQUARE);
 
-        if (must_have_id && cur_type != TOKEN_IDENTIFIER)
-            parser_must_consume(p, TOKEN_IDENTIFIER);
+            rb_ary_push(lookups, lookup);
+        } else if (p->cur.type == TOKEN_DOT) {
+            int has_space_affix = parser_consume_any(p).flags & TOKEN_SPACE_AFFIX;
+            lookup = token_to_rstr(parser_must_consume(p, TOKEN_IDENTIFIER));
 
-        switch (cur_type) {
-            case TOKEN_IDENTIFIER:
-                must_have_id = 0;
-                if (last_type != TOKEN_DOT) break;
-                lookup = parse_variable_name(p);
+            if (has_space_affix)
+                rb_raise(cLiquidSyntaxError, "Unexpected dot");
 
-                if (rstring_eq(lookup, "size") || rstring_eq(lookup, "first") || rstring_eq(lookup, "last"))
-                    command_flags |= 1 << RARRAY_LEN(lookups);
+            if (rstring_eq(lookup, "size") || rstring_eq(lookup, "first") || rstring_eq(lookup, "last"))
+                command_flags |= 1 << RARRAY_LEN(lookups);
 
-                rb_ary_push(lookups, lookup);
-                continue;
-            case TOKEN_OPEN_SQUARE:
-                if (last_type == TOKEN_DOT) break;
-                rb_ary_push(lookups, parse_variable_name(p));
-                continue;
-            case TOKEN_DOT:
-                must_have_id = 1;
-                if (parser_consume_any(p).flags & TOKEN_SPACE_AFFIX) {
-                    parser_must_consume(p, TOKEN_IDENTIFIER);
-                    rb_raise(cLiquidSyntaxError, "Unexpected dot");
-                }
-                continue;
+            rb_ary_push(lookups, lookup);
+        } else {
+            break;
         }
-        break;
     }
 
     if (RARRAY_LEN(lookups) == 0 && TYPE(name) == T_STRING) {
@@ -171,7 +150,7 @@ VALUE parse_expression(parser_t *p)
             lexer_token_t token = parser_consume_any(p);
             token.val++;
             token.val_end--;
-            return TOKEN_TO_RSTR(token);
+            return token_to_rstr(token);
         }
     }
 

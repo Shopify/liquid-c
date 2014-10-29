@@ -55,16 +55,6 @@ inline static const char *scan_past(const char *cur, const char *end, char targe
     return match ? match + 1 : NULL;
 }
 
-inline static int is_escaped(const char *start, const char *cur)
-{
-    char escaped = 0;
-
-    while (--cur >= start && *cur == '\\')
-        escaped = !escaped;
-
-    return escaped;
-}
-
 #define RETURN_TOKEN(t, n) { \
     const char *tok_end = str + (n); \
     token->type = (t); \
@@ -109,10 +99,7 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
         RETURN_TOKEN(TOKEN_COMPARISON, cur - str);
 
     if (c == '\'' || c == '"') {
-        cur = str;
-        do {
-            cur = scan_past(cur, end, c);
-        } while (cur && is_escaped(str, cur));
+        cur = scan_past(str, end, c);
 
         if (cur) {
             // Quote was properly terminated.

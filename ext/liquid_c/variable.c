@@ -30,7 +30,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
                 if (p.cur.type == TOKEN_IDENTIFIER && p.next.type == TOKEN_COLON) {
                     lexer_token_t key_token = parser_consume_any(&p);
                     parser_consume_any(&p);
-                    rb_hash_aset(keyword_args, TOKEN_TO_RSTR(key_token), parse_expression(&p));
+                    rb_hash_aset(keyword_args, token_to_rstr(key_token), parse_expression(&p));
                 } else {
                     rb_ary_push(filter_args, parse_expression(&p));
                 }
@@ -38,7 +38,7 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
             while (parser_consume(&p, TOKEN_COMMA).type);
         }
 
-        VALUE filter = rb_ary_new3(2, TOKEN_TO_RSTR(filter_name), filter_args);
+        VALUE filter = rb_ary_new3(2, token_to_rstr(filter_name), filter_args);
 
         if (RHASH_SIZE(keyword_args))
             rb_ary_push(filter, keyword_args);

@@ -2,9 +2,9 @@
 #define LIQUID_TOKENIZER_H
 
 enum token_type {
-    TOKEN_NONE,
+    TOKENIZER_TOKEN_NONE = 0,
     TOKEN_INVALID,
-    TOKEN_STRING,
+    TOKEN_RAW,
     TOKEN_TAG,
     TOKEN_VARIABLE
 };
@@ -29,3 +29,4 @@ void init_liquid_tokenizer();
 void tokenizer_next(tokenizer_t *tokenizer, token_t *token);
 
 #endif
+

@@ -62,7 +62,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
     const char *last = cursor + tokenizer->length - 1;
 
     token->str = cursor;
-    token->type = TOKEN_STRING;
+    token->type = TOKEN_RAW;
 
     while (cursor < last) {
         if (*cursor++ != '{')
@@ -72,7 +72,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
         if (c != '%' && c != '{')
             continue;
         if (cursor - tokenizer->cursor > 2) {
-            token->type = TOKEN_STRING;
+            token->type = TOKEN_RAW;
             cursor -= 2;
             goto found;
         }
@@ -123,7 +123,7 @@ static VALUE tokenizer_shift_method(VALUE self)
 
     token_t token;
     tokenizer_next(tokenizer, &token);
-    if (token.type == TOKEN_NONE)
+    if (!token.type)
         return Qnil;
 
     return rb_enc_str_new(token.str, token.length, utf8_encoding);
@@ -136,3 +136,4 @@ void init_liquid_tokenizer()
     rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 1);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
 }
+

@@ -59,18 +59,11 @@ namespace :profile do
 end
 
 namespace :compare do
-  include Benchmark
-  desc "Compare Liquid to Liquid + Liquid-C"
-  task :run do
-    bare = Benchmark.measure do
-      ruby "./performance.rb bare profile lax"
+  %w(lax warn strict).each do |type|
+    desc "Compare Liquid to Liquid-C in #{type} mode"
+    task type.to_sym do
+      ruby "./performance.rb bare benchmark #{type}"
+      ruby "./performance.rb c benchmark #{type}"
     end
-    liquid_c = Benchmark.measure do
-      ruby "./performance.rb c profile lax"
-    end
-    Benchmark.benchmark(CAPTION, 10, FORMAT, "Liquid:", "Liquid-C:") do |x|
-      [bare, liquid_c]
-    end
-    puts "Ratio: #{liquid_c.real / bare.real * 100}%"
   end
 end

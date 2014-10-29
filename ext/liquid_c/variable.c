@@ -4,7 +4,7 @@
 #include "parser.h"
 #include <stdio.h>
 
-VALUE rb_variable_parse(VALUE self, VALUE markup)
+VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
 {
     StringValue(markup);
     char *start = RSTRING_PTR(markup);
@@ -12,47 +12,45 @@ VALUE rb_variable_parse(VALUE self, VALUE markup)
     parser_t p;
     init_parser(&p, start, start + RSTRING_LEN(markup));
 
-    VALUE filters = rb_ary_new();
-
     if (p.cur.type == TOKEN_EOS)
-        return rb_ary_new3(2, Qnil, filters);
+        return Qnil;
 
     VALUE name = parse_expression(&p);
 
     while (parser_consume(&p, TOKEN_PIPE).type) {
         lexer_token_t filter_name = parser_must_consume(&p, TOKEN_IDENTIFIER);
 
-        VALUE filter_args = rb_ary_new(),
-              keyword_args = rb_hash_new();
+        VALUE filter_args = rb_ary_new(), keyword_args = Qnil, filter;
 
         if (parser_consume(&p, TOKEN_COLON).type) {
             do {
                 if (p.cur.type == TOKEN_IDENTIFIER && p.next.type == TOKEN_COLON) {
-                    lexer_token_t key_token = parser_consume_any(&p);
+                    VALUE key = token_to_rstr(parser_consume_any(&p));
                     parser_consume_any(&p);
-                    rb_hash_aset(keyword_args, token_to_rstr(key_token), parse_expression(&p));
+
+                    if (keyword_args == Qnil) keyword_args = rb_hash_new();
+                    rb_hash_aset(keyword_args, key, parse_expression(&p));
                 } else {
                     rb_ary_push(filter_args, parse_expression(&p));
                 }
-            }
-            while (parser_consume(&p, TOKEN_COMMA).type);
+            } while (parser_consume(&p, TOKEN_COMMA).type);
         }
 
-        VALUE filter = rb_ary_new3(2, token_to_rstr(filter_name), filter_args);
-
-        if (RHASH_SIZE(keyword_args))
-            rb_ary_push(filter, keyword_args);
-
+        if (keyword_args == Qnil) {
+            filter = rb_ary_new3(2, token_to_rstr(filter_name), filter_args);
+        } else {
+            filter = rb_ary_new3(3, token_to_rstr(filter_name), filter_args, keyword_args);
+        }
         rb_ary_push(filters, filter);
     }
 
     parser_must_consume(&p, TOKEN_EOS);
-    return rb_ary_new3(2, name, filters);
+    return name;
 }
 
 void init_liquid_variable(void)
 {
     VALUE cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
-    rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 1);
+    rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 2);
 }
 

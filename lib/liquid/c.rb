@@ -47,7 +47,7 @@ Liquid::Variable.class_eval do
 
   def strict_parse(markup)
     if Liquid::C.enabled
-      @name, @filters = Liquid::Variable.c_strict_parse(markup)
+      @name = Liquid::Variable.c_strict_parse(markup, @filters = [])
     else
       ruby_strict_parse(markup)
     end

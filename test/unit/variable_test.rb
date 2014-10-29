@@ -89,7 +89,8 @@ class VariableTest < MiniTest::Unit::TestCase
   private
 
   def variable_parse(markup)
-    Liquid::Variable.c_strict_parse(markup)
+    name = Liquid::Variable.c_strict_parse(markup, filters = [])
+    [name, filters]
   end
 
   def lookup(*args)

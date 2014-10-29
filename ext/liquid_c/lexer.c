@@ -24,7 +24,7 @@ const char *symbol_names[TOKEN_END] = {
 
 inline static int is_identifier(char c)
 {
-    return ISALNUM(c) || c == '_';
+    return ISALNUM(c) || c == '_' || c == '-';
 }
 
 inline static int is_special(char c)
@@ -142,9 +142,10 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
         }
     }
 
-    if (is_identifier(c)) {
+    if (ISALPHA(c) || c == '_') {
         cur = str;
         while (++cur < end && is_identifier(*cur)) {}
+        if (cur < end && *cur == '?') cur++;
         RETURN_TOKEN(TOKEN_IDENTIFIER, cur - str);
     }
 

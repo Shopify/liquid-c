@@ -10,6 +10,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [lookup('question?'), []], variable_parse('question?')
     assert_equal [lookup('[meta]'), []], variable_parse('[meta]')
     assert_equal [lookup('a-b'), []], variable_parse('a-b')
+    assert_equal [lookup('a-2'), []], variable_parse('a-2')
   end
 
   def test_strictness

@@ -34,8 +34,7 @@ lexer_token_t parser_must_consume(parser_t *p, unsigned char type)
 lexer_token_t parser_consume(parser_t *p, unsigned char type)
 {
     if (p->cur.type != type) {
-        lexer_token_t zero;
-        zero.type = 0;
+        lexer_token_t zero = {0};
         return zero;
     }
     return parser_consume_any(p);

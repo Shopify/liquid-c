@@ -51,11 +51,11 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source)
     return Qnil;
 }
 
-void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
+int tokenizer_next(tokenizer_t *tokenizer, token_t *token)
 {
     if (tokenizer->length <= 0) {
         memset(token, 0, sizeof(*token));
-        return;
+        return 0;
     }
 
     const char *cursor = tokenizer->cursor;
@@ -114,6 +114,7 @@ found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;
     tokenizer->length -= token->length;
+    return 1;
 }
 
 static VALUE tokenizer_shift_method(VALUE self)
@@ -122,8 +123,8 @@ static VALUE tokenizer_shift_method(VALUE self)
     Tokenizer_Get_Struct(self, tokenizer);
 
     token_t token;
-    tokenizer_next(tokenizer, &token);
-    if (!token.type)
+
+    if (!tokenizer_next(tokenizer, &token))
         return Qnil;
 
     return rb_enc_str_new(token.str, token.length, utf8_encoding);

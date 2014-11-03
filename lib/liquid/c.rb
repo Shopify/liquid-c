@@ -26,6 +26,19 @@ Liquid::Template.class_eval do
   end
 end
 
+Liquid::Block.class_eval do
+  alias_method :ruby_parse, :parse
+
+  def parse(tokens)
+    if Liquid::C.enabled && !@options[:line_numbers] && !@options[:profile]
+      c_parse(tokens)
+      p @nodelist
+    else
+      ruby_parse(tokens)
+    end
+  end
+end
+
 Liquid::Variable.class_eval do
   alias_method :ruby_lax_parse, :lax_parse
   alias_method :ruby_strict_parse, :strict_parse

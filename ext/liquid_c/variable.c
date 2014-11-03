@@ -1,4 +1,3 @@
-
 #include "liquid.h"
 #include "variable.h"
 #include "parser.h"

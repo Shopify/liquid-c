@@ -3,6 +3,7 @@
 #include "variable.h"
 #include "lexer.h"
 #include "parser.h"
+#include "block.h"
 
 VALUE mLiquid, cLiquidSyntaxError;
 rb_encoding *utf8_encoding;
@@ -15,5 +16,6 @@ void Init_liquid_c(void)
     init_liquid_tokenizer();
     init_liquid_parser();
     init_liquid_variable();
+    init_liquid_block();
 }
 

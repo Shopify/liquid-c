@@ -18,13 +18,13 @@ static int is_id(int c)
     return rb_isalnum(c) || c == '_';
 }
 
-inline static const char *read_until(const char *start, const char *end, int (func)(int))
+inline static const char *read_while(const char *start, const char *end, int (func)(int))
 {
     while (start < end && func((unsigned char) *start)) start++;
     return start;
 }
 
-VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
+static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
 {
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(tokens, tokenizer);
@@ -34,12 +34,6 @@ VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
     token_t token;
     VALUE tags = Qnil;
     VALUE nodelist = rb_ivar_get(self, intern_nodelist);
-
-    if (nodelist == Qnil) {
-        rb_ivar_set(self, intern_nodelist, nodelist = rb_ary_new());
-    } else {
-        rb_funcall(nodelist, intern_clear, 0);
-    }
 
     while (true) {
         tokenizer_next(tokenizer, &token);
@@ -65,7 +59,7 @@ VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
                     const char *end = token.str + token.length;
 
-                    if (read_until(token.str, end, rb_isspace) < end)
+                    if (read_while(token.str, end, rb_isspace) < end)
                         rb_ivar_set(self, intern_blank, Qfalse);
                 }
                 break;
@@ -83,8 +77,8 @@ VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 const char *start = token.str + 2, *end = token.str + token.length - 2;
 
                 // Imitate \s*(\w+)\s*(.*)? regex
-                const char *name_start = read_until(start, end, rb_isspace);
-                const char *name_end = read_until(name_start, end, is_id);
+                const char *name_start = read_while(start, end, rb_isspace);
+                const char *name_end = read_while(name_start, end, is_id);
 
                 VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
 
@@ -93,7 +87,7 @@ VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
 
                 VALUE tag_class = rb_funcall(tags, intern_square_brackets, 1, tag_name);
 
-                const char *markup_start = read_until(name_end, end, rb_isspace);
+                const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
 
                 if (tag_class == Qnil)
@@ -101,8 +95,8 @@ VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
 
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, options);
 
-                if (rb_ivar_get(self, intern_blank) == Qtrue)
-                    rb_ivar_set(self, intern_blank, rb_funcall(new_tag, intern_is_blank, 0));
+                if (rb_ivar_get(self, intern_blank) == Qtrue && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
+                    rb_ivar_set(self, intern_blank, Qfalse);
 
                 rb_ary_push(nodelist, new_tag);
                 break;

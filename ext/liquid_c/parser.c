@@ -163,6 +163,20 @@ VALUE parse_expression(parser_t *p)
     return Qnil;
 }
 
+static VALUE rb_parse_expression(VALUE self, VALUE markup)
+{
+    StringValue(markup);
+    char *start = RSTRING_PTR(markup);
+
+    parser_t p;
+    init_parser(&p, start, start + RSTRING_LEN(markup));
+
+    if (p.cur.type == TOKEN_EOS)
+        return Qnil;
+
+    return parse_expression(&p);
+}
+
 void init_liquid_parser(void)
 {
     idToI = rb_intern("to_i");
@@ -173,5 +187,8 @@ void init_liquid_parser(void)
     cLiquidRangeLookup = rb_const_get(mLiquid, rb_intern("RangeLookup"));
     cRange = rb_const_get(rb_cObject, rb_intern("Range"));
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
+
+    VALUE cLiquidExpression = rb_const_get(mLiquid, rb_intern("Expression"));
+    rb_define_singleton_method(cLiquidExpression, "c_parse", rb_parse_expression, 1);
 }
 

@@ -67,3 +67,21 @@ Liquid::VariableLookup.class_eval do
     end
   end
 end
+
+Liquid::Expression.class_eval do
+  class << self
+    alias_method :ruby_parse, :parse
+
+    def parse(markup)
+      return nil unless markup
+
+      if Liquid::C.enabled
+        begin
+          return c_parse(markup)
+        rescue Liquid::SyntaxError
+        end
+      end
+      ruby_parse(markup)
+    end
+  end
+end

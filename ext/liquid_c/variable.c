@@ -3,7 +3,7 @@
 #include "parser.h"
 #include <stdio.h>
 
-VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
+static VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
 {
     StringValue(markup);
     char *start = RSTRING_PTR(markup);
@@ -49,7 +49,6 @@ VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
 
 void init_liquid_variable(void)
 {
-    VALUE cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
     rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 2);
 }
 

@@ -173,7 +173,12 @@ static VALUE rb_parse_expression(VALUE self, VALUE markup)
     if (p.cur.type == TOKEN_EOS)
         return Qnil;
 
-    return parse_expression(&p);
+    VALUE expr = parse_expression(&p);
+
+    if (p.cur.type != TOKEN_EOS)
+        rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[p.cur.type]);
+
+    return expr;
 }
 
 void init_liquid_parser(void)

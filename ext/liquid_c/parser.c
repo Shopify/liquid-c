@@ -153,7 +153,7 @@ VALUE parse_expression(parser_t *p)
         }
     }
 
-    if (p->cur.type != TOKEN_EOS) {
+    if (p->cur.type == TOKEN_EOS) {
         rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[p->cur.type]);
     } else {
         rb_raise(cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",

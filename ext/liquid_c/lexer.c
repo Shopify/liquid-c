@@ -74,8 +74,10 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
 
     while (str < end && ISSPACE(*str)) ++str;
 
-    if (str >= end) return str;
+    token->val = token->val_end = NULL;
     token->flags = 0;
+
+    if (str >= end) return str;
 
     char c = *str;  // First character of the token.
     char cn = '\0'; // Second character if available, for lookahead.

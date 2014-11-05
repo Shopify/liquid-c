@@ -114,10 +114,10 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
             if (!has_dot && *cur == '.') {
                 has_dot = 1;
             } else if (!ISDIGIT(*cur)) {
-                cur--;
                 break;
             }
         }
+        cur--; // Point to last digit (or dot).
 
         if (*cur == '.') {
             cur--; // Ignore any trailing dot.

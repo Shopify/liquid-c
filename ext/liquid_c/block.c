@@ -29,8 +29,6 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(tokens, tokenizer);
 
-    rb_ivar_set(self, intern_blank, Qtrue);
-
     token_t token;
     VALUE tags = Qnil;
     VALUE nodelist = rb_ivar_get(self, intern_nodelist);

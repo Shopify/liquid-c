@@ -68,6 +68,13 @@ class VariableTest < MiniTest::Unit::TestCase
       variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒ"')
   end
 
+  def test_broken_unicode_errors
+    err = assert_raises(Liquid::SyntaxError) do
+      Liquid::Template.parse("test {{ \xC2\xA0 test }}", error_mode: :strict)
+    end
+    assert err.message
+  end
+
   def test_callbacks
     variable_parses = 0
     variable_fallbacks = 0

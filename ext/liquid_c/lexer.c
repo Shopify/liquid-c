@@ -140,7 +140,7 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
 
     if (is_special(c)) RETURN_TOKEN(c, 1);
 
-    rb_raise(cLiquidSyntaxError, "Unexpected character %c", c);
+    rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c", c);
     return NULL;
 }
 

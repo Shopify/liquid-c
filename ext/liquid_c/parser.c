@@ -25,7 +25,7 @@ lexer_token_t parser_consume_any(parser_t *p)
 lexer_token_t parser_must_consume(parser_t *p, unsigned char type)
 {
     if (p->cur.type != type) {
-        rb_raise(cLiquidSyntaxError, "Expected %s but found %s",
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Expected %s but found %s",
                  symbol_names[type], symbol_names[p->cur.type]);
     }
     return parser_consume_any(p);
@@ -108,7 +108,7 @@ static VALUE parse_variable(parser_t *p)
             lookup = token_to_rstr(parser_must_consume(p, TOKEN_IDENTIFIER));
 
             if (has_space_affix)
-                rb_raise(cLiquidSyntaxError, "Unexpected dot");
+                rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected dot");
 
             if (rstring_eq(lookup, "size") || rstring_eq(lookup, "first") || rstring_eq(lookup, "last"))
                 command_flags |= 1 << RARRAY_LEN(lookups);
@@ -154,9 +154,9 @@ VALUE parse_expression(parser_t *p)
     }
 
     if (p->cur.type == TOKEN_EOS) {
-        rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[p->cur.type]);
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[p->cur.type]);
     } else {
-        rb_raise(cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "[:%s, \"%.*s\"] is not a valid expression",
                  symbol_names[p->cur.type], (int)(p->cur.val_end - p->cur.val), p->cur.val);
     }
     return Qnil;
@@ -176,7 +176,7 @@ static VALUE rb_parse_expression(VALUE self, VALUE markup)
     VALUE expr = parse_expression(&p);
 
     if (p.cur.type != TOKEN_EOS)
-        rb_raise(cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[p.cur.type]);
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "[:%s] is not a valid expression", symbol_names[p.cur.type]);
 
     return expr;
 }

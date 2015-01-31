@@ -6,8 +6,8 @@ require 'liquid/c/version'
 Gem::Specification.new do |spec|
   spec.name          = "liquid-c"
   spec.version       = Liquid::C::VERSION
-  spec.authors       = ["Dylan Thacker-Smith"]
-  spec.email         = ["Dylan.Smith@shopify.com"]
+  spec.authors       = ["Justin Li", "Dylan Thacker-Smith"]
+  spec.email         = ["jli@shopify.com", "Dylan.Smith@shopify.com"]
   spec.summary       = "Liquid performance extension in C"
   spec.homepage      = ""
   spec.license       = "MIT"

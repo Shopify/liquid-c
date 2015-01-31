@@ -4,3 +4,6 @@ rvm:
   - 2.1.0
 gemfile:
   - Gemfile
+
+notifications:
+  disable: true

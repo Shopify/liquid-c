@@ -1,9 +1,12 @@
 language: ruby
+
 rvm:
-  - 2.0.0
-  - 2.1.0
-gemfile:
-  - Gemfile
+  - 2.0
+  - 2.1
+  - 2.2
+  - ruby-head
+
+sudo: false
 
 notifications:
   disable: true

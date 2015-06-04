@@ -19,7 +19,7 @@ Liquid::Template.class_eval do
 
   def tokenize(source)
     if Liquid::C.enabled && !@line_numbers
-      Liquid::Tokenizer.new(source.to_s)
+      Liquid::C::Tokenizer.new(source.to_s)
     else
       ruby_tokenize(source)
     end

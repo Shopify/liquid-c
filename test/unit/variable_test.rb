@@ -35,7 +35,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [123.4, []], variable_parse('123.4')
 
     assert_equal [lookup('[blank]'), []], variable_parse('[blank]')
-    assert_equal [lookup(false, true, [:blank?], 0), []], variable_parse('[true][blank]')
+    assert_equal [lookup(false, true, [Liquid::Expression::LITERALS['blank']], 0), []], variable_parse('[true][blank]')
     assert_equal [lookup('[true][blank]'), []], variable_parse('[true][blank]')
     assert_equal [lookup('x["size"]'), []], variable_parse('x["size"]')
   end

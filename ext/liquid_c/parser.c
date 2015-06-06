@@ -2,7 +2,7 @@
 #include "parser.h"
 #include "lexer.h"
 
-static VALUE cLiquidRangeLookup, cLiquidVariableLookup, cRange, symBlank, symEmpty;
+static VALUE cLiquidRangeLookup, cLiquidVariableLookup, cRange, vLiquidExpressionLiterals;
 static ID idToI, idEvaluate;
 
 void init_parser(parser_t *p, const char *str, const char *end)
@@ -119,12 +119,10 @@ static VALUE parse_variable(parser_t *p)
         }
     }
 
-    if (RARRAY_LEN(lookups) == 0 && TYPE(name) == T_STRING) {
-        if (rstring_eq(name, "nil") || rstring_eq(name, "null")) return Qnil;
-        if (rstring_eq(name, "true")) return Qtrue;
-        if (rstring_eq(name, "false")) return Qfalse;
-        if (rstring_eq(name, "blank")) return symBlank;
-        if (rstring_eq(name, "empty")) return symEmpty;
+    if (RARRAY_LEN(lookups) == 0) {
+        VALUE undefined = FIXNUM_P(-1);
+        VALUE literal = rb_hash_lookup2(vLiquidExpressionLiterals, name, undefined);
+        if (literal != undefined) return literal;
     }
 
     VALUE args[4] = {Qfalse, name, lookups, INT2FIX(command_flags)};
@@ -185,8 +183,6 @@ void init_liquid_parser(void)
 {
     idToI = rb_intern("to_i");
     idEvaluate = rb_intern("evaluate");
-    symBlank = ID2SYM(rb_intern("blank?"));
-    symEmpty = ID2SYM(rb_intern("empty?"));
 
     cLiquidRangeLookup = rb_const_get(mLiquid, rb_intern("RangeLookup"));
     cRange = rb_const_get(rb_cObject, rb_intern("Range"));
@@ -194,5 +190,7 @@ void init_liquid_parser(void)
 
     VALUE cLiquidExpression = rb_const_get(mLiquid, rb_intern("Expression"));
     rb_define_singleton_method(cLiquidExpression, "c_parse", rb_parse_expression, 1);
+
+    vLiquidExpressionLiterals = rb_const_get(cLiquidExpression, rb_intern("LITERALS"));
 }
 

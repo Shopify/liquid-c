@@ -33,7 +33,7 @@ class TokenizerTest < MiniTest::Unit::TestCase
   private
 
   def tokenize(source)
-    tokenizer = Liquid::C::Tokenizer.new(source)
+    tokenizer = Liquid::C::Tokenizer.new(source, false)
     tokens = []
     while t = tokenizer.shift
       tokens << t

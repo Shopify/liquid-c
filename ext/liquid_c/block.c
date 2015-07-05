@@ -11,7 +11,8 @@ static ID
     intern_clear,
     intern_tags,
     intern_parse,
-    intern_square_brackets;
+    intern_square_brackets,
+    intern_set_line_number;
 
 static int is_id(int c)
 {
@@ -34,6 +35,9 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
     VALUE nodelist = rb_ivar_get(self, intern_nodelist);
 
     while (true) {
+        if (tokenizer->line_number != 0) {
+            rb_funcall(options, intern_set_line_number, 1, UINT2NUM(tokenizer->line_number));
+        }
         tokenizer_next(tokenizer, &token);
 
         switch (token.type) {
@@ -115,6 +119,7 @@ void init_liquid_block()
     intern_tags = rb_intern("tags");
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
+    intern_set_line_number = rb_intern("line_number=");
 
     VALUE cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_define_method(cLiquidBlockBody, "c_parse", rb_block_parse, 2);

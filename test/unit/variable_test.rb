@@ -84,16 +84,20 @@ class VariableTest < MiniTest::Unit::TestCase
       variable_fallback: lambda { variable_fallbacks += 1 }
     }
 
-    Liquid::Variable.new('abc', error_mode: :lax, stats_callbacks: callbacks)
+    create_variable('abc', error_mode: :lax, stats_callbacks: callbacks)
     assert_equal 1, variable_parses
     assert_equal 0, variable_fallbacks
 
-    Liquid::Variable.new('@!#', error_mode: :lax, stats_callbacks: callbacks)
+    create_variable('@!#', error_mode: :lax, stats_callbacks: callbacks)
     assert_equal 2, variable_parses
     assert_equal 1, variable_fallbacks
   end
 
   private
+
+  def create_variable(markup, options={})
+    Liquid::Variable.new(markup, Liquid::ParseContext.new(options))
+  end
 
   def variable_parse(markup)
     name = Liquid::Variable.c_strict_parse(markup, filters = [])

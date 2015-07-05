@@ -38,7 +38,7 @@ static VALUE tokenizer_allocate(VALUE klass)
     return obj;
 }
 
-static VALUE tokenizer_initialize_method(VALUE self, VALUE source)
+static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE line_numbers)
 {
     tokenizer_t *tokenizer;
 
@@ -48,6 +48,7 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source)
     tokenizer->source = source;
     tokenizer->cursor = RSTRING_PTR(source);
     tokenizer->length = RSTRING_LEN(source);
+    tokenizer->line_number = RTEST(line_numbers) ? 1 : 0;
     return Qnil;
 }
 
@@ -114,6 +115,16 @@ found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;
     tokenizer->length -= token->length;
+
+    if (tokenizer->line_number) {
+        const char *cursor = token->str;
+        const char *end = token->str + token->length;
+        while (cursor < end) {
+            if (*cursor == '\n')
+                tokenizer->line_number++;
+            cursor++;
+        }
+    }
 }
 
 static VALUE tokenizer_shift_method(VALUE self)
@@ -129,11 +140,23 @@ static VALUE tokenizer_shift_method(VALUE self)
     return rb_enc_str_new(token.str, token.length, utf8_encoding);
 }
 
+static VALUE tokenizer_line_number_method(VALUE self)
+{
+    tokenizer_t *tokenizer;
+    Tokenizer_Get_Struct(self, tokenizer);
+
+    if (tokenizer->line_number == 0)
+        return Qnil;
+
+    return UINT2NUM(tokenizer->line_number);
+}
+
 void init_liquid_tokenizer()
 {
     cLiquidTokenizer = rb_define_class_under(mLiquidC, "Tokenizer", rb_cObject);
     rb_define_alloc_func(cLiquidTokenizer, tokenizer_allocate);
-    rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 1);
+    rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 2);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
+    rb_define_method(cLiquidTokenizer, "line_number", tokenizer_line_number_method, 0);
 }
 

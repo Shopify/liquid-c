@@ -2,7 +2,8 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'liquid', github: 'Shopify/liquid', branch: 'master'
+gem 'liquid', github: 'Shopify/liquid', branch: 'remove-token-class'
+
 
 group :test do
   gem 'spy', '0.4.1'

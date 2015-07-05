@@ -18,8 +18,8 @@ Liquid::Template.class_eval do
   alias_method :ruby_tokenize, :tokenize
 
   def tokenize(source)
-    if Liquid::C.enabled && !@line_numbers
-      Liquid::C::Tokenizer.new(source.to_s)
+    if Liquid::C.enabled
+      Liquid::C::Tokenizer.new(source.to_s, @line_numbers)
     else
       ruby_tokenize(source)
     end
@@ -30,7 +30,7 @@ Liquid::BlockBody.class_eval do
   alias_method :ruby_parse, :parse
 
   def parse(tokens, options)
-    if Liquid::C.enabled && !options[:line_numbers] && !options[:profile]
+    if Liquid::C.enabled && !options[:profile]
       c_parse(tokens, options) { |t, m| yield t, m }
     else
       ruby_parse(tokens, options) { |t, m| yield t, m }

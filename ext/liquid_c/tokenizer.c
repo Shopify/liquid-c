@@ -48,7 +48,8 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE line_nu
     tokenizer->source = source;
     tokenizer->cursor = RSTRING_PTR(source);
     tokenizer->length = RSTRING_LEN(source);
-    tokenizer->line_number = RTEST(line_numbers) ? 1 : 0;
+    tokenizer->line_numbers = RTEST(line_numbers);
+    tokenizer->line_number = 1;
     return Qnil;
 }
 
@@ -66,12 +67,17 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
     token->type = TOKEN_RAW;
 
     while (cursor < last) {
-        if (*cursor++ != '{')
-            continue;
-
         char c = *cursor++;
-        if (c != '%' && c != '{')
+        if (c != '{') {
+            if (c == '\n') tokenizer->line_number++;
             continue;
+        }
+
+        c = *cursor++;
+        if (c != '%' && c != '{') {
+            if (c == '\n') tokenizer->line_number++;
+            continue;
+        }
         if (cursor - tokenizer->cursor > 2) {
             token->type = TOKEN_RAW;
             cursor -= 2;
@@ -80,13 +86,17 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
         token->type = TOKEN_INVALID;
         if (c == '%') {
             while (cursor < last) {
-                if (*cursor++ != '%')
+                if (*cursor++ != '%') {
+                    if (c == '\n') tokenizer->line_number++;
                     continue;
+                }
                 c = *cursor++;
                 while (c == '%' && cursor <= last)
                     c = *cursor++;
-                if (c != '}')
+                if (c != '}') {
+                    if (c == '\n') tokenizer->line_number++;
                     continue;
+                }
                 token->type = TOKEN_TAG;
                 goto found;
             }
@@ -95,8 +105,10 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
             goto found;
         } else {
             while (cursor < last) {
-                if (*cursor++ != '}')
+                if (*cursor++ != '}') {
+                    if (c == '\n') tokenizer->line_number++;
                     continue;
+                }
                 if (*cursor++ != '}') {
                     // variable incomplete end, used to end raw tags
                     cursor--;
@@ -115,16 +127,6 @@ found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;
     tokenizer->length -= token->length;
-
-    if (tokenizer->line_number) {
-        const char *cursor = token->str;
-        const char *end = token->str + token->length;
-        while (cursor < end) {
-            if (*cursor == '\n')
-                tokenizer->line_number++;
-            cursor++;
-        }
-    }
 }
 
 static VALUE tokenizer_shift_method(VALUE self)
@@ -145,7 +147,7 @@ static VALUE tokenizer_line_number_method(VALUE self)
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(self, tokenizer);
 
-    if (tokenizer->line_number == 0)
+    if (!tokenizer->line_numbers)
         return Qnil;
 
     return UINT2NUM(tokenizer->line_number);

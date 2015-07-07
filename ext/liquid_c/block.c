@@ -35,7 +35,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
     VALUE nodelist = rb_ivar_get(self, intern_nodelist);
 
     while (true) {
-        if (tokenizer->line_number != 0) {
+        if (tokenizer->line_numbers) {
             rb_funcall(options, intern_set_line_number, 1, UINT2NUM(tokenizer->line_number));
         }
         tokenizer_next(tokenizer, &token);

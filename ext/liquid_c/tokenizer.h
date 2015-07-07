@@ -20,6 +20,7 @@ typedef struct tokenizer {
     const char *cursor;
     long length;
     unsigned int line_number;
+    bool line_numbers;
 } tokenizer_t;
 
 extern VALUE cLiquidTokenizer;

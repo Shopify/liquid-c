@@ -48,6 +48,8 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE line_nu
     tokenizer->source = source;
     tokenizer->cursor = RSTRING_PTR(source);
     tokenizer->length = RSTRING_LEN(source);
+    // tokenizer->line_number keeps track of the current line number or it is 0
+    // to indicate that line numbers aren't being calculated
     tokenizer->line_number = RTEST(line_numbers) ? 1 : 0;
     return Qnil;
 }

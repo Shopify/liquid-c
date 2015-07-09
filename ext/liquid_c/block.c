@@ -9,7 +9,7 @@ static ID
     intern_blank,
     intern_is_blank,
     intern_clear,
-    intern_tags,
+    intern_registered_tags,
     intern_parse,
     intern_square_brackets,
     intern_set_line_number;
@@ -85,7 +85,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
 
                 if (tags == Qnil)
-                    tags = rb_funcall(cLiquidTemplate, intern_tags, 0);
+                    tags = rb_funcall(self, intern_registered_tags, 0);
 
                 VALUE tag_class = rb_funcall(tags, intern_square_brackets, 1, tag_name);
 
@@ -116,7 +116,7 @@ void init_liquid_block()
     intern_blank = rb_intern("@blank");
     intern_is_blank = rb_intern("blank?");
     intern_clear = rb_intern("clear");
-    intern_tags = rb_intern("tags");
+    intern_registered_tags = rb_intern("registered_tags");
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
     intern_set_line_number = rb_intern("line_number=");

@@ -12,16 +12,12 @@ module Liquid
   end
 end
 
-Liquid::Template.class_eval do
-  private
-
-  alias_method :ruby_tokenize, :tokenize
-
-  def tokenize(source)
+Liquid::Tokenizer.class_eval do
+  def self.new(source, line_numbers = false)
     if Liquid::C.enabled
-      Liquid::C::Tokenizer.new(source.to_s, @line_numbers)
+      Liquid::C::Tokenizer.new(source.to_s, line_numbers)
     else
-      ruby_tokenize(source)
+      super
     end
   end
 end

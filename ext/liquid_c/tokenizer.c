@@ -82,30 +82,47 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
         token->type = TOKEN_INVALID;
         if (c == '%') {
             while (cursor < last) {
-                if (*cursor++ != '%')
-                    continue;
                 c = *cursor++;
-                while (c == '%' && cursor <= last)
-                    c = *cursor++;
-                if (c != '}')
-                    continue;
-                token->type = TOKEN_TAG;
-                goto found;
+                switch (c) {
+                    case '"': case '\'': {
+                        const char *end_quote = memchr(cursor, c, last + 1 - cursor);
+                        if (end_quote) {
+                            cursor = end_quote + 1;
+                        }
+                        break;
+                    }
+                    case '%': {
+                        if (*cursor == '}') {
+                            cursor++;
+                            token->type = TOKEN_TAG;
+                            goto found;
+                        }
+                        break;
+                    }
+                }
             }
             // unterminated tag
             cursor = tokenizer->cursor + 2;
             goto found;
         } else {
             while (cursor < last) {
-                if (*cursor++ != '}')
-                    continue;
-                if (*cursor++ != '}') {
-                    // variable incomplete end, used to end raw tags
-                    cursor--;
-                    goto found;
+                c = *cursor++;
+                switch (c) {
+                    case '"': case '\'': {
+                        const char *end_quote = memchr(cursor, c, last + 1 - cursor);
+                        if (end_quote) {
+                            cursor = end_quote + 1;
+                        }
+                        break;
+                    }
+                    case '}': {
+                        if (*cursor == '}') {
+                            cursor++;
+                            token->type = TOKEN_VARIABLE;
+                        } // else variable incomplete end, used to end raw tags
+                        goto found;
+                    }
                 }
-                token->type = TOKEN_VARIABLE;
-                goto found;
             }
             // unterminated variable
             cursor = tokenizer->cursor + 2;

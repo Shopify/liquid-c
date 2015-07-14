@@ -30,6 +30,19 @@ class TokenizerTest < MiniTest::Unit::TestCase
     assert_equal [source], output
   end
 
+  def test_quoted_strings
+    assert_equal ['{% assign foo = "%}" %}'], tokenize('{% assign foo = "%}" %}')
+    assert_equal ["{%assign foo = '%}'%}"], tokenize("{%assign foo = '%}'%}")
+    assert_equal ['{{ "}}" }}'], tokenize('{{ "}}" }}')
+    assert_equal ["{{'}}'}}"], tokenize("{{'}}'}}")
+  end
+
+  def test_unterminated_quotes
+    assert_equal ['{% assign foo = " %}'], tokenize('{% assign foo = " %}')
+    assert_equal ['{{ " }}'], tokenize('{{ " }}')
+    assert_equal ["{{'}}"], tokenize("{{'}}")
+  end
+
   private
 
   def tokenize(source)

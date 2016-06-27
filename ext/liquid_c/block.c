@@ -56,6 +56,10 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             case TOKEN_RAW:
             {
                 VALUE str = rb_enc_str_new(token.str, token.length, utf8_encoding);
+
+                if(token.trim_whitespace)
+                   rb_funcall(str, rb_intern("lstrip!"), 0);
+
                 rb_ary_push(nodelist, str);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
@@ -68,7 +72,22 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_VARIABLE:
             {
-                VALUE args[2] = {rb_enc_str_new(token.str + 2, token.length - 4, utf8_encoding), options};
+                const char *start = token.str + 2;
+                long end = token.length - 4;
+
+                if (token.str[2] == '-') {
+                    VALUE last_node = rb_ary_pop(nodelist);
+                    rb_funcall(last_node, rb_intern("rstrip!"), 0);
+                    rb_ary_push(nodelist, last_node);
+                    start++;
+                    end--;
+                }
+
+                if (token.str[token.length - 3] == '-') {
+                    end--;
+                }
+
+                VALUE args[2] = {rb_enc_str_new(start, end, utf8_encoding), options};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
                 rb_ary_push(nodelist, var);
                 rb_ivar_set(self, intern_blank, Qfalse);
@@ -77,6 +96,17 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             case TOKEN_TAG:
             {
                 const char *start = token.str + 2, *end = token.str + token.length - 2;
+
+                if (token.str[2] == '-') {
+                    VALUE last_node = rb_ary_pop(nodelist);
+                    rb_funcall(last_node, rb_intern("rstrip!"), 0);
+                    rb_ary_push(nodelist, last_node);
+                    start++;
+                }
+
+                if (token.str[token.length - 3] == '-') {
+                     end--;
+                }
 
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);

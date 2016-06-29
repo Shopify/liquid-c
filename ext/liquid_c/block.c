@@ -12,7 +12,8 @@ static ID
     intern_registered_tags,
     intern_parse,
     intern_square_brackets,
-    intern_set_line_number;
+    intern_set_line_number,
+    intern_rstrip;
 
 static int is_id(int c)
 {
@@ -55,11 +56,13 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_RAW:
             {
-                VALUE str = rb_enc_str_new(token.str, token.length, utf8_encoding);
+                const char *start = token.str, *end = token.str + token.length;
+                const char *token_start = start;
 
                 if(token.trim_whitespace)
-                   rb_funcall(str, rb_intern("lstrip!"), 0);
+                    token_start = read_while(start, end, rb_isspace);
 
+                VALUE str = rb_enc_str_new(token_start, end - token_start, utf8_encoding);
                 rb_ary_push(nodelist, str);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
@@ -73,21 +76,22 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             case TOKEN_VARIABLE:
             {
                 const char *start = token.str + 2;
-                long end = token.length - 4;
+                long length = token.length - 4;
 
                 if (token.str[2] == '-') {
-                    VALUE last_node = rb_ary_pop(nodelist);
-                    rb_funcall(last_node, rb_intern("rstrip!"), 0);
-                    rb_ary_push(nodelist, last_node);
+                    if (RARRAY_LEN(nodelist) > 0) {
+                        VALUE last_node = RARRAY_AREF(nodelist, RARRAY_LEN(nodelist)-1);
+                        rb_funcall(last_node, intern_rstrip, 0);
+                    }
                     start++;
-                    end--;
+                    length--;
                 }
 
                 if (token.str[token.length - 3] == '-') {
-                    end--;
+                    length--;
                 }
 
-                VALUE args[2] = {rb_enc_str_new(start, end, utf8_encoding), options};
+                VALUE args[2] = {rb_enc_str_new(start, length, utf8_encoding), options};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
                 rb_ary_push(nodelist, var);
                 rb_ivar_set(self, intern_blank, Qfalse);
@@ -98,9 +102,10 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 const char *start = token.str + 2, *end = token.str + token.length - 2;
 
                 if (token.str[2] == '-') {
-                    VALUE last_node = rb_ary_pop(nodelist);
-                    rb_funcall(last_node, rb_intern("rstrip!"), 0);
-                    rb_ary_push(nodelist, last_node);
+                    if (RARRAY_LEN(nodelist) > 0) {
+                        VALUE last_node = RARRAY_AREF(nodelist, RARRAY_LEN(nodelist)-1);
+                        rb_funcall(last_node, intern_rstrip, 0);
+                    }
                     start++;
                 }
 
@@ -150,6 +155,7 @@ void init_liquid_block()
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
     intern_set_line_number = rb_intern("line_number=");
+    intern_rstrip = rb_intern("rstrip!");
 
     VALUE cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_define_method(cLiquidBlockBody, "c_parse", rb_block_parse, 2);

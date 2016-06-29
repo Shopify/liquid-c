@@ -119,7 +119,6 @@ found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;
     tokenizer->length -= token->length;
-
     if (tokenizer->line_number) {
         const char *cursor = token->str;
         const char *end = token->str + token->length;
@@ -129,13 +128,10 @@ found:
             cursor++;
         }
     }
-
-    if(token->type == TOKEN_RAW && tokenizer->trim_whitespace ) {
+    if(token->type == TOKEN_RAW && tokenizer->trim_whitespace) {
         token->trim_whitespace = 1;
     }
-
     tokenizer->trim_whitespace = ((token->type == TOKEN_VARIABLE || token->type == TOKEN_TAG) && token->str[token->length - 3] == '-');
-
 }
 
 static VALUE tokenizer_shift_method(VALUE self)

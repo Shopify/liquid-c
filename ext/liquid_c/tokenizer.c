@@ -48,7 +48,7 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE line_nu
     tokenizer->source = source;
     tokenizer->cursor = RSTRING_PTR(source);
     tokenizer->length = RSTRING_LEN(source);
-    tokenizer->trim_whitespace = 0;
+    tokenizer->lstrip_flag = 0;
     // tokenizer->line_number keeps track of the current line number or it is 0
     // to indicate that line numbers aren't being calculated
     tokenizer->line_number = RTEST(line_numbers) ? 1 : 0;
@@ -67,21 +67,28 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
 
     token->str = cursor;
     token->type = TOKEN_RAW;
-    token->trim_whitespace = 0;
+    token->lstrip = 0;
+    token->rstrip = 0;
 
     while (cursor < last) {
         if (*cursor++ != '{')
             continue;
 
         char c = *cursor++;
+        char w = *cursor++;
         if (c != '%' && c != '{')
             continue;
-        if (cursor - tokenizer->cursor > 2) {
+        if (cursor - tokenizer->cursor > 3) {
             token->type = TOKEN_RAW;
-            cursor -= 2;
+            cursor -= 3;
+            token->rstrip = (w == '-');
+            if(tokenizer->lstrip_flag)
+                token->lstrip = 1;
+            tokenizer->lstrip_flag = 0;
             goto found;
         }
         token->type = TOKEN_INVALID;
+        token->lstrip = (w == '-');
         if (c == '%') {
             while (cursor < last) {
                 if (*cursor++ != '%')
@@ -92,10 +99,13 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
                 if (c != '}')
                     continue;
                 token->type = TOKEN_TAG;
+                if(token->str[cursor - tokenizer->cursor - 3] == '-')
+                    token->rstrip = tokenizer->lstrip_flag = 1;
                 goto found;
             }
             // unterminated tag
-            cursor = tokenizer->cursor + 2;
+            cursor = tokenizer->cursor + 3;
+            tokenizer->lstrip_flag = 0;
             goto found;
         } else {
             while (cursor < last) {
@@ -107,14 +117,19 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
                     goto found;
                 }
                 token->type = TOKEN_VARIABLE;
+                if(token->str[cursor - tokenizer->cursor - 3] == '-')
+                    token->rstrip = tokenizer->lstrip_flag = 1;
                 goto found;
             }
             // unterminated variable
-            cursor = tokenizer->cursor + 2;
+            cursor = tokenizer->cursor + 3;
+            tokenizer->lstrip_flag = 0;
             goto found;
         }
     }
     cursor = last + 1;
+    if(tokenizer->lstrip_flag)
+        token->lstrip = 1;
 found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;
@@ -128,10 +143,6 @@ found:
             cursor++;
         }
     }
-    if(token->type == TOKEN_RAW && tokenizer->trim_whitespace) {
-        token->trim_whitespace = 1;
-    }
-    tokenizer->trim_whitespace = ((token->type == TOKEN_VARIABLE || token->type == TOKEN_TAG) && token->str[token->length - 3] == '-');
 }
 
 static VALUE tokenizer_shift_method(VALUE self)

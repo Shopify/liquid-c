@@ -59,10 +59,12 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 const char *start = token.str, *end = token.str + token.length;
                 const char *token_start = start;
 
-                if(token.trim_whitespace)
+                if(token.lstrip)
                     token_start = read_while(start, end, rb_isspace);
 
                 VALUE str = rb_enc_str_new(token_start, end - token_start, utf8_encoding);
+                if(token.rstrip)
+                    rb_funcall(str, intern_rstrip, 0);
                 rb_ary_push(nodelist, str);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
@@ -75,23 +77,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_VARIABLE:
             {
-                const char *start = token.str + 2;
-                long length = token.length - 4;
-
-                if (token.str[2] == '-') {
-                    if (RARRAY_LEN(nodelist) > 0) {
-                        VALUE last_node = RARRAY_AREF(nodelist, RARRAY_LEN(nodelist)-1);
-                        rb_funcall(last_node, intern_rstrip, 0);
-                    }
-                    start++;
-                    length--;
-                }
-
-                if (token.str[token.length - 3] == '-') {
-                    length--;
-                }
-
-                VALUE args[2] = {rb_enc_str_new(start, length, utf8_encoding), options};
+                VALUE args[2] = {rb_enc_str_new(token.str + 2 + token.lstrip, token.length - 4 - token.lstrip - token.rstrip, utf8_encoding), options};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
                 rb_ary_push(nodelist, var);
                 rb_ivar_set(self, intern_blank, Qfalse);
@@ -99,19 +85,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_TAG:
             {
-                const char *start = token.str + 2, *end = token.str + token.length - 2;
-
-                if (token.str[2] == '-') {
-                    if (RARRAY_LEN(nodelist) > 0) {
-                        VALUE last_node = RARRAY_AREF(nodelist, RARRAY_LEN(nodelist)-1);
-                        rb_funcall(last_node, intern_rstrip, 0);
-                    }
-                    start++;
-                }
-
-                if (token.str[token.length - 3] == '-') {
-                     end--;
-                }
+                const char *start = token.str + (2 + token.lstrip), *end = token.str + (token.length - 2 - token.rstrip);
 
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);

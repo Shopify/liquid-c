@@ -12,8 +12,7 @@ static ID
     intern_registered_tags,
     intern_parse,
     intern_square_brackets,
-    intern_set_line_number,
-    intern_rstrip;
+    intern_set_line_number;
 
 static int is_id(int c)
 {
@@ -24,6 +23,14 @@ inline static const char *read_while(const char *start, const char *end, int (fu
 {
     while (start < end && func((unsigned char) *start)) start++;
     return start;
+}
+
+inline static const char *read_while_end(const char *start, const char *end, int (func)(int))
+{
+    end--;
+    while (start < end && func((unsigned char) *end)) end--;
+    end++;
+    return end;
 }
 
 static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
@@ -58,13 +65,14 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             {
                 const char *start = token.str, *end = token.str + token.length;
                 const char *token_start = start;
+                const char *token_end = end;
 
                 if(token.lstrip)
                     token_start = read_while(start, end, rb_isspace);
-
-                VALUE str = rb_enc_str_new(token_start, end - token_start, utf8_encoding);
                 if(token.rstrip)
-                    rb_funcall(str, intern_rstrip, 0);
+                    token_end = read_while_end(token_start, end, rb_isspace);
+                    
+                VALUE str = rb_enc_str_new(token_start, token_end - token_start, utf8_encoding);
                 rb_ary_push(nodelist, str);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
@@ -129,7 +137,6 @@ void init_liquid_block()
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
     intern_set_line_number = rb_intern("line_number=");
-    intern_rstrip = rb_intern("rstrip!");
 
     VALUE cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_define_method(cLiquidBlockBody, "c_parse", rb_block_parse, 2);

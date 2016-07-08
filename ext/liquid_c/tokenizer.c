@@ -134,6 +134,7 @@ found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;
     tokenizer->length -= token->length;
+
     if (tokenizer->line_number) {
         const char *cursor = token->str;
         const char *end = token->str + token->length;

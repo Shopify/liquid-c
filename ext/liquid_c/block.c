@@ -63,9 +63,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_RAW:
             {
-                const char *start = token.str, *end = token.str + token.length;
-                const char *token_start = start;
-                const char *token_end = end;
+                const char *start = token.str, *end = token.str + token.length, *token_start = start, *token_end = end;
 
                 if(token.lstrip)
                     token_start = read_while(start, end, rb_isspace);

@@ -91,7 +91,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_TAG:
             {
-                const char *start = token.str + (2 + token.lstrip), *end = token.str + (token.length - 2 - token.rstrip);
+                const char *start = token.str + 2 + token.lstrip, *end = token.str + token.length - 2 - token.rstrip;
 
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);

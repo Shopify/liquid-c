@@ -75,20 +75,21 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
             continue;
 
         char c = *cursor++;
-        char w = *cursor++;
+        if (cursor <= last && *cursor == '-') {
+          cursor++;
+          token->rstrip = 1;
+        }
         if (c != '%' && c != '{')
             continue;
-        if (cursor - tokenizer->cursor > 3) {
+        if (cursor - tokenizer->cursor > 2 + token->rstrip) {
             token->type = TOKEN_RAW;
-            cursor -= 3;
-            token->rstrip = (w == '-');
-            if(tokenizer->lstrip_flag)
-                token->lstrip = 1;
+            cursor -= 2 + token->rstrip;
+            token->lstrip = tokenizer->lstrip_flag;
             tokenizer->lstrip_flag = 0;
             goto found;
         }
         token->type = TOKEN_INVALID;
-        token->lstrip = (w == '-');
+        token->lstrip = token->rstrip;
         if (c == '%') {
             while (cursor < last) {
                 if (*cursor++ != '%')
@@ -99,12 +100,12 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
                 if (c != '}')
                     continue;
                 token->type = TOKEN_TAG;
-                if(token->str[cursor - tokenizer->cursor - 3] == '-')
+                if(cursor[-3] == '-')
                     token->rstrip = tokenizer->lstrip_flag = 1;
                 goto found;
             }
             // unterminated tag
-            cursor = tokenizer->cursor + 3;
+            cursor = tokenizer->cursor + 2;
             tokenizer->lstrip_flag = 0;
             goto found;
         } else {
@@ -117,19 +118,19 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
                     goto found;
                 }
                 token->type = TOKEN_VARIABLE;
-                if(token->str[cursor - tokenizer->cursor - 3] == '-')
+                if(cursor[-3] == '-')
                     token->rstrip = tokenizer->lstrip_flag = 1;
                 goto found;
             }
             // unterminated variable
-            cursor = tokenizer->cursor + 3;
+            cursor = tokenizer->cursor + 2;
             tokenizer->lstrip_flag = 0;
             goto found;
         }
     }
     cursor = last + 1;
-    if(tokenizer->lstrip_flag)
-        token->lstrip = 1;
+    token->lstrip = tokenizer->lstrip_flag;
+    tokenizer->lstrip_flag = 0;
 found:
     token->length = cursor - tokenizer->cursor;
     tokenizer->cursor += token->length;

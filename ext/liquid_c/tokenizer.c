@@ -75,12 +75,12 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
             continue;
 
         char c = *cursor++;
+        if (c != '%' && c != '{')
+            continue;
         if (cursor <= last && *cursor == '-') {
           cursor++;
           token->rstrip = 1;
         }
-        if (c != '%' && c != '{')
-            continue;
         if (cursor - tokenizer->cursor > 2 + token->rstrip) {
             token->type = TOKEN_RAW;
             cursor -= 2 + token->rstrip;

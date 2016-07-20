@@ -90,6 +90,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
         }
         token->type = TOKEN_INVALID;
         token->lstrip = token->rstrip;
+        token->rstrip = 0;
         if (c == '%') {
             while (cursor < last) {
                 if (*cursor++ != '%')

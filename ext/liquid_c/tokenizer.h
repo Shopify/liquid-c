@@ -13,6 +13,8 @@ typedef struct token {
     enum token_type type;
     const char *str;
     long length;
+    unsigned int lstrip;
+    unsigned int rstrip;
 } token_t;
 
 typedef struct tokenizer {
@@ -20,6 +22,7 @@ typedef struct tokenizer {
     const char *cursor;
     long length;
     unsigned int line_number;
+    unsigned int lstrip_flag;
 } tokenizer_t;
 
 extern VALUE cLiquidTokenizer;

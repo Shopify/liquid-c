@@ -25,6 +25,14 @@ inline static const char *read_while(const char *start, const char *end, int (fu
     return start;
 }
 
+inline static const char *read_while_end(const char *start, const char *end, int (func)(int))
+{
+    end--;
+    while (start < end && func((unsigned char) *end)) end--;
+    end++;
+    return end;
+}
+
 static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
 {
     tokenizer_t *tokenizer;
@@ -55,7 +63,14 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_RAW:
             {
-                VALUE str = rb_enc_str_new(token.str, token.length, utf8_encoding);
+                const char *start = token.str, *end = token.str + token.length, *token_start = start, *token_end = end;
+
+                if(token.lstrip)
+                    token_start = read_while(start, end, rb_isspace);
+                if(token.rstrip)
+                    token_end = read_while_end(token_start, end, rb_isspace);
+                    
+                VALUE str = rb_enc_str_new(token_start, token_end - token_start, utf8_encoding);
                 rb_ary_push(nodelist, str);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
@@ -68,7 +83,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_VARIABLE:
             {
-                VALUE args[2] = {rb_enc_str_new(token.str + 2, token.length - 4, utf8_encoding), options};
+                VALUE args[2] = {rb_enc_str_new(token.str + 2 + token.lstrip, token.length - 4 - token.lstrip - token.rstrip, utf8_encoding), options};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
                 rb_ary_push(nodelist, var);
                 rb_ivar_set(self, intern_blank, Qfalse);
@@ -76,7 +91,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_TAG:
             {
-                const char *start = token.str + 2, *end = token.str + token.length - 2;
+                const char *start = token.str + 2 + token.lstrip, *end = token.str + token.length - 2 - token.rstrip;
 
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);

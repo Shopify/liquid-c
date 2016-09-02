@@ -81,7 +81,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
           cursor++;
           token->rstrip = 1;
         }
-        if (cursor - tokenizer->cursor > 2 + token->rstrip) {
+        if (cursor - tokenizer->cursor > (ptrdiff_t)(2 + token->rstrip)) {
             token->type = TOKEN_RAW;
             cursor -= 2 + token->rstrip;
             token->lstrip = tokenizer->lstrip_flag;

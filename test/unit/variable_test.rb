@@ -19,6 +19,7 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_raises(Liquid::SyntaxError) { variable_parse('question?mark') }
     assert_raises(Liquid::SyntaxError) { variable_parse('123.foo') }
     assert_raises(Liquid::SyntaxError) { variable_parse(' | nothing') }
+    assert_raises(Liquid::SyntaxError) { variable_parse('ending-dash-') }
 
     ['a .b', 'a. b', 'a . b'].each do |var|
       assert_raises(Liquid::SyntaxError) { variable_parse(var) }

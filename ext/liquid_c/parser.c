@@ -120,9 +120,8 @@ static VALUE parse_variable(parser_t *p)
     }
 
     if (RARRAY_LEN(lookups) == 0) {
-        VALUE undefined = FIXNUM_P(-1);
-        VALUE literal = rb_hash_lookup2(vLiquidExpressionLiterals, name, undefined);
-        if (literal != undefined) return literal;
+        VALUE literal = rb_hash_lookup2(vLiquidExpressionLiterals, name, Qundef);
+        if (literal != Qundef) return literal;
     }
 
     VALUE args[4] = {Qfalse, name, lookups, INT2FIX(command_flags)};

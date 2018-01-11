@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Justin Li", "Dylan Thacker-Smith"]
   spec.email         = ["gems@shopify.com"]
   spec.summary       = "Liquid performance extension in C"
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/shopify/liquid-c"
   spec.license       = "MIT"
 
   spec.extensions    = ['ext/liquid_c/extconf.rb']

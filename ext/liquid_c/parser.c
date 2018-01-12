@@ -192,4 +192,3 @@ void init_liquid_parser(void)
 
     vLiquidExpressionLiterals = rb_const_get(cLiquidExpression, rb_intern("LITERALS"));
 }
-

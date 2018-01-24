@@ -88,6 +88,7 @@ void tokenizer_next(tokenizer_t *tokenizer, token_t *token)
             tokenizer->lstrip_flag = 0;
             goto found;
         }
+        tokenizer->lstrip_flag = 0;
         token->type = TOKEN_INVALID;
         token->lstrip = token->rstrip;
         token->rstrip = 0;

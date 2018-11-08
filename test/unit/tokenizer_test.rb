@@ -1,4 +1,5 @@
-# encoding: utf-8
+# frozen_string_literal: true
+
 require 'test_helper'
 
 class TokenizerTest < MiniTest::Unit::TestCase
@@ -19,7 +20,7 @@ class TokenizerTest < MiniTest::Unit::TestCase
     assert_equal [' ', '{%comment%}', ' '], tokenize(' {%comment%} ')
 
     assert_equal [' ', '{%comment%}', ' ', '{%endcomment%}', ' '], tokenize(' {%comment%} {%endcomment%} ')
-    assert_equal ['  ', '{% comment %}', ' ', '{% endcomment %}', ' '], tokenize("  {% comment %} {% endcomment %} ")
+    assert_equal ['  ', '{% comment %}', ' ', '{% endcomment %}', ' '], tokenize('  {% comment %} {% endcomment %} ')
   end
 
   def test_utf8_encoded_template

@@ -1,4 +1,5 @@
-# encoding: utf-8
+# frozen_string_literal: true
+
 require 'test_helper'
 
 class VariableTest < MiniTest::Unit::TestCase
@@ -53,10 +54,10 @@ class VariableTest < MiniTest::Unit::TestCase
     assert_equal [name, [['filter', [abc]]]], variable_parse(' name | filter: abc ')
 
     assert_equal [name, [['filter1', [abc]], ['filter2', [abc]]]],
-      variable_parse(' name | filter1: abc | filter2: abc ')
+                 variable_parse(' name | filter1: abc | filter2: abc ')
 
-    assert_equal [name, [['filter', [lookup('a')], {'b' => lookup('c'), 'd' => lookup('e')}]]],
-      variable_parse('name | filter : a , b : c , d : e')
+    assert_equal [name, [['filter', [lookup('a')], { 'b' => lookup('c'), 'd' => lookup('e') }]]],
+                 variable_parse('name | filter : a , b : c , d : e')
 
     assert_raises Liquid::SyntaxError do
       variable_parse('name | filter : a : b : c : d : e')
@@ -65,7 +66,7 @@ class VariableTest < MiniTest::Unit::TestCase
 
   def test_unicode_strings
     assert_equal ['å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒ', []],
-      variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒ"')
+                 variable_parse('"å߀êùｉｄｈｔлｓԁѵ߀ｒáƙìｓｔɦｅƅêｓｔｐｃｍáѕｔｅｒｒãｃêｃհèｒｒ"')
   end
 
   def test_broken_unicode_errors
@@ -80,8 +81,8 @@ class VariableTest < MiniTest::Unit::TestCase
     variable_fallbacks = 0
 
     callbacks = {
-      variable_parse: lambda { variable_parses += 1 },
-      variable_fallback: lambda { variable_fallbacks += 1 }
+      variable_parse: -> { variable_parses += 1 },
+      variable_fallback: -> { variable_fallbacks += 1 }
     }
 
     create_variable('abc', error_mode: :lax, stats_callbacks: callbacks)
@@ -95,7 +96,7 @@ class VariableTest < MiniTest::Unit::TestCase
 
   private
 
-  def create_variable(markup, options={})
+  def create_variable(markup, options = {})
     Liquid::Variable.new(markup, Liquid::ParseContext.new(options))
   end
 

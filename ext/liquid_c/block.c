@@ -65,11 +65,16 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             {
                 const char *start = token.str, *end = token.str + token.length, *token_start = start, *token_end = end;
 
-                if(token.lstrip)
+                if (token.lstrip)
                     token_start = read_while(start, end, rb_isspace);
-                if(token.rstrip)
+
+                if (token.rstrip)
                     token_end = read_while_end(token_start, end, rb_isspace);
-                    
+
+                // Skip token entirely if there is no data to be rendered.
+                if (token_start == token_end)
+                    break;
+
                 VALUE str = rb_enc_str_new(token_start, token_end - token_start, utf8_encoding);
                 rb_ary_push(nodelist, str);
 

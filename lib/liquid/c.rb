@@ -5,9 +5,9 @@ require 'liquid'
 require 'liquid_c'
 
 Liquid::Tokenizer.class_eval do
-  def self.new(source, line_numbers = false)
+  def self.new(source, line_numbers = false, line_number: nil, for_liquid_tag: false)
     if Liquid::C.enabled
-      Liquid::C::Tokenizer.new(source.to_s, line_numbers)
+      Liquid::C::Tokenizer.new(source.to_s, line_number || (line_numbers ? 1 : 0), for_liquid_tag)
     else
       super
     end

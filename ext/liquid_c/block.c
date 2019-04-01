@@ -1,5 +1,6 @@
 #include "liquid.h"
 #include "tokenizer.h"
+#include "stringutil.h"
 #include <stdio.h>
 
 static ID
@@ -19,21 +20,7 @@ static int is_id(int c)
     return rb_isalnum(c) || c == '_';
 }
 
-inline static const char *read_while(const char *start, const char *end, int (func)(int))
-{
-    while (start < end && func((unsigned char) *start)) start++;
-    return start;
-}
-
-inline static const char *read_while_end(const char *start, const char *end, int (func)(int))
-{
-    end--;
-    while (start < end && func((unsigned char) *end)) end--;
-    end++;
-    return end;
-}
-
-static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
+static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
 {
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(tokens, tokenizer);
@@ -43,8 +30,9 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
     VALUE nodelist = rb_ivar_get(self, intern_nodelist);
 
     while (true) {
-        if (tokenizer->line_number != 0) {
-            rb_funcall(options, intern_set_line_number, 1, UINT2NUM(tokenizer->line_number));
+        int token_start_line_number = tokenizer->line_number;
+        if (token_start_line_number != 0) {
+            rb_funcall(parse_context, intern_set_line_number, 1, UINT2NUM(token_start_line_number));
         }
         tokenizer_next(tokenizer, &token);
 
@@ -54,22 +42,23 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
 
             case TOKEN_INVALID:
             {
-                VALUE str = rb_enc_str_new(token.str, token.length, utf8_encoding);
+                VALUE str = rb_enc_str_new(token.str_full, token.len_full, utf8_encoding);
 
                 ID raise_method_id = intern_raise_missing_variable_terminator;
-                if (token.str[1] == '%') raise_method_id = intern_raise_missing_tag_terminator;
+                if (token.str_full[1] == '%') raise_method_id = intern_raise_missing_tag_terminator;
 
-                return rb_funcall(self, raise_method_id, 2, str, options);
+                return rb_funcall(self, raise_method_id, 2, str, parse_context);
             }
             case TOKEN_RAW:
             {
-                const char *start = token.str, *end = token.str + token.length, *token_start = start, *token_end = end;
+                const char *start = token.str_full, *end = token.str_full + token.len_full;
+                const char *token_start = start, *token_end = end;
 
                 if (token.lstrip)
                     token_start = read_while(start, end, rb_isspace);
 
                 if (token.rstrip)
-                    token_end = read_while_end(token_start, end, rb_isspace);
+                    token_end = read_while_reverse(token_start, end, rb_isspace);
 
                 // Skip token entirely if there is no data to be rendered.
                 if (token_start == token_end)
@@ -79,16 +68,16 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 rb_ary_push(nodelist, str);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue) {
-                    const char *end = token.str + token.length;
+                    const char *end = token.str_full + token.len_full;
 
-                    if (read_while(token.str, end, rb_isspace) < end)
+                    if (read_while(token.str_full, end, rb_isspace) < end)
                         rb_ivar_set(self, intern_blank, Qfalse);
                 }
                 break;
             }
             case TOKEN_VARIABLE:
             {
-                VALUE args[2] = {rb_enc_str_new(token.str + 2 + token.lstrip, token.length - 4 - token.lstrip - token.rstrip, utf8_encoding), options};
+                VALUE args[2] = {rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding), parse_context};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
                 rb_ary_push(nodelist, var);
                 rb_ivar_set(self, intern_blank, Qfalse);
@@ -96,11 +85,28 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
             }
             case TOKEN_TAG:
             {
-                const char *start = token.str + 2 + token.lstrip, *end = token.str + token.length - 2 - token.rstrip;
+                const char *start = token.str_trimmed, *end = token.str_trimmed + token.len_trimmed;
 
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);
                 const char *name_end = read_while(name_start, end, is_id);
+                long name_len = name_end - name_start;
+
+                if (name_len == 0) {
+                    VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
+                    return rb_yield_values(2, str, str);
+                }
+
+                if (strncmp(name_start, "liquid", name_len < 6 ? name_len : 6) == 0) {
+                    const char *liquid_tag_start = read_while(name_end, end, rb_isspace);
+                    int line_number = token_start_line_number;
+                    if (line_number) {
+                        line_number += count_newlines(token.str_full, liquid_tag_start);
+                    }
+                    VALUE liquid_tag_tokenizer = tokenizer_new_from_cstr(liquid_tag_start, end, line_number, true);
+                    rb_block_parse(self, liquid_tag_tokenizer, parse_context);
+                    break;
+                }
 
                 VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
 
@@ -115,7 +121,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE options)
                 if (tag_class == Qnil)
                     return rb_yield_values(2, tag_name, markup);
 
-                VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, options);
+                VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, parse_context);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
                     rb_ivar_set(self, intern_blank, Qfalse);

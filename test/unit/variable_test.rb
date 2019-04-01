@@ -1,7 +1,7 @@
 # encoding: utf-8
 require 'test_helper'
 
-class VariableTest < MiniTest::Unit::TestCase
+class VariableTest < Minitest::Test
   def test_variable_parse
     assert_equal [lookup('hello'), []], variable_parse('hello')
     assert_equal ['world', []], variable_parse(' "world" ')

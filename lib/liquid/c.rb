@@ -2,16 +2,6 @@ require 'liquid/c/version'
 require 'liquid'
 require 'liquid_c'
 
-module Liquid
-  module C
-    @enabled = true
-
-    class << self
-      attr_accessor :enabled
-    end
-  end
-end
-
 Liquid::Tokenizer.class_eval do
   def self.new(source, line_numbers = false)
     if Liquid::C.enabled
@@ -91,5 +81,26 @@ Liquid::Expression.class_eval do
       end
       ruby_parse(markup)
     end
+  end
+end
+
+Liquid::Context.alias_method :ruby_evaluate, :evaluate
+
+module Liquid
+  module C
+    class << self
+      attr_reader :enabled
+
+      def enabled=(value)
+        @enabled = value
+        if value
+          Liquid::Context.alias_method :evaluate, :c_evaluate
+        else
+          Liquid::Context.alias_method :evaluate, :ruby_evaluate
+        end
+      end
+    end
+
+    self.enabled = true
   end
 end

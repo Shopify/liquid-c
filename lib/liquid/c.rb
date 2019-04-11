@@ -84,7 +84,18 @@ Liquid::Expression.class_eval do
   end
 end
 
-Liquid::Context.alias_method :ruby_evaluate, :evaluate
+Liquid::Context.class_eval do
+  alias_method :ruby_evaluate, :evaluate
+  alias_method :ruby_find_variable, :find_variable
+
+  # This isn't entered often by Ruby (most calls stay in C via VariableLookup#evaluate)
+  # so the wrapper method isn't costly.
+  def c_find_variable_kwarg(key, raise_on_not_found: true)
+    c_find_variable(key, raise_on_not_found)
+  end
+end
+
+Liquid::VariableLookup.alias_method :ruby_evaluate, :evaluate
 
 module Liquid
   module C
@@ -95,8 +106,12 @@ module Liquid
         @enabled = value
         if value
           Liquid::Context.alias_method :evaluate, :c_evaluate
+          Liquid::Context.alias_method :find_variable, :c_find_variable_kwarg
+          Liquid::VariableLookup.alias_method :evaluate, :c_evaluate
         else
           Liquid::Context.alias_method :evaluate, :ruby_evaluate
+          Liquid::Context.alias_method :find_variable, :ruby_find_variable
+          Liquid::VariableLookup.alias_method :evaluate, :ruby_evaluate
         end
       end
     end

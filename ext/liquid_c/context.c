@@ -49,6 +49,8 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
     for (long i = 0; i < scopes_len; i++) {
         VALUE this_scope = scopes_ptr[i];
         if (TYPE(this_scope) == T_HASH) {
+            // Does not invoke any default value proc, this is equivalent in
+            // cost and semantics to #key? but loads the value as well
             variable = rb_hash_lookup2(this_scope, key, Qundef);
             if (variable != Qundef) {
                 scope = this_scope;
@@ -64,14 +66,27 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
     Check_Type(environments, T_ARRAY);
     const VALUE *environments_ptr = RARRAY_CONST_PTR(environments);
     long environments_len = RARRAY_LEN(environments);
+    VALUE strict_variables = rb_ivar_get(self, id_ivar_strict_variables);
 
     for (long i = 0; i < environments_len; i++) {
         VALUE this_environ = environments_ptr[i];
         if (TYPE(this_environ) == T_HASH) {
+            // Does not invoke any default value proc, this is equivalent in
+            // cost and semantics to #key? but loads the value as well
             variable = rb_hash_lookup2(this_environ, key, Qundef);
             if (variable != Qundef) {
                 scope = this_environ;
                 goto variable_found;
+            }
+
+            if (!(RTEST(raise_on_not_found) && RTEST(strict_variables))) {
+                // If we aren't running strictly, we need to invoke the default
+                // value proc, rb_hash_aref does this
+                variable = rb_hash_aref(this_environ, key);
+                if (variable != Qnil) {
+                    scope = this_environ;
+                    goto variable_found;
+                }
             }
         } else if (RTEST(rb_funcall(this_environ, id_has_key, 1, key))) {
             variable = rb_funcall(this_environ, id_aref, 1, key);

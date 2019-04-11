@@ -44,8 +44,8 @@ class ContextTest < Minitest::Test
 
       context.evaluate(lookup)
     ensure
-      call_trace&.disable
-      c_call_trace&.disable
+      call_trace.disable if call_trace
+      c_call_trace.disable if c_call_trace
     end
 
     assert_equal 0, called_ruby_method_count

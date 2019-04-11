@@ -95,7 +95,9 @@ Liquid::Context.class_eval do
   end
 end
 
-Liquid::VariableLookup.alias_method :ruby_evaluate, :evaluate
+Liquid::VariableLookup.class_eval do
+  alias_method :ruby_evaluate, :evaluate
+end
 
 module Liquid
   module C
@@ -105,13 +107,13 @@ module Liquid
       def enabled=(value)
         @enabled = value
         if value
-          Liquid::Context.alias_method :evaluate, :c_evaluate
-          Liquid::Context.alias_method :find_variable, :c_find_variable_kwarg
-          Liquid::VariableLookup.alias_method :evaluate, :c_evaluate
+          Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
+          Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
+          Liquid::VariableLookup.send(:alias_method, :evaluate, :c_evaluate)
         else
-          Liquid::Context.alias_method :evaluate, :ruby_evaluate
-          Liquid::Context.alias_method :find_variable, :ruby_find_variable
-          Liquid::VariableLookup.alias_method :evaluate, :ruby_evaluate
+          Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
+          Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
+          Liquid::VariableLookup.send(:alias_method, :evaluate, :ruby_evaluate)
         end
       end
     end

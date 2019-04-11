@@ -8,6 +8,11 @@ void context_maybe_raise_undefined_variable(VALUE self, VALUE key);
 
 extern ID id_call, id_to_liquid, id_set_context;
 
+#ifndef RB_SPECIAL_CONST_P
+// RB_SPECIAL_CONST_P added in Ruby 2.3
+#define RB_SPECIAL_CONST_P SPECIAL_CONST_P
+#endif
+
 inline static VALUE value_to_liquid_and_set_context(VALUE value, VALUE context_to_set)
 {
     if (RB_SPECIAL_CONST_P(value))

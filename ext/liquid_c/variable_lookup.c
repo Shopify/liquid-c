@@ -14,11 +14,9 @@ VALUE variable_lookup_evaluate(VALUE self, VALUE context)
 
     VALUE lookups = rb_ivar_get(self, id_ivar_lookups);
     Check_Type(lookups, T_ARRAY);
-    const VALUE *lookups_ptr = RARRAY_CONST_PTR(lookups);
-    long lookups_len = RARRAY_LEN(lookups);
 
-    for (long i = 0; i < lookups_len; i++) {
-        VALUE key = context_evaluate(context, lookups_ptr[i]);
+    for (long i = 0; i < RARRAY_LEN(lookups); i++) {
+        VALUE key = context_evaluate(context, RARRAY_AREF(lookups, i));
         VALUE next_object;
 
         if (rb_respond_to(object, id_aref) && (
@@ -26,7 +24,7 @@ VALUE variable_lookup_evaluate(VALUE self, VALUE context)
             (rb_obj_is_kind_of(key, rb_cInteger) && rb_respond_to(object, id_fetch))
         )) {
             next_object = rb_funcall(object, id_aref, 1, key);
-            materialize_proc(context, object, key, next_object);
+            next_object = materialize_proc(context, object, key, next_object);
             object = value_to_liquid_and_set_context(next_object, context);
             continue;
         }

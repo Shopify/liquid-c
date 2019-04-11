@@ -3,7 +3,7 @@
 #include "variable_lookup.h"
 
 static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
-ID id_call, id_to_liquid, id_set_context;
+ID id_aset, id_call, id_to_liquid, id_set_context;
 static ID id_evaluate, id_has_key, id_aref;
 static ID id_ivar_scopes, id_ivar_environments, id_ivar_strict_variables;
 
@@ -43,11 +43,9 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 
     VALUE scopes = rb_ivar_get(self, id_ivar_scopes);
     Check_Type(scopes, T_ARRAY);
-    const VALUE *scopes_ptr = RARRAY_CONST_PTR(scopes);
-    long scopes_len = RARRAY_LEN(scopes);
 
-    for (long i = 0; i < scopes_len; i++) {
-        VALUE this_scope = scopes_ptr[i];
+    for (long i = 0; i < RARRAY_LEN(scopes); i++) {
+        VALUE this_scope = RARRAY_AREF(scopes, i);
         if (RB_LIKELY(TYPE(this_scope) == T_HASH)) {
             // Does not invoke any default value proc, this is equivalent in
             // cost and semantics to #key? but loads the value as well
@@ -66,12 +64,10 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 
     VALUE environments = rb_ivar_get(self, id_ivar_environments);
     Check_Type(environments, T_ARRAY);
-    const VALUE *environments_ptr = RARRAY_CONST_PTR(environments);
-    long environments_len = RARRAY_LEN(environments);
     VALUE strict_variables = rb_ivar_get(self, id_ivar_strict_variables);
 
-    for (long i = 0; i < environments_len; i++) {
-        VALUE this_environ = environments_ptr[i];
+    for (long i = 0; i < RARRAY_LEN(environments); i++) {
+        VALUE this_environ = RARRAY_AREF(environments, i);
         if (RB_LIKELY(TYPE(this_environ) == T_HASH)) {
             // Does not invoke any default value proc, this is equivalent in
             // cost and semantics to #key? but loads the value as well
@@ -115,6 +111,7 @@ void init_liquid_context()
     id_evaluate = rb_intern("evaluate");
     id_call = rb_intern("call");
     id_has_key = rb_intern("key?");
+    id_aset = rb_intern("[]=");
     id_aref = rb_intern("[]");
     id_to_liquid = rb_intern("to_liquid");
     id_set_context = rb_intern("context=");

@@ -6,7 +6,7 @@ VALUE context_evaluate(VALUE self, VALUE expression);
 VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found);
 void context_maybe_raise_undefined_variable(VALUE self, VALUE key);
 
-extern ID id_call, id_to_liquid, id_set_context;
+extern ID id_aset, id_call, id_to_liquid, id_set_context;
 
 #ifndef RB_SPECIAL_CONST_P
 // RB_SPECIAL_CONST_P added in Ruby 2.3
@@ -33,15 +33,13 @@ inline static VALUE value_to_liquid_and_set_context(VALUE value, VALUE context_t
 
 inline static VALUE materialize_proc(VALUE context, VALUE scope, VALUE key, VALUE value)
 {
-    if (scope != Qnil && !RB_SPECIAL_CONST_P(value) && TYPE(scope) == T_HASH) {
-        if (rb_obj_is_kind_of(value, rb_cProc)) {
-            if (rb_proc_arity(value) == 1) {
-                value = rb_funcall(value, id_call, 1, context);
-            } else {
-                value = rb_funcall(value, id_call, 0);
-            }
-            rb_hash_aset(scope, key, value);
+    if (scope != Qnil && rb_obj_is_proc(value) && rb_respond_to(scope, id_aset)) {
+        if (rb_proc_arity(value) == 1) {
+            value = rb_funcall(value, id_call, 1, context);
+        } else {
+            value = rb_funcall(value, id_call, 0);
         }
+        rb_funcall(scope, id_aset, 2, key, value);
     }
     return value;
 }

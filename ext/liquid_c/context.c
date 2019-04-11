@@ -48,7 +48,7 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 
     for (long i = 0; i < scopes_len; i++) {
         VALUE this_scope = scopes_ptr[i];
-        if (TYPE(this_scope) == T_HASH) {
+        if (RB_LIKELY(TYPE(this_scope) == T_HASH)) {
             // Does not invoke any default value proc, this is equivalent in
             // cost and semantics to #key? but loads the value as well
             variable = rb_hash_lookup2(this_scope, key, Qundef);
@@ -57,6 +57,8 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
                 goto variable_found;
             }
         } else if (RTEST(rb_funcall(this_scope, id_has_key, 1, key))) {
+            // Slow path: It is valid to pass a non-hash value to Liquid as a
+            // scope if it supports #key? and #[]
             variable = rb_funcall(this_scope, id_aref, 1, key);
             goto variable_found;
         }
@@ -70,7 +72,7 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 
     for (long i = 0; i < environments_len; i++) {
         VALUE this_environ = environments_ptr[i];
-        if (TYPE(this_environ) == T_HASH) {
+        if (RB_LIKELY(TYPE(this_environ) == T_HASH)) {
             // Does not invoke any default value proc, this is equivalent in
             // cost and semantics to #key? but loads the value as well
             variable = rb_hash_lookup2(this_environ, key, Qundef);
@@ -89,6 +91,8 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
                 }
             }
         } else if (RTEST(rb_funcall(this_environ, id_has_key, 1, key))) {
+            // Slow path: It is valid to pass a non-hash value to Liquid as an
+            // environment if it supports #key? and #[]
             variable = rb_funcall(this_environ, id_aref, 1, key);
             goto variable_found;
         }

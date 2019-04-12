@@ -5,7 +5,7 @@
 static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
 ID id_aset, id_call, id_to_liquid, id_set_context;
 static ID id_evaluate, id_has_key, id_aref;
-static ID id_ivar_scopes, id_ivar_environments, id_ivar_strict_variables;
+static ID id_ivar_scope, id_ivar_environments, id_ivar_strict_variables;
 
 VALUE context_evaluate(VALUE self, VALUE expression)
 {
@@ -42,25 +42,13 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 {
     VALUE scope = Qnil, variable = Qnil;
 
-    VALUE scopes = rb_ivar_get(self, id_ivar_scopes);
-    Check_Type(scopes, T_ARRAY);
+    scope = rb_ivar_get(self, id_ivar_scope);
+    Check_Type(scope, T_HASH);
 
-    for (long i = 0; i < RARRAY_LEN(scopes); i++) {
-        VALUE this_scope = RARRAY_AREF(scopes, i);
-        if (RB_LIKELY(TYPE(this_scope) == T_HASH)) {
-            // Does not invoke any default value proc, this is equivalent in
-            // cost and semantics to #key? but loads the value as well
-            variable = rb_hash_lookup2(this_scope, key, Qundef);
-            if (variable != Qundef) {
-                scope = this_scope;
-                goto variable_found;
-            }
-        } else if (RTEST(rb_funcall(this_scope, id_has_key, 1, key))) {
-            // Slow path: It is valid to pass a non-hash value to Liquid as a
-            // scope if it supports #key? and #[]
-            variable = rb_funcall(this_scope, id_aref, 1, key);
-            goto variable_found;
-        }
+    variable = rb_hash_lookup2(scope, key, Qundef);
+
+    if (variable != Qundef) {
+        goto variable_found;
     }
 
     VALUE environments = rb_ivar_get(self, id_ivar_environments);
@@ -69,6 +57,7 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 
     for (long i = 0; i < RARRAY_LEN(environments); i++) {
         VALUE this_environ = RARRAY_AREF(environments, i);
+
         if (RB_LIKELY(TYPE(this_environ) == T_HASH)) {
             // Does not invoke any default value proc, this is equivalent in
             // cost and semantics to #key? but loads the value as well
@@ -117,7 +106,7 @@ void init_liquid_context()
     id_to_liquid = rb_intern("to_liquid");
     id_set_context = rb_intern("context=");
 
-    id_ivar_scopes = rb_intern("@scopes");
+    id_ivar_scope = rb_intern("@scope");
     id_ivar_environments = rb_intern("@environments");
     id_ivar_strict_variables = rb_intern("@strict_variables");
 

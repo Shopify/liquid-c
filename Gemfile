@@ -2,8 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'liquid', github: 'Shopify/liquid', branch: 'master'
-
+gem 'liquid', github: 'Shopify/liquid', branch: 'implicit-variable-scopes'
 
 group :test do
   gem 'spy', '0.4.1'

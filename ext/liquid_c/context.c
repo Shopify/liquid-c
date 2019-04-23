@@ -9,7 +9,7 @@ static ID id_ivar_scopes, id_ivar_environments, id_ivar_strict_variables;
 
 VALUE context_evaluate(VALUE self, VALUE expression)
 {
-    // Scalar type stored directly in the VALUE
+    // Scalar type stored directly in the VALUE, this is a nearly free check, saving a #respond_to?
     if (RB_SPECIAL_CONST_P(expression))
         return expression;
 
@@ -19,7 +19,8 @@ VALUE context_evaluate(VALUE self, VALUE expression)
     if (klass == rb_cString || klass == rb_cArray || klass == rb_cHash)
         return expression;
 
-    // Liquid::VariableLookup is by far the most common type after String
+    // Liquid::VariableLookup is by far the most common type after String, call
+    // the C implementation directly to avoid a Ruby dispatch.
     if (klass == cLiquidVariableLookup)
         return variable_lookup_evaluate(expression, self);
 

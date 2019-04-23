@@ -15,10 +15,14 @@ extern ID id_aset, id_call, id_to_liquid, id_set_context;
 
 inline static VALUE value_to_liquid_and_set_context(VALUE value, VALUE context_to_set)
 {
+    // Scalar type stored directly in the VALUE, these all have a #to_liquid
+    // that returns self, and should have no #context= method
     if (RB_SPECIAL_CONST_P(value))
         return value;
 
     VALUE klass = RBASIC(value)->klass;
+
+    // More basic types having #to_liquid of self and no #context=
     if (klass == rb_cString || klass == rb_cArray || klass == rb_cHash)
         return value;
 

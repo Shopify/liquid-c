@@ -6,7 +6,7 @@ static ID id_ivar_lookups, id_ivar_name, id_ivar_command_flags;
 
 VALUE variable_lookup_evaluate(VALUE self, VALUE context)
 {
-    VALUE command_flags = 0;
+    long command_flags = -1;
     VALUE name = rb_ivar_get(self, id_ivar_name);
     name = context_evaluate(context, name);
 
@@ -29,10 +29,10 @@ VALUE variable_lookup_evaluate(VALUE self, VALUE context)
             continue;
         }
 
-        if (!command_flags) {
-            command_flags = rb_ivar_get(self, id_ivar_command_flags);
+        if (command_flags == -1) {
+            command_flags = NUM2LONG(rb_ivar_get(self, id_ivar_command_flags));
         }
-        if (NUM2LONG(command_flags) & (1 << i)) {
+        if (command_flags & (1 << i)) {
             Check_Type(key, T_STRING);
             ID intern_key = rb_intern(RSTRING_PTR(key));
             if (rb_respond_to(object, intern_key)) {

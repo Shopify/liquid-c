@@ -4,6 +4,8 @@
 #include "lexer.h"
 #include "parser.h"
 #include "block.h"
+#include "context.h"
+#include "variable_lookup.h"
 
 VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate;
 rb_encoding *utf8_encoding;
@@ -21,5 +23,7 @@ void Init_liquid_c(void)
     init_liquid_parser();
     init_liquid_variable();
     init_liquid_block();
+    init_liquid_context();
+    init_liquid_variable_lookup();
 }
 

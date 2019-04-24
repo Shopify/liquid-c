@@ -8,5 +8,10 @@
 extern VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate;
 extern rb_encoding *utf8_encoding;
 
+#ifndef RB_LIKELY
+// RB_LIKELY added in Ruby 2.4
+#define RB_LIKELY(x) (__builtin_expect(!!(x), 1))
+#endif
+
 #endif
 

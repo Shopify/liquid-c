@@ -2,7 +2,7 @@
 #include "parser.h"
 #include "lexer.h"
 
-static VALUE cLiquidRangeLookup, cLiquidVariableLookup, cRange, vLiquidExpressionLiterals;
+static VALUE cLiquidRangeLookup, cLiquidVariableLookup, cLiquidReversableRange, vLiquidExpressionLiterals;
 static ID idToI, idEvaluate;
 
 void init_parser(parser_t *p, const char *str, const char *end)
@@ -81,7 +81,7 @@ static VALUE parse_range(parser_t *p)
     if (rb_respond_to(args[0], idEvaluate) || rb_respond_to(args[1], idEvaluate))
         return rb_class_new_instance(2, args, cLiquidRangeLookup);
 
-    return rb_class_new_instance(2, args, cRange);
+    return rb_class_new_instance(2, args, cLiquidReversableRange);
 }
 
 static VALUE parse_variable(parser_t *p)
@@ -184,7 +184,7 @@ void init_liquid_parser(void)
     idEvaluate = rb_intern("evaluate");
 
     cLiquidRangeLookup = rb_const_get(mLiquid, rb_intern("RangeLookup"));
-    cRange = rb_const_get(rb_cObject, rb_intern("Range"));
+    cLiquidReversableRange = rb_const_get(mLiquid, rb_intern("ReversableRange"));
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
 
     VALUE cLiquidExpression = rb_const_get(mLiquid, rb_intern("Expression"));

@@ -78,10 +78,7 @@ static VALUE parse_range(parser_t *p)
     args[1] = parse_expression(p);
     parser_must_consume(p, TOKEN_CLOSE_ROUND);
 
-    if (rb_respond_to(args[0], idEvaluate) || rb_respond_to(args[1], idEvaluate))
-        return rb_class_new_instance(2, args, cLiquidRangeLookup);
-
-    return rb_class_new_instance(2, args, cRange);
+    return rb_class_new_instance(2, args, cLiquidRangeLookup);
 }
 
 static VALUE parse_variable(parser_t *p)

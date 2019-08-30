@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'liquid', github: 'Shopify/liquid', branch: 'master'
+gem 'liquid', github: 'Shopify/liquid', ref: '831355dfbd4f78c5365f2e3f919e57993209ad76'
 
 
 group :test do

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'liquid/c/version'
 require 'liquid'
 require 'liquid_c'

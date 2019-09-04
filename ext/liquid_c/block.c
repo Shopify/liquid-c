@@ -97,13 +97,19 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
                     return rb_yield_values(2, str, str);
                 }
 
-                if (strncmp(name_start, "liquid", name_len < 6 ? name_len : 6) == 0) {
-                    const char *liquid_tag_start = read_while(name_end, end, rb_isspace);
+                if (name_len == 6 && strncmp(name_start, "liquid", 6) == 0) {
+                    const char *markup_start = read_while(name_end, end, rb_isspace);
                     int line_number = token_start_line_number;
                     if (line_number) {
-                        line_number += count_newlines(token.str_full, liquid_tag_start);
+                        line_number += count_newlines(token.str_full, markup_start);
                     }
-                    VALUE liquid_tag_tokenizer = tokenizer_new_from_cstr(liquid_tag_start, end, line_number, true);
+                    VALUE liquid_tag_tokenizer = tokenizer_new_from_cstr(
+                        tokenizer->source,
+                        markup_start,
+                        end,
+                        line_number,
+                        true
+                    );
                     rb_block_parse(self, liquid_tag_tokenizer, parse_context);
                     break;
                 }

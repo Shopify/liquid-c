@@ -31,10 +31,10 @@ class TokenizerTest < Minitest::Test
   def test_tokenize_for_liquid_tag
     source = "\nfunk\n\n  so | brother   \n"
 
-    assert_equal ["\nfunk\n\n  ", "so | brother   \n"], tokenize(source, true)
+    assert_equal ["\nfunk\n\n  ", "so | brother   \n"], tokenize(source, for_liquid_tag: true)
 
     # Strips whitespace
-    assert_equal ["funk", "so | brother"], tokenize(source, true, trimmed: true)
+    assert_equal ["funk", "so | brother"], tokenize(source, for_liquid_tag: true, trimmed: true)
   end
 
   def test_utf8_encoded_template
@@ -47,7 +47,7 @@ class TokenizerTest < Minitest::Test
 
   private
 
-  def tokenize(source, for_liquid_tag = false, trimmed: false)
+  def tokenize(source, for_liquid_tag: false, trimmed: false)
     tokenizer = Liquid::C::Tokenizer.new(source, 1, for_liquid_tag)
     tokens = []
     while t = (trimmed ? tokenizer.send(:shift_trimmed) : tokenizer.shift)

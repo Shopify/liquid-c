@@ -52,18 +52,24 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE start_l
     tokenizer->lstrip_flag = false;
     // tokenizer->line_number keeps track of the current line number or it is 0
     // to indicate that line numbers aren't being calculated
-    tokenizer->line_number = FIX2INT(start_line_number);
+    tokenizer->line_number = FIX2UINT(start_line_number);
     tokenizer->for_liquid_tag = RTEST(for_liquid_tag);
     return Qnil;
 }
 
-VALUE tokenizer_new_from_cstr(const char *cursor, const char *cursor_end, int line_number, bool for_liquid_tag)
+// Internal method for creating a tokenizer from C.
+// This does not create a copy of the source string, and should be called with
+// a `source` value taken from an existing tokenizer.
+VALUE tokenizer_new_from_cstr(VALUE source, const char *cursor, const char *cursor_end, int line_number, bool for_liquid_tag)
 {
+    Check_Type(source, T_STRING);
+
     VALUE rbtokenizer = tokenizer_allocate(cLiquidTokenizer);
 
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(rbtokenizer, tokenizer);
 
+    tokenizer->source = source;
     tokenizer->cursor = cursor;
     tokenizer->cursor_end = cursor_end;
     tokenizer->lstrip_flag = false;
@@ -107,7 +113,7 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
     const char *cursor = tokenizer->cursor;
     const char *last = tokenizer->cursor_end - 1;
 
-    token->str_trimmed = token->str_full = cursor;
+    token->str_full = cursor;
     token->type = TOKEN_RAW;
 
     while (cursor < last) {
@@ -174,15 +180,17 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
     token->lstrip = tokenizer->lstrip_flag;
     tokenizer->lstrip_flag = false;
 found:
-    token->len_trimmed = cursor - token->str_trimmed;
     token->len_full = cursor - token->str_full;
+
+    token->str_trimmed = token->str_full;
+    token->len_trimmed = token->len_full;
 
     if (token->type == TOKEN_VARIABLE || token->type == TOKEN_TAG) {
         token->str_trimmed += 2 + token->lstrip;
         token->len_trimmed -= 2 + token->lstrip + 2 + token->rstrip;
     }
 
-    tokenizer->cursor += cursor - tokenizer->cursor;
+    tokenizer->cursor += token->len_full;
 
     if (tokenizer->line_number) {
         tokenizer->line_number += count_newlines(token->str_full, token->str_full + token->len_full);

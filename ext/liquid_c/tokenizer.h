@@ -11,18 +11,20 @@ enum token_type {
 
 typedef struct token {
     enum token_type type;
-    const char *str;
-    long length;
-    unsigned int lstrip;
-    unsigned int rstrip;
+
+    // str_trimmed contains no tag delimiters
+    const char *str_trimmed, *str_full;
+    long len_trimmed, len_full;
+
+    bool lstrip, rstrip;
 } token_t;
 
 typedef struct tokenizer {
     VALUE source;
-    const char *cursor;
-    long length;
+    const char *cursor, *cursor_end;
     unsigned int line_number;
-    unsigned int lstrip_flag;
+    bool lstrip_flag;
+    bool for_liquid_tag;
 } tokenizer_t;
 
 extern VALUE cLiquidTokenizer;
@@ -31,6 +33,8 @@ extern const rb_data_type_t tokenizer_data_type;
 
 void init_liquid_tokenizer();
 void tokenizer_next(tokenizer_t *tokenizer, token_t *token);
+
+VALUE tokenizer_new_from_cstr(VALUE source, const char *cursor, const char *cursor_end, int line_number, bool for_liquid_tag);
 
 #endif
 

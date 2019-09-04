@@ -5,7 +5,7 @@
 static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
 ID id_aset, id_call, id_to_liquid, id_set_context;
 static ID id_evaluate, id_has_key, id_aref;
-static ID id_ivar_scopes, id_ivar_environments, id_ivar_strict_variables;
+static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables;
 
 VALUE context_evaluate(VALUE self, VALUE expression)
 {
@@ -38,6 +38,43 @@ void context_maybe_raise_undefined_variable(VALUE self, VALUE key)
     }
 }
 
+static bool environments_find_variable(VALUE environments, VALUE key, VALUE strict_variables, VALUE raise_on_not_found, VALUE *scope_out, VALUE *variable_out) {
+    VALUE variable = Qnil;
+    Check_Type(environments, T_ARRAY);
+
+    for (long i = 0; i < RARRAY_LEN(environments); i++) {
+        VALUE this_environ = RARRAY_AREF(environments, i);
+        if (RB_LIKELY(TYPE(this_environ) == T_HASH)) {
+            // Does not invoke any default value proc, this is equivalent in
+            // cost and semantics to #key? but loads the value as well
+            variable = rb_hash_lookup2(this_environ, key, Qundef);
+            if (variable != Qundef) {
+                *variable_out = variable;
+                *scope_out = this_environ;
+                return true;
+            }
+
+            if (!(RTEST(raise_on_not_found) && RTEST(strict_variables))) {
+                // If we aren't running strictly, we need to invoke the default
+                // value proc, rb_hash_aref does this
+                variable = rb_hash_aref(this_environ, key);
+                if (variable != Qnil) {
+                    *variable_out = variable;
+                    *scope_out = this_environ;
+                    return true;
+                }
+            }
+        } else if (RTEST(rb_funcall(this_environ, id_has_key, 1, key))) {
+            // Slow path: It is valid to pass a non-hash value to Liquid as an
+            // environment if it supports #key? and #[]
+            *variable_out = rb_funcall(this_environ, id_aref, 1, key);
+            *scope_out = this_environ;
+            return true;
+        }
+    }
+    return false;
+}
+
 VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 {
     VALUE scope = Qnil, variable = Qnil;
@@ -63,37 +100,15 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
         }
     }
 
-    VALUE environments = rb_ivar_get(self, id_ivar_environments);
-    Check_Type(environments, T_ARRAY);
     VALUE strict_variables = rb_ivar_get(self, id_ivar_strict_variables);
 
-    for (long i = 0; i < RARRAY_LEN(environments); i++) {
-        VALUE this_environ = RARRAY_AREF(environments, i);
-        if (RB_LIKELY(TYPE(this_environ) == T_HASH)) {
-            // Does not invoke any default value proc, this is equivalent in
-            // cost and semantics to #key? but loads the value as well
-            variable = rb_hash_lookup2(this_environ, key, Qundef);
-            if (variable != Qundef) {
-                scope = this_environ;
-                goto variable_found;
-            }
+    VALUE environments = rb_ivar_get(self, id_ivar_environments);
+    if (environments_find_variable(environments, key, strict_variables, raise_on_not_found, &scope, &variable))
+        goto variable_found;
 
-            if (!(RTEST(raise_on_not_found) && RTEST(strict_variables))) {
-                // If we aren't running strictly, we need to invoke the default
-                // value proc, rb_hash_aref does this
-                variable = rb_hash_aref(this_environ, key);
-                if (variable != Qnil) {
-                    scope = this_environ;
-                    goto variable_found;
-                }
-            }
-        } else if (RTEST(rb_funcall(this_environ, id_has_key, 1, key))) {
-            // Slow path: It is valid to pass a non-hash value to Liquid as an
-            // environment if it supports #key? and #[]
-            variable = rb_funcall(this_environ, id_aref, 1, key);
-            goto variable_found;
-        }
-    }
+    VALUE static_environments = rb_ivar_get(self, id_ivar_static_environments);
+    if (environments_find_variable(static_environments, key, strict_variables, raise_on_not_found, &scope, &variable))
+        goto variable_found;
 
     if (RTEST(raise_on_not_found)) {
         context_maybe_raise_undefined_variable(self, key);
@@ -119,6 +134,7 @@ void init_liquid_context()
 
     id_ivar_scopes = rb_intern("@scopes");
     id_ivar_environments = rb_intern("@environments");
+    id_ivar_static_environments = rb_intern("@static_environments");
     id_ivar_strict_variables = rb_intern("@strict_variables");
 
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));

@@ -8,12 +8,4 @@ class BlockTest < MiniTest::Test
     template = Liquid::Template.parse("{{ -}} foo {{- }}")
     assert_equal 3, template.root.nodelist.size
   end
-
-  def test_pre_trim
-    template = Liquid::Template.parse("\n{%- raw %}{% endraw %}")
-    assert_equal "", template.render
-
-    template = Liquid::Template.parse("\n{%- if true %}{% endif %}")
-    assert_equal "", template.render
-  end
 end

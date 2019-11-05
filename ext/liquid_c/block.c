@@ -13,6 +13,7 @@ static ID
     intern_registered_tags,
     intern_parse,
     intern_square_brackets,
+    intern_rstrip_bang,
     intern_set_line_number;
 
 static int is_id(int c)
@@ -97,6 +98,12 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
                     return rb_yield_values(2, str, str);
                 }
 
+                if (token.lstrip && RARRAY_LEN(nodelist) > 0) {
+                    VALUE last = RARRAY_AREF(nodelist, RARRAY_LEN(nodelist) - 1);
+                    if (RB_TYPE_P(last, T_STRING))
+                        rb_funcall(last, intern_rstrip_bang, 0);
+                }
+
                 if (name_len == 6 && strncmp(name_start, "liquid", 6) == 0) {
                     const char *markup_start = read_while(name_end, end, rb_isspace);
                     int line_number = token_start_line_number;
@@ -151,6 +158,7 @@ void init_liquid_block()
     intern_registered_tags = rb_intern("registered_tags");
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
+    intern_rstrip_bang = rb_intern("rstrip!");
     intern_set_line_number = rb_intern("line_number=");
 
     VALUE cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));

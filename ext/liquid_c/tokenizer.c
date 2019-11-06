@@ -124,8 +124,8 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
         if (c != '%' && c != '{')
             continue;
         if (cursor <= last && *cursor == '-') {
-          cursor++;
-          token->rstrip = 1;
+            cursor++;
+            token->rstrip = 1;
         }
         if (cursor - tokenizer->cursor > (ptrdiff_t)(2 + token->rstrip)) {
             token->type = TOKEN_RAW;

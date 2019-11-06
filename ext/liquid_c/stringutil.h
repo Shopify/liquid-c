@@ -10,7 +10,7 @@ inline static const char *read_while(const char *start, const char *end, int (fu
 inline static const char *read_while_reverse(const char *start, const char *end, int (func)(int))
 {
     end--;
-    while (start < end && func((unsigned char) *end)) end--;
+    while (start <= end && func((unsigned char) *end)) end--;
     end++;
     return end;
 }

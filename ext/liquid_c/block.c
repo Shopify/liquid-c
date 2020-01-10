@@ -13,14 +13,27 @@ static ID
     intern_registered_tags,
     intern_parse,
     intern_square_brackets,
-    intern_set_line_number;
+    intern_set_line_number,
+    intern_unknown_tag_in_liquid_tag;
+
+static VALUE cLiquidBlockBody;
 
 static int is_id(int c)
 {
     return rb_isalnum(c) || c == '_';
 }
 
-static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
+static VALUE yield_end_tag(VALUE tag_name, VALUE tag_markup, bool for_liquid_tag)
+{
+    if (!for_liquid_tag) {
+        return rb_yield_values(2, tag_name, tag_markup);
+    }
+
+    VALUE args[] = { tag_name, tag_markup };
+    return rb_funcall_passing_block(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, args);
+}
+
+static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context, bool for_liquid_tag)
 {
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(tokens, tokenizer);
@@ -38,7 +51,10 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
 
         switch (token.type) {
             case TOKENIZER_TOKEN_NONE:
-                return rb_yield_values(2, Qnil, Qnil);
+                if (!for_liquid_tag) {
+                    return rb_yield_values(2, Qnil, Qnil);
+                }
+                return Qnil;
 
             case TOKEN_INVALID:
             {
@@ -94,7 +110,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
 
                 if (name_len == 0) {
                     VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
-                    return rb_yield_values(2, str, str);
+                    return yield_end_tag(str, str, for_liquid_tag);
                 }
 
                 if (name_len == 6 && strncmp(name_start, "liquid", 6) == 0) {
@@ -110,7 +126,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
                         line_number,
                         true
                     );
-                    rb_block_parse(self, liquid_tag_tokenizer, parse_context);
+                    internal_block_parse(self, liquid_tag_tokenizer, parse_context, true);
                     break;
                 }
 
@@ -125,7 +141,7 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
 
                 if (tag_class == Qnil)
-                    return rb_yield_values(2, tag_name, markup);
+                    return yield_end_tag(tag_name, markup, for_liquid_tag);
 
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, parse_context);
 
@@ -140,6 +156,11 @@ static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
     return Qnil;
 }
 
+static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
+{
+    return internal_block_parse(self, tokens, parse_context, false);
+}
+
 void init_liquid_block()
 {
     intern_raise_missing_variable_terminator = rb_intern("raise_missing_variable_terminator");
@@ -152,8 +173,9 @@ void init_liquid_block()
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
     intern_set_line_number = rb_intern("line_number=");
+    intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
 
-    VALUE cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
+    cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_define_method(cLiquidBlockBody, "c_parse", rb_block_parse, 2);
 }
 

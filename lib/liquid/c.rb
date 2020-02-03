@@ -26,6 +26,18 @@ Liquid::BlockBody.class_eval do
   end
 end
 
+module Liquid::C
+  module DocumentPatch
+    def parse(tokenizer, parse_context)
+      if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]
+        tokenizer.bug_compatible_whitespace_trimming!
+      end
+      super
+    end
+  end
+  Liquid::Document.prepend(DocumentPatch)
+end
+
 Liquid::Variable.class_eval do
   alias_method :ruby_lax_parse, :lax_parse
   alias_method :ruby_strict_parse, :strict_parse

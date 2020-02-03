@@ -17,6 +17,7 @@ class BlockTest < MiniTest::Test
     assert_equal "", template.render
   end
 
+  # Temporary to test rollout of the fix for this bug
   def test_bug_compatible_pre_trim
     template = Liquid::Template.parse("\n {%- raw %}{% endraw %}", bug_compatible_whitespace_trimming: true)
     assert_equal "\n", template.render

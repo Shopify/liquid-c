@@ -27,6 +27,7 @@ Liquid::BlockBody.class_eval do
 end
 
 module Liquid::C
+  # Temporary to test rollout of the fix for this bug
   module DocumentPatch
     def parse(tokenizer, parse_context)
       if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]

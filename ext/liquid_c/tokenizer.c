@@ -262,6 +262,8 @@ static VALUE tokenizer_for_liquid_tag_method(VALUE self)
     return tokenizer->for_liquid_tag ? Qtrue : Qfalse;
 }
 
+
+// Temporary to test rollout of the fix for this bug
 static VALUE tokenizer_bug_compatible_whitespace_trimming(VALUE self) {
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(self, tokenizer);

@@ -176,6 +176,8 @@ void init_liquid_block()
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
 
     cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
+    rb_global_variable(&cLiquidBlockBody);
+    
     rb_define_method(cLiquidBlockBody, "c_parse", rb_block_parse, 2);
 }
 

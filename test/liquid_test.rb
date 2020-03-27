@@ -9,3 +9,12 @@ test_files = FileList[File.join(liquid_test_dir, '{integration,unit}/**/*_test.r
 test_files.each do |test_file|
   require test_file
 end
+
+module GCCompactSetup
+  def setup
+    GC.compact if GC.respond_to?(:compact)
+    super
+  end
+end
+
+Minitest::Test.prepend(GCCompactSetup)

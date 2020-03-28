@@ -25,6 +25,9 @@ typedef struct tokenizer {
     unsigned int line_number;
     bool lstrip_flag;
     bool for_liquid_tag;
+
+    // Temporary to test rollout of the fix for this bug
+    bool bug_compatible_whitespace_trimming;
 } tokenizer_t;
 
 extern VALUE cLiquidTokenizer;

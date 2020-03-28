@@ -36,6 +36,7 @@ static VALUE tokenizer_allocate(VALUE klass)
 
     obj = TypedData_Make_Struct(klass, tokenizer_t, &tokenizer_data_type, tokenizer);
     tokenizer->source = Qnil;
+    tokenizer->bug_compatible_whitespace_trimming = false;
     return obj;
 }
 
@@ -261,6 +262,16 @@ static VALUE tokenizer_for_liquid_tag_method(VALUE self)
     return tokenizer->for_liquid_tag ? Qtrue : Qfalse;
 }
 
+
+// Temporary to test rollout of the fix for this bug
+static VALUE tokenizer_bug_compatible_whitespace_trimming(VALUE self) {
+    tokenizer_t *tokenizer;
+    Tokenizer_Get_Struct(self, tokenizer);
+
+    tokenizer->bug_compatible_whitespace_trimming = true;
+    return Qnil;
+}
+
 void init_liquid_tokenizer()
 {
     cLiquidTokenizer = rb_define_class_under(mLiquidC, "Tokenizer", rb_cObject);
@@ -269,6 +280,7 @@ void init_liquid_tokenizer()
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
     rb_define_method(cLiquidTokenizer, "line_number", tokenizer_line_number_method, 0);
     rb_define_method(cLiquidTokenizer, "for_liquid_tag", tokenizer_for_liquid_tag_method, 0);
+    rb_define_method(cLiquidTokenizer, "bug_compatible_whitespace_trimming!", tokenizer_bug_compatible_whitespace_trimming, 0);
 
     // For testing the internal token representation.
     rb_define_private_method(cLiquidTokenizer, "shift_trimmed", tokenizer_shift_trimmed_method, 0);

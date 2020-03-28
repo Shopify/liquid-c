@@ -73,8 +73,13 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
                 if (token.lstrip)
                     token_start = read_while(start, end, rb_isspace);
 
-                if (token.rstrip)
-                    token_end = read_while_reverse(token_start, end, rb_isspace);
+                if (token.rstrip) {
+                    if (tokenizer->bug_compatible_whitespace_trimming) {
+                        token_end = read_while_reverse(token_start + 1, end, rb_isspace);
+                    } else {
+                        token_end = read_while_reverse(token_start, end, rb_isspace);
+                    }
+                }
 
                 // Skip token entirely if there is no data to be rendered.
                 if (token_start == token_end)

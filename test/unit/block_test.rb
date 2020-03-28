@@ -16,4 +16,22 @@ class BlockTest < MiniTest::Test
     template = Liquid::Template.parse("\n{%- if true %}{% endif %}")
     assert_equal "", template.render
   end
+
+  # Temporary to test rollout of the fix for this bug
+  def test_bug_compatible_pre_trim
+    template = Liquid::Template.parse("\n {%- raw %}{% endraw %}", bug_compatible_whitespace_trimming: true)
+    assert_equal "\n", template.render
+
+    template = Liquid::Template.parse("\n {%- if true %}{% endif %}", bug_compatible_whitespace_trimming: true)
+    assert_equal "\n", template.render
+
+    template = Liquid::Template.parse("{{ 'B' }} \n{%- if true %}C{% endif %}", bug_compatible_whitespace_trimming: true)
+    assert_equal "B C", template.render
+
+    template = Liquid::Template.parse("B\n {%- raw %}{% endraw %}", bug_compatible_whitespace_trimming: true)
+    assert_equal "B", template.render
+
+    template = Liquid::Template.parse("B\n {%- if true %}{% endif %}", bug_compatible_whitespace_trimming: true)
+    assert_equal "B", template.render
+  end
 end

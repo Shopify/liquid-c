@@ -6,8 +6,9 @@ rvm:
   - 2.7
   - ruby-head
 
-allow_failures:
-  - rvm: ruby-head
+jobs:
+  allow_failures:
+    - rvm: ruby-head
 
 notifications:
   disable: true

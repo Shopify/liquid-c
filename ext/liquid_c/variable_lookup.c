@@ -60,6 +60,5 @@ void init_liquid_variable_lookup()
     id_ivar_command_flags = rb_intern("@command_flags");
 
     VALUE cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
-    rb_global_variable(&cLiquidVariableLookup);
     rb_define_method(cLiquidVariableLookup, "c_evaluate", variable_lookup_evaluate, 1);
 }

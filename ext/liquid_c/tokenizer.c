@@ -275,6 +275,8 @@ static VALUE tokenizer_bug_compatible_whitespace_trimming(VALUE self) {
 void init_liquid_tokenizer()
 {
     cLiquidTokenizer = rb_define_class_under(mLiquidC, "Tokenizer", rb_cObject);
+    rb_global_variable(&cLiquidTokenizer);
+
     rb_define_alloc_func(cLiquidTokenizer, tokenizer_allocate);
     rb_define_method(cLiquidTokenizer, "initialize", tokenizer_initialize_method, 3);
     rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);

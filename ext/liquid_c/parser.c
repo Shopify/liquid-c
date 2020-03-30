@@ -184,12 +184,19 @@ void init_liquid_parser(void)
     idEvaluate = rb_intern("evaluate");
 
     cLiquidRangeLookup = rb_const_get(mLiquid, rb_intern("RangeLookup"));
+    rb_global_variable(&cLiquidRangeLookup);
+
     cRange = rb_const_get(rb_cObject, rb_intern("Range"));
+    rb_global_variable(&cRange);
+
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
+    rb_global_variable(&cLiquidVariableLookup);
 
     VALUE cLiquidExpression = rb_const_get(mLiquid, rb_intern("Expression"));
+    rb_global_variable(&cLiquidExpression);
     rb_define_singleton_method(cLiquidExpression, "c_parse", rb_parse_expression, 1);
 
     vLiquidExpressionLiterals = rb_const_get(cLiquidExpression, rb_intern("LITERALS"));
+    rb_global_variable(&vLiquidExpressionLiterals);
 }
 

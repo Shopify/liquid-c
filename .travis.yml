@@ -1,3 +1,4 @@
+sudo: false
 language: ruby
 
 rvm:
@@ -5,7 +6,8 @@ rvm:
   - 2.7
   - ruby-head
 
-sudo: false
+allow_failures:
+  - rvm: ruby-head
 
 notifications:
   disable: true

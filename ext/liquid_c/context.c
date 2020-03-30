@@ -138,9 +138,13 @@ void init_liquid_context()
     id_ivar_strict_variables = rb_intern("@strict_variables");
 
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
+    rb_global_variable(&cLiquidVariableLookup);
+
     cLiquidUndefinedVariable = rb_const_get(mLiquid, rb_intern("UndefinedVariable"));
+    rb_global_variable(&cLiquidUndefinedVariable);
 
     VALUE cLiquidContext = rb_const_get(mLiquid, rb_intern("Context"));
+    rb_global_variable(&cLiquidContext);
     rb_define_method(cLiquidContext, "c_evaluate", context_evaluate, 1);
     rb_define_method(cLiquidContext, "c_find_variable", context_find_variable, 2);
 }

@@ -144,7 +144,6 @@ void init_liquid_context()
     rb_global_variable(&cLiquidUndefinedVariable);
 
     VALUE cLiquidContext = rb_const_get(mLiquid, rb_intern("Context"));
-    rb_global_variable(&cLiquidContext);
     rb_define_method(cLiquidContext, "c_evaluate", context_evaluate, 1);
     rb_define_method(cLiquidContext, "c_find_variable", context_find_variable, 2);
 }

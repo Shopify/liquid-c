@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'liquid', github: 'Shopify/liquid', ref: 'master'
+gem 'liquid', github: 'Shopify/liquid', ref: 'optimize-invoke-filter'
 
 
 group :test do

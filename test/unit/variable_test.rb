@@ -42,20 +42,20 @@ class VariableTest < Minitest::Test
 
   def test_variable_filter
     name = lookup('name')
-    assert_equal [name, [['filter', []]]], variable_parse(' name | filter ')
-    assert_equal [name, [['filter1', []], ['filter2', []]]], variable_parse(' name | filter1 | filter2 ')
+    assert_equal [name, [[:filter, true, []]]], variable_parse(' name | filter ')
+    assert_equal [name, [[:filter1, true, []], [:filter2, true, []]]], variable_parse(' name | filter1 | filter2 ')
   end
 
   def test_variable_filter_args
     name = lookup('name')
     abc = lookup('abc')
 
-    assert_equal [name, [['filter', [abc]]]], variable_parse(' name | filter: abc ')
+    assert_equal [name, [[:filter, false, [abc]]]], variable_parse(' name | filter: abc ')
 
-    assert_equal [name, [['filter1', [abc]], ['filter2', [abc]]]],
+    assert_equal [name, [[:filter1, false, [abc]], [:filter2, false, [abc]]]],
       variable_parse(' name | filter1: abc | filter2: abc ')
 
-    assert_equal [name, [['filter', [lookup('a')], {'b' => lookup('c'), 'd' => lookup('e')}]]],
+    assert_equal [name, [[:filter, false, [lookup('a')], {'b' => lookup('c'), 'd' => lookup('e')}]]],
       variable_parse('name | filter : a , b : c , d : e')
 
     assert_raises Liquid::SyntaxError do

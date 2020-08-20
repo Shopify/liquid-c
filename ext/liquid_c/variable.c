@@ -35,10 +35,11 @@ static VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
             } while (parser_consume(&p, TOKEN_COMMA).type);
         }
 
+        VALUE filter_name_sym = token_to_rsym(filter_name);
         if (keyword_args == Qnil) {
-            filter = rb_ary_new3(2, token_to_rstr(filter_name), filter_args);
+            filter = rb_ary_new3(2, filter_name_sym, filter_args);
         } else {
-            filter = rb_ary_new3(3, token_to_rstr(filter_name), filter_args, keyword_args);
+            filter = rb_ary_new3(3, filter_name_sym, filter_args, keyword_args);
         }
         rb_ary_push(filters, filter);
     }

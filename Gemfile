@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'liquid', github: 'Shopify/liquid', ref: 'master'
+gem 'liquid', github: 'Shopify/liquid', branch: 'symbol-filter-names'
 
 
 group :test do

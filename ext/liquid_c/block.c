@@ -18,21 +18,17 @@ static ID
 
 static VALUE cLiquidBlockBody;
 
+typedef struct tag_markup {
+    VALUE name;
+    VALUE markup;
+} tag_markup_t;
+
 static int is_id(int c)
 {
     return rb_isalnum(c) || c == '_';
 }
 
-static VALUE yield_end_tag(VALUE tag_name, VALUE tag_markup, VALUE parse_context, bool for_liquid_tag)
-{
-    if (!for_liquid_tag) {
-        return rb_yield_values(2, tag_name, tag_markup);
-    }
-
-    return rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, tag_name, parse_context);
-}
-
-static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context, bool for_liquid_tag)
+static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
 {
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(tokens, tokenizer);
@@ -40,6 +36,7 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
     token_t token;
     VALUE tags = Qnil;
     VALUE nodelist = rb_ivar_get(self, intern_nodelist);
+    tag_markup_t unknown_tag = { Qnil, Qnil };
 
     while (true) {
         int token_start_line_number = tokenizer->line_number;
@@ -50,10 +47,7 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
 
         switch (token.type) {
             case TOKENIZER_TOKEN_NONE:
-                if (!for_liquid_tag) {
-                    return rb_yield_values(2, Qnil, Qnil);
-                }
-                return Qnil;
+                return unknown_tag;
 
             case TOKEN_INVALID:
             {
@@ -62,7 +56,8 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
                 ID raise_method_id = intern_raise_missing_variable_terminator;
                 if (token.str_full[1] == '%') raise_method_id = intern_raise_missing_tag_terminator;
 
-                return rb_funcall(self, raise_method_id, 2, str, parse_context);
+                rb_funcall(self, raise_method_id, 2, str, parse_context);
+                return unknown_tag;
             }
             case TOKEN_RAW:
             {
@@ -114,7 +109,9 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
 
                 if (name_len == 0) {
                     VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
-                    return yield_end_tag(str, str, parse_context, for_liquid_tag);
+                    unknown_tag.name = str;
+                    unknown_tag.markup = str;
+                    return unknown_tag;
                 }
 
                 if (name_len == 6 && strncmp(name_start, "liquid", 6) == 0) {
@@ -130,7 +127,11 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
                         line_number,
                         true
                     );
-                    internal_block_parse(self, liquid_tag_tokenizer, parse_context, true);
+                    unknown_tag = internal_block_parse(self, liquid_tag_tokenizer, parse_context);
+                    if (unknown_tag.name != Qnil) {
+                        rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, unknown_tag.name, parse_context);
+                        return unknown_tag;
+                    }
                     break;
                 }
 
@@ -144,8 +145,11 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
                 const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
 
-                if (tag_class == Qnil)
-                    return yield_end_tag(tag_name, markup, parse_context, for_liquid_tag);
+                if (tag_class == Qnil) {
+                    unknown_tag.name = tag_name;
+                    unknown_tag.markup = markup;
+                    return unknown_tag;
+                }
 
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, parse_context);
 
@@ -157,12 +161,13 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
             }
         }
     }
-    return Qnil;
+    return unknown_tag;
 }
 
 static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
 {
-    return internal_block_parse(self, tokens, parse_context, false);
+    tag_markup_t unknown_tag = internal_block_parse(self, tokens, parse_context);
+    return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
 }
 
 void init_liquid_block()

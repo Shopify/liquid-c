@@ -23,15 +23,20 @@ typedef struct tag_markup {
     VALUE markup;
 } tag_markup_t;
 
+typedef struct parse_context {
+    tokenizer_t *tokenizer;
+    VALUE tokenizer_obj;
+    VALUE ruby_obj;
+} parse_context_t;
+
 static int is_id(int c)
 {
     return rb_isalnum(c) || c == '_';
 }
 
-static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
+static tag_markup_t internal_block_parse(VALUE self, const parse_context_t *parse_context)
 {
-    tokenizer_t *tokenizer;
-    Tokenizer_Get_Struct(tokens, tokenizer);
+    tokenizer_t *tokenizer = parse_context->tokenizer;
 
     token_t token;
     VALUE tags = Qnil;
@@ -41,7 +46,7 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
     while (true) {
         int token_start_line_number = tokenizer->line_number;
         if (token_start_line_number != 0) {
-            rb_funcall(parse_context, intern_set_line_number, 1, UINT2NUM(token_start_line_number));
+            rb_funcall(parse_context->ruby_obj, intern_set_line_number, 1, UINT2NUM(token_start_line_number));
         }
         tokenizer_next(tokenizer, &token);
 
@@ -56,7 +61,7 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
                 ID raise_method_id = intern_raise_missing_variable_terminator;
                 if (token.str_full[1] == '%') raise_method_id = intern_raise_missing_tag_terminator;
 
-                rb_funcall(self, raise_method_id, 2, str, parse_context);
+                rb_funcall(self, raise_method_id, 2, str, parse_context->ruby_obj);
                 return unknown_tag;
             }
             case TOKEN_RAW:
@@ -92,7 +97,7 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
             }
             case TOKEN_VARIABLE:
             {
-                VALUE args[2] = {rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding), parse_context};
+                VALUE args[2] = {rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding), parse_context->ruby_obj};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
                 rb_ary_push(nodelist, var);
                 rb_ivar_set(self, intern_blank, Qfalse);
@@ -123,10 +128,10 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
 
                     tokenizer_t saved_tokenizer = *tokenizer;
                     tokenizer_setup_for_liquid_tag(tokenizer, markup_start, end, line_number);
-                    unknown_tag = internal_block_parse(self, tokens, parse_context);
+                    unknown_tag = internal_block_parse(self, parse_context);
                     *tokenizer = saved_tokenizer;
                     if (unknown_tag.name != Qnil) {
-                        rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, unknown_tag.name, parse_context);
+                        rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, unknown_tag.name, parse_context->ruby_obj);
                         return unknown_tag;
                     }
                     break;
@@ -148,7 +153,8 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
                     return unknown_tag;
                 }
 
-                VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, parse_context);
+                VALUE new_tag = rb_funcall(tag_class, intern_parse, 4,
+                        tag_name, markup, parse_context->tokenizer_obj, parse_context->ruby_obj);
 
                 if (rb_ivar_get(self, intern_blank) == Qtrue && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
                     rb_ivar_set(self, intern_blank, Qfalse);
@@ -161,9 +167,15 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
     return unknown_tag;
 }
 
-static VALUE rb_block_parse(VALUE self, VALUE tokens, VALUE parse_context)
+static VALUE rb_block_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
-    tag_markup_t unknown_tag = internal_block_parse(self, tokens, parse_context);
+    parse_context_t parse_context = {
+        .tokenizer_obj = tokenizer_obj,
+        .ruby_obj = parse_context_obj,
+    };
+    Tokenizer_Get_Struct(tokenizer_obj, parse_context.tokenizer);
+
+    tag_markup_t unknown_tag = internal_block_parse(self, &parse_context);
     return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
 }
 

@@ -37,7 +37,7 @@ extern const rb_data_type_t tokenizer_data_type;
 void init_liquid_tokenizer();
 void tokenizer_next(tokenizer_t *tokenizer, token_t *token);
 
-VALUE tokenizer_new_from_cstr(VALUE source, const char *cursor, const char *cursor_end, int line_number, bool for_liquid_tag);
+void tokenizer_setup_for_liquid_tag(tokenizer_t *tokenizer, const char *cursor, const char *cursor_end, int line_number);
 
 #endif
 

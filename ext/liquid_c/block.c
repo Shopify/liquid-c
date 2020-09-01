@@ -120,14 +120,11 @@ static tag_markup_t internal_block_parse(VALUE self, VALUE tokens, VALUE parse_c
                     if (line_number) {
                         line_number += count_newlines(token.str_full, markup_start);
                     }
-                    VALUE liquid_tag_tokenizer = tokenizer_new_from_cstr(
-                        tokenizer->source,
-                        markup_start,
-                        end,
-                        line_number,
-                        true
-                    );
-                    unknown_tag = internal_block_parse(self, liquid_tag_tokenizer, parse_context);
+
+                    tokenizer_t saved_tokenizer = *tokenizer;
+                    tokenizer_setup_for_liquid_tag(tokenizer, markup_start, end, line_number);
+                    unknown_tag = internal_block_parse(self, tokens, parse_context);
+                    *tokenizer = saved_tokenizer;
                     if (unknown_tag.name != Qnil) {
                         rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, unknown_tag.name, parse_context);
                         return unknown_tag;

@@ -4,6 +4,12 @@ require 'liquid/c/version'
 require 'liquid'
 require 'liquid_c'
 
+Liquid::C::BlockBody.class_eval do
+  def render(context)
+    render_to_output_buffer(context, +'')
+  end
+end
+
 Liquid::Tokenizer.class_eval do
   def self.new(source, line_numbers = false, line_number: nil, for_liquid_tag: false)
     if Liquid::C.enabled
@@ -14,22 +20,33 @@ Liquid::Tokenizer.class_eval do
   end
 end
 
-Liquid::BlockBody.class_eval do
-  alias_method :ruby_parse, :parse
+Liquid::ParseContext.class_eval do
+  alias_method :ruby_new_block_body, :new_block_body
 
-  def parse(tokens, options)
-    if Liquid::C.enabled && !options[:profile]
-      c_parse(tokens, options) { |t, m| yield t, m }
+  def new_block_body
+    if disable_liquid_c_nodes
+      ruby_new_block_body
     else
-      ruby_parse(tokens, options) { |t, m| yield t, m }
+      Liquid::C::BlockBody.new
     end
+  end
+
+  private
+
+  def disable_liquid_c_nodes
+    # Liquid::Profiler exposes the internal parse tree that we don't want to build when
+    # parsing with liquid-c, so consider liquid-c to be disabled when using it.
+    @disable_liquid_c_nodes ||= !Liquid::C.enabled || @template_options[:profile]
   end
 end
 
 module Liquid::C
   # Temporary to test rollout of the fix for this bug
   module DocumentPatch
-    def parse(tokenizer, parse_context)
+    def parse(
+      tokenizer,
+      parse_context = self.parse_context # no longer necessary, so allow the liquid gem to stop passing it in
+    )
       if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]
         tokenizer.bug_compatible_whitespace_trimming!
       end

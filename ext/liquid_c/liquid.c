@@ -6,8 +6,9 @@
 #include "block.h"
 #include "context.h"
 #include "variable_lookup.h"
+#include "vm.h"
 
-VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate;
+VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 rb_encoding *utf8_encoding;
 
 void Init_liquid_c(void)
@@ -28,11 +29,15 @@ void Init_liquid_c(void)
     cLiquidTemplate = rb_const_get(mLiquid, rb_intern("Template"));
     rb_global_variable(&cLiquidTemplate);
 
+    cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
+    rb_global_variable(&cLiquidBlockBody);
+
     init_liquid_tokenizer();
     init_liquid_parser();
     init_liquid_variable();
     init_liquid_block();
     init_liquid_context();
     init_liquid_variable_lookup();
+    init_liquid_vm();
 }
 

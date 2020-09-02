@@ -1,12 +1,18 @@
 require 'test_helper'
 
 class BlockTest < MiniTest::Test
-  def test_no_allocation_of_trimmed_strings
-    template = Liquid::Template.parse("{{ -}}     {{- }}")
-    assert_equal 2, template.root.nodelist.size
+  def test_no_instruction_for_trimmed_strings
+    context = Liquid::Context.new({ 'x' => '' })
+    template = Liquid::Template.parse("{{ x -}}     {{- x }}")
+    template.render(context)
+    # render_score reflects the number of liquid equivalent nodes are rendered
+    # which shouldn't show a node being rendered for the trimmed string
+    assert_equal 2, context.resource_limits.render_score
 
-    template = Liquid::Template.parse("{{ -}} foo {{- }}")
-    assert_equal 3, template.root.nodelist.size
+    context.resource_limits.reset
+    template = Liquid::Template.parse("{{ x -}} foo {{- x }}")
+    template.render(context)
+    assert_equal 3, context.resource_limits.render_score
   end
 
   def test_pre_trim

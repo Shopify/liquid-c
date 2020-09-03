@@ -23,14 +23,13 @@ static int is_id(int c)
     return rb_isalnum(c) || c == '_';
 }
 
-static VALUE yield_end_tag(VALUE tag_name, VALUE tag_markup, bool for_liquid_tag)
+static VALUE yield_end_tag(VALUE tag_name, VALUE tag_markup, VALUE parse_context, bool for_liquid_tag)
 {
     if (!for_liquid_tag) {
         return rb_yield_values(2, tag_name, tag_markup);
     }
 
-    VALUE args[] = { tag_name, tag_markup };
-    return rb_funcall_passing_block(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, args);
+    return rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, tag_name, parse_context);
 }
 
 static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context, bool for_liquid_tag)
@@ -115,7 +114,7 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
 
                 if (name_len == 0) {
                     VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
-                    return yield_end_tag(str, str, for_liquid_tag);
+                    return yield_end_tag(str, str, parse_context, for_liquid_tag);
                 }
 
                 if (name_len == 6 && strncmp(name_start, "liquid", 6) == 0) {
@@ -146,7 +145,7 @@ static VALUE internal_block_parse(VALUE self, VALUE tokens, VALUE parse_context,
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
 
                 if (tag_class == Qnil)
-                    return yield_end_tag(tag_name, markup, for_liquid_tag);
+                    return yield_end_tag(tag_name, markup, parse_context, for_liquid_tag);
 
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4, tag_name, markup, tokens, parse_context);
 
@@ -182,7 +181,7 @@ void init_liquid_block()
 
     cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_global_variable(&cLiquidBlockBody);
-    
+
     rb_define_method(cLiquidBlockBody, "c_parse", rb_block_parse, 2);
 }
 

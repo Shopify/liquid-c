@@ -12,7 +12,8 @@ static ID
     intern_parse,
     intern_square_brackets,
     intern_set_line_number,
-    intern_unknown_tag_in_liquid_tag;
+    intern_unknown_tag_in_liquid_tag,
+    intern_ivar_nodelist;
 
 static VALUE tag_registry;
 
@@ -249,6 +250,13 @@ loop_break:
     return unknown_tag;
 }
 
+static void ensure_not_parsing(block_body_t *body)
+{
+    if (body->parsing) {
+        rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
+    }
+}
+
 static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
     parse_context_t parse_context = {
@@ -259,9 +267,7 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
 
-    if (body->parsing) {
-        rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
-    }
+    ensure_not_parsing(body);
     if (body->source == Qnil) {
         body->source = parse_context.tokenizer->source;
     } else if (body->source != parse_context.tokenizer->source) {
@@ -300,6 +306,7 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     if (!body->blank) {
         rb_raise(rb_eRuntimeError, "remove_blank_strings only support being called on a blank block body");
     }
+    ensure_not_parsing(body);
 
     size_t *const_ptr = (size_t *)body->constants.data;
     const uint8_t *ip = body->instructions.data;
@@ -330,6 +337,51 @@ loop_break:
     return Qnil;
 }
 
+// Deprecated: avoid using this for the love of performance
+static VALUE block_body_nodelist(VALUE self)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+
+    ensure_not_parsing(body);
+
+    // Use rb_attr_get insteaad of rb_ivar_get to avoid an instance variable not
+    // initialized warning.
+    VALUE nodelist = rb_attr_get(self, intern_ivar_nodelist);
+    if (nodelist != Qnil)
+        return nodelist;
+    nodelist = rb_ary_new_capa(body->instructions.size / sizeof(VALUE));
+
+    const size_t *const_ptr = (size_t *)body->constants.data;
+    const uint8_t *ip = body->instructions.data;
+    while (true) {
+        switch (*ip++) {
+            case OP_LEAVE:
+                goto loop_break;
+            case OP_WRITE_RAW:
+            {
+                const char *text = (const char *)*const_ptr++;
+                size_t size = *const_ptr++;
+                VALUE string = rb_enc_str_new(text, size, utf8_encoding);
+                rb_ary_push(nodelist, string);
+                break;
+            }
+            case OP_WRITE_NODE:
+            {
+                rb_ary_push(nodelist, *const_ptr++);
+                break;
+            }
+            default:
+                rb_bug("invalid opcode: %u", ip[-1]);
+        }
+    }
+loop_break:
+
+    rb_ary_freeze(nodelist);
+    rb_ivar_set(self, intern_ivar_nodelist, nodelist);
+    return nodelist;
+}
+
 void init_liquid_block()
 {
     intern_raise_missing_variable_terminator = rb_intern("raise_missing_variable_terminator");
@@ -339,6 +391,7 @@ void init_liquid_block()
     intern_square_brackets = rb_intern("[]");
     intern_set_line_number = rb_intern("line_number=");
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
+    intern_ivar_nodelist = rb_intern("@nodelist");
 
     tag_registry = rb_funcall(cLiquidTemplate, rb_intern("tags"), 0);
     rb_global_variable(&tag_registry);
@@ -350,5 +403,6 @@ void init_liquid_block()
     rb_define_method(cLiquidCBlockBody, "render_to_output_buffer", block_body_render_to_output_buffer, 2);
     rb_define_method(cLiquidCBlockBody, "remove_blank_strings", block_body_remove_blank_strings, 0);
     rb_define_method(cLiquidCBlockBody, "blank?", block_body_blank_p, 0);
+    rb_define_method(cLiquidCBlockBody, "nodelist", block_body_nodelist, 0);
 }
 

@@ -3,6 +3,7 @@
 #include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
+#include "variable.h"
 #include <stdio.h>
 
 static ID
@@ -16,6 +17,7 @@ static ID
     intern_ivar_nodelist;
 
 static VALUE tag_registry;
+static VALUE variable_placeholder = Qnil;
 
 typedef struct tag_markup {
     VALUE name;
@@ -137,10 +139,14 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
             }
             case TOKEN_VARIABLE:
             {
-                VALUE args[2] = {rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding), parse_context->ruby_obj};
-                VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
-
-                vm_assembler_add_write_node(&body->code, var);
+                variable_parse_args_t parse_args = {
+                    .markup = token.str_trimmed,
+                    .markup_end = token.str_trimmed + token.len_trimmed,
+                    .code = &body->code,
+                    .parse_context = parse_context->ruby_obj,
+                    .line_number = token_start_line_number,
+                };
+                internal_variable_parse(&parse_args);
                 render_score_increment += 1;
                 body->blank = false;
                 break;
@@ -284,6 +290,14 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     return Qnil;
 }
 
+static void memoize_variable_placeholder()
+{
+    if (variable_placeholder == Qnil) {
+        VALUE cLiquidCVariablePlaceholder = rb_const_get(mLiquidC, rb_intern("VariablePlaceholder"));
+        variable_placeholder = rb_class_new_instance(0, NULL, cLiquidCVariablePlaceholder);
+    }
+}
+
 // Deprecated: avoid using this for the love of performance
 static VALUE block_body_nodelist(VALUE self)
 {
@@ -291,6 +305,7 @@ static VALUE block_body_nodelist(VALUE self)
     BlockBody_Get_Struct(self, body);
 
     ensure_not_parsing(body);
+    memoize_variable_placeholder();
 
     // Use rb_attr_get insteaad of rb_ivar_get to avoid an instance variable not
     // initialized warning.
@@ -318,8 +333,10 @@ static VALUE block_body_nodelist(VALUE self)
                 rb_ary_push(nodelist, const_ptr[0]);
                 break;
             }
-            default:
-                rb_bug("invalid opcode: %u", ip[-1]);
+
+            case OP_POP_WRITE_VARIABLE:
+                rb_ary_push(nodelist, variable_placeholder);
+                break;
         }
         liquid_vm_next_instruction(&ip, &const_ptr);
     }
@@ -352,5 +369,7 @@ void init_liquid_block()
     rb_define_method(cLiquidCBlockBody, "remove_blank_strings", block_body_remove_blank_strings, 0);
     rb_define_method(cLiquidCBlockBody, "blank?", block_body_blank_p, 0);
     rb_define_method(cLiquidCBlockBody, "nodelist", block_body_nodelist, 0);
+
+    rb_global_variable(&variable_placeholder);
 }
 

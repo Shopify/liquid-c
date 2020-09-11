@@ -42,5 +42,12 @@ inline static VALUE token_to_rstr(lexer_token_t token) {
     return rb_enc_str_new(token.val, token.val_end - token.val, utf8_encoding);
 }
 
+inline static VALUE token_to_rsym(lexer_token_t token) {
+    VALUE sym = rb_check_symbol_cstr(token.val, token.val_end - token.val, utf8_encoding);
+    if (RB_LIKELY(sym != Qnil))
+        return sym;
+    return rb_str_intern(token_to_rstr(token));
+}
+
 #endif
 

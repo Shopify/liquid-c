@@ -18,7 +18,7 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
     const uint8_t *ip = code->instructions.data;
     // Don't rely on a terminating OP_LEAVE instruction
     // since this could be called in the middle of parsing
-    const uint8_t *end_ip = ip + code->instructions.size;
+    const uint8_t *end_ip = code->instructions.data_end;
     while (ip < end_ip) {
         switch (*ip++) {
             case OP_LEAVE:

@@ -6,7 +6,7 @@ VALUE context_evaluate(VALUE self, VALUE expression);
 VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found);
 void context_maybe_raise_undefined_variable(VALUE self, VALUE key);
 
-extern ID id_aset, id_call, id_to_liquid, id_set_context;
+extern ID id_aset, id_set_context;
 
 #ifndef RB_SPECIAL_CONST_P
 // RB_SPECIAL_CONST_P added in Ruby 2.3

@@ -270,28 +270,16 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     size_t *const_ptr = (size_t *)body->code.constants.data;
     const uint8_t *ip = body->code.instructions.data;
 
-    while (true) {
-        switch (*ip++) {
-            case OP_LEAVE:
-                goto loop_break;
-            case OP_WRITE_RAW:
-            {
-                const_ptr++;
-                size_t *size_ptr = const_ptr++;
-                if (*size_ptr) {
-                    *size_ptr = 0; // effectively a no-op
-                    body->render_score--;
-                }
-                break;
+    while (*ip != OP_LEAVE) {
+        if (*ip == OP_WRITE_RAW) {
+            size_t *size_ptr = &const_ptr[1];
+            if (*size_ptr) {
+                *size_ptr = 0; // effectively a no-op
+                body->render_score--;
             }
-            case OP_WRITE_NODE:
-                const_ptr++;
-                break;
-            default:
-                rb_bug("invalid opcode: %u", ip[-1]);
         }
+        liquid_vm_next_instruction(&ip, (const size_t **)&const_ptr);
     }
-loop_break:
 
     return Qnil;
 }
@@ -314,25 +302,26 @@ static VALUE block_body_nodelist(VALUE self)
     const size_t *const_ptr = (size_t *)body->code.constants.data;
     const uint8_t *ip = body->code.instructions.data;
     while (true) {
-        switch (*ip++) {
+        switch (*ip) {
             case OP_LEAVE:
                 goto loop_break;
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)*const_ptr++;
-                size_t size = *const_ptr++;
+                const char *text = (const char *)const_ptr[0];
+                size_t size = const_ptr[1];
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
                 rb_ary_push(nodelist, string);
                 break;
             }
             case OP_WRITE_NODE:
             {
-                rb_ary_push(nodelist, *const_ptr++);
+                rb_ary_push(nodelist, const_ptr[0]);
                 break;
             }
             default:
                 rb_bug("invalid opcode: %u", ip[-1]);
         }
+        liquid_vm_next_instruction(&ip, &const_ptr);
     }
 loop_break:
 

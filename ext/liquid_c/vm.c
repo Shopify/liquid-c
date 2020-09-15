@@ -8,6 +8,28 @@ ID id_render_node;
 ID id_ivar_interrupts;
 ID id_ivar_resource_limits;
 
+void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr)
+{
+    const uint8_t *ip = *ip_ptr;
+
+    switch (*ip++) {
+        case OP_LEAVE:
+            break;
+
+        case OP_WRITE_NODE:
+            (*const_ptr_ptr)++;
+            break;
+
+        case OP_WRITE_RAW:
+            (*const_ptr_ptr) += 2;
+            break;
+
+        default:
+            rb_bug("invalid opcode: %u", ip[-1]);
+    }
+    *ip_ptr = ip;
+}
+
 void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
 {
     resource_limits_t *resource_limits;

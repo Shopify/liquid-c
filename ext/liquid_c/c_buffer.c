@@ -6,6 +6,8 @@ static void c_buffer_expand_for_write(c_buffer_t *buffer, size_t write_size)
     size_t size = c_buffer_size(buffer);
     size_t required_capacity = size + write_size;
 
+    if (capacity < 1)
+        capacity = 1;
     do {
         capacity *= 2;
     } while (capacity < required_capacity);
@@ -14,7 +16,7 @@ static void c_buffer_expand_for_write(c_buffer_t *buffer, size_t write_size)
     buffer->capacity_end = buffer->data + capacity;
 }
 
-static void c_buffer_reserve_for_write(c_buffer_t *buffer, size_t write_size)
+void c_buffer_reserve_for_write(c_buffer_t *buffer, size_t write_size)
 {
     uint8_t *write_end = buffer->data_end + write_size;
     if (write_end > buffer->capacity_end) {

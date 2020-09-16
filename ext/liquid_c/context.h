@@ -2,7 +2,6 @@
 #define LIQUID_CONTEXT_H
 
 void init_liquid_context();
-VALUE context_evaluate(VALUE self, VALUE expression);
 VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found);
 void context_maybe_raise_undefined_variable(VALUE self, VALUE key);
 

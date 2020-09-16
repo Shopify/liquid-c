@@ -1,3 +1,4 @@
+#include "liquid.h"
 #include "vm_assembler.h"
 
 void vm_assembler_init(vm_assembler_t *code)
@@ -25,10 +26,21 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
         switch (*ip++) {
             case OP_LEAVE:
             case OP_POP_WRITE_VARIABLE:
+            case OP_PUSH_NIL:
+            case OP_PUSH_TRUE:
+            case OP_PUSH_FALSE:
+            case OP_FIND_VAR:
+            case OP_LOOKUP_KEY:
+            case OP_NEW_INT_RANGE:
                 break;
 
             case OP_HASH_NEW:
+            case OP_PUSH_INT8:
                 ip++;
+                break;
+
+            case OP_PUSH_INT16:
+                ip += 2;
                 break;
 
             case OP_RENDER_VARIABLE_RESCUE:
@@ -41,7 +53,9 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
 
             case OP_WRITE_NODE:
             case OP_PUSH_CONST:
-            case OP_PUSH_EVAL_EXPR:
+            case OP_FIND_STATIC_VAR:
+            case OP_LOOKUP_CONST_KEY:
+            case OP_LOOKUP_COMMAND:
                 rb_gc_mark(*const_ptr++);
                 break;
 
@@ -67,4 +81,38 @@ void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)
 {
     vm_assembler_write_opcode(code, OP_WRITE_NODE);
     vm_assembler_write_ruby_constant(code, node);
+}
+
+void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num)
+{
+    int x = FIX2INT(num);
+    if (x >= INT8_MIN && x <= INT8_MAX) {
+        vm_assembler_add_push_int8(code, x);
+    } else if (x >= INT16_MIN && x <= INT16_MAX) {
+        vm_assembler_add_push_int16(code, x);
+    } else {
+        vm_assembler_add_push_const(code, num);
+    }
+}
+
+void vm_assembler_add_push_literal(vm_assembler_t *code, VALUE literal)
+{
+    switch (literal) {
+    case Qnil:
+        vm_assembler_add_push_nil(code);
+        break;
+    case Qtrue:
+        vm_assembler_add_push_true(code);
+        break;
+    case Qfalse:
+        vm_assembler_add_push_false(code);
+        break;
+    default:
+        if (RB_FIXNUM_P(literal)) {
+            vm_assembler_add_push_fixnum(code, literal);
+        } else {
+            vm_assembler_add_push_const(code, literal);
+        }
+        break;
+    }
 }

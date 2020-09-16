@@ -7,6 +7,7 @@
 
 extern ID id_evaluate;
 extern ID id_to_liquid;
+extern ID id_to_s;
 extern ID id_call;
 
 extern VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;

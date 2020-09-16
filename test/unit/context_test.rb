@@ -23,12 +23,13 @@ class ContextTest < Minitest::Test
   end
 
   def test_evaluate_works_with_variable_lookup
-    assert_equal 42, Liquid::Context.new({"var" => 42}).evaluate(Liquid::VariableLookup.new("var"))
+    assert_equal 42, Liquid::Context.new({"var" => 42}).evaluate(Liquid::C::Expression.strict_parse("var"))
   end
 
   def test_evaluating_a_variable_entirely_within_c
     context = Liquid::Context.new({"var" => 42})
-    lookup = Liquid::VariableLookup.new("var")
+    lookup = Liquid::C::Expression.strict_parse("var")
+    context.evaluate(lookup) # memoize vm_internal_new calls
 
     called_ruby_method_count = 0
     called_c_method_count = 0

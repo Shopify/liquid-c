@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "raw.h"
 #include "resource_limits.h"
+#include "expression.h"
 #include "block.h"
 #include "context.h"
 #include "variable_lookup.h"
@@ -12,6 +13,7 @@
 
 ID id_evaluate;
 ID id_to_liquid;
+ID id_to_s;
 ID id_call;
 
 VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
@@ -28,6 +30,7 @@ void Init_liquid_c(void)
 {
     id_evaluate = rb_intern("evaluate");
     id_to_liquid = rb_intern("to_liquid");
+    id_to_s = rb_intern("to_s");
     id_call = rb_intern("call");
 
     utf8_encoding = rb_utf8_encoding();
@@ -61,6 +64,7 @@ void Init_liquid_c(void)
     init_liquid_parser();
     init_liquid_raw();
     init_liquid_resource_limits();
+    init_liquid_expression();
     init_liquid_variable();
     init_liquid_block();
     init_liquid_context();

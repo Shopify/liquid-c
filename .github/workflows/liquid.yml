@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         entry:
-          - { ruby: 2.4, allowed-failure: false }
+          - { ruby: 2.5, allowed-failure: false }
           - { ruby: 2.7, allowed-failure: false }
           - { ruby: ruby-head, allowed-failure: true }
     name: test (${{ matrix.entry.ruby }})

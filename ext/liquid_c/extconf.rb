@@ -4,8 +4,12 @@ if RbConfig::CONFIG['host_os'] !~ /linux/ || Gem::Version.new(RUBY_VERSION) >= G
   $CFLAGS << ' -Werror'
 end
 compiler = RbConfig::MAKEFILE_CONFIG['CC']
-if ENV['DEBUG'] == 'true' && compiler =~ /gcc|g\+\+/
-  $CFLAGS << ' -fbounds-check'
+if ENV['DEBUG'] == 'true'
+  if compiler =~ /gcc|g\+\+/
+    $CFLAGS << ' -fbounds-check'
+  end
+else
+  $CFLAGS << ' -DNDEBUG'
 end
 
 if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("2.7.0") # added in 2.7

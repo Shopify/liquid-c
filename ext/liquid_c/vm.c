@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <assert.h>
 
 #include "liquid.h"
 #include "vm.h"
@@ -168,6 +169,7 @@ static void write_obj(VALUE output, VALUE obj)
 static inline void vm_stack_push(vm_t *vm, VALUE value)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
+    assert(stack_ptr < (VALUE *)vm->stack.capacity_end);
     *stack_ptr++ = value;
     vm->stack.data_end = (uint8_t *)stack_ptr;
 }
@@ -176,6 +178,7 @@ static inline VALUE vm_stack_pop(vm_t *vm)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
     stack_ptr--;
+    assert((VALUE *)vm->stack.data <= stack_ptr);
     vm->stack.data_end = (uint8_t *)stack_ptr;
     return *stack_ptr;
 }
@@ -184,6 +187,7 @@ static inline VALUE *vm_stack_pop_n_use_in_place(vm_t *vm, size_t n)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
     stack_ptr -= n;
+    assert((VALUE *)vm->stack.data <= stack_ptr);
     vm->stack.data_end = (uint8_t *)stack_ptr;
     return stack_ptr;
 }
@@ -398,6 +402,9 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
 {
     vm_t *vm = vm_from_context(context);
     vm_stack_reserve_for_write(vm, code->max_stack_size);
+#ifndef NDEBUG
+    size_t old_stack_byte_size = c_buffer_size(&vm->stack);
+#endif
 
     vm_render_until_error_args_t args = {
         .vm = vm,
@@ -406,7 +413,9 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
         .context = context,
     };
     vm_render_until_error((VALUE)&args);
-    return vm_stack_pop(vm);
+    VALUE ret = vm_stack_pop(vm);
+    assert(old_stack_byte_size == c_buffer_size(&vm->stack));
+    return ret;
 }
 
 void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr)
@@ -534,6 +543,7 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
 
     while (rb_rescue(vm_render_until_error, (VALUE)&render_args, vm_render_rescue, (VALUE)&rescue_args)) {
     }
+    assert(rescue_args.old_stack_byte_size == c_buffer_size(&vm->stack));
 }
 
 

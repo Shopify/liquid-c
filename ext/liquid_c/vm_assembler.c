@@ -26,7 +26,7 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
     while (ip < end_ip) {
         switch (*ip++) {
             case OP_LEAVE:
-            case OP_POP_WRITE_VARIABLE:
+            case OP_POP_WRITE:
             case OP_PUSH_NIL:
             case OP_PUSH_TRUE:
             case OP_PUSH_FALSE:

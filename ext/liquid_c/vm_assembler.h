@@ -9,7 +9,7 @@ enum opcode {
     OP_LEAVE = 0,
     OP_WRITE_RAW = 1,
     OP_WRITE_NODE = 2,
-    OP_POP_WRITE_VARIABLE,
+    OP_POP_WRITE,
     OP_PUSH_CONST,
     OP_PUSH_NIL,
     OP_PUSH_TRUE,
@@ -88,10 +88,10 @@ static inline void vm_assembler_remove_leave(vm_assembler_t *code)
     assert(*code->instructions.data_end == OP_LEAVE);
 }
 
-static inline void vm_assembler_add_pop_write_variable(vm_assembler_t *code)
+static inline void vm_assembler_add_pop_write(vm_assembler_t *code)
 {
     code->stack_size -= 1;
-    vm_assembler_write_opcode(code, OP_POP_WRITE_VARIABLE);
+    vm_assembler_write_opcode(code, OP_POP_WRITE);
 }
 
 static inline void vm_assembler_add_hash_new(vm_assembler_t *code, uint8_t hash_size)

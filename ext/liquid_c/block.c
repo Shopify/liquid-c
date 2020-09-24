@@ -331,7 +331,7 @@ static VALUE block_body_nodelist(VALUE self)
                 break;
             }
 
-            case OP_POP_WRITE_VARIABLE:
+            case OP_RENDER_VARIABLE_RESCUE:
                 rb_ary_push(nodelist, variable_placeholder);
                 break;
         }

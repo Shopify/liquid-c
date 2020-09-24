@@ -73,7 +73,7 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
         vm_assembler_add_filter(code, filter_name, arg_count);
     }
 
-    vm_assembler_add_pop_write_variable(code);
+    vm_assembler_add_pop_write(code);
 
     parser_must_consume(&p, TOKEN_EOS);
 

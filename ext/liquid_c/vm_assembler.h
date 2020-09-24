@@ -38,6 +38,8 @@ void init_liquid_vm_assembler();
 void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);
 void vm_assembler_gc_mark(vm_assembler_t *code);
+void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src);
+
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size);
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node);
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num);
@@ -69,18 +71,6 @@ static inline void vm_assembler_reserve_stack_size(vm_assembler_t *code, size_t 
 {
     vm_assembler_increment_stack_size(code, amount);
     code->stack_size -= amount;
-}
-
-static inline void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src)
-{
-    c_buffer_concat(&dest->instructions, &src->instructions);
-    c_buffer_concat(&dest->constants, &src->constants);
-
-    size_t max_src_stack_size = dest->stack_size + src->max_stack_size;
-    if (max_src_stack_size > dest->max_stack_size)
-        dest->max_stack_size = max_src_stack_size;
-
-    dest->stack_size += src->stack_size;
 }
 
 

@@ -68,7 +68,6 @@ static VALUE block_body_allocate(VALUE klass)
     vm_assembler_add_leave(&body->code);
     body->source = Qnil;
     body->render_score = 0;
-    body->parsing = false;
     body->blank = true;
     return obj;
 }
@@ -214,7 +213,7 @@ loop_break:
 
 static void ensure_not_parsing(block_body_t *body)
 {
-    if (body->parsing) {
+    if (body->code.parsing) {
         rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
     }
 }
@@ -235,12 +234,10 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     } else if (body->source != parse_context.tokenizer->source) {
         rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse must be passed the same tokenizer when called multiple times");
     }
-    body->parsing = true;
     vm_assembler_remove_leave(&body->code); // to extend block
 
     tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
     vm_assembler_add_leave(&body->code);
-    body->parsing = false;
     return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
 }
 

@@ -32,6 +32,7 @@ typedef struct vm_assembler {
     c_buffer_t constants;
     size_t max_stack_size;
     size_t stack_size;
+    bool parsing; // prevent executing when incomplete or extending when complete
 } vm_assembler_t;
 
 void init_liquid_vm_assembler();
@@ -77,10 +78,12 @@ static inline void vm_assembler_reserve_stack_size(vm_assembler_t *code, size_t 
 static inline void vm_assembler_add_leave(vm_assembler_t *code)
 {
     vm_assembler_write_opcode(code, OP_LEAVE);
+    code->parsing = false;
 }
 
 static inline void vm_assembler_remove_leave(vm_assembler_t *code)
 {
+    code->parsing = true;
     code->instructions.data_end--;
     assert(*code->instructions.data_end == OP_LEAVE);
 }

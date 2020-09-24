@@ -7,6 +7,7 @@ void vm_assembler_init(vm_assembler_t *code)
     code->constants = c_buffer_allocate(8 * sizeof(VALUE));
     code->max_stack_size = 0;
     code->stack_size = 0;
+    code->parsing = true;
 }
 
 void vm_assembler_free(vm_assembler_t *code)

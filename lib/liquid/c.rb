@@ -3,6 +3,7 @@
 require 'liquid/c/version'
 require 'liquid'
 require 'liquid_c'
+require 'liquid/c/compile_ext'
 
 Liquid::C::BlockBody.class_eval do
   def render(context)

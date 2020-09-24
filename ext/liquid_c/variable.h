@@ -2,11 +2,12 @@
 #define LIQUID_VARIABLE_H
 
 #include "vm_assembler.h"
+#include "block.h"
 
 typedef struct variable_parse_args {
     const char *markup;
     const char *markup_end;
-    vm_assembler_t *code;
+    block_body_t *body;
     VALUE parse_context;
     unsigned int line_number;
 } variable_parse_args_t;

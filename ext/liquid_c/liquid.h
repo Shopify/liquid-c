@@ -9,8 +9,10 @@ extern ID id_evaluate;
 extern ID id_to_liquid;
 extern ID id_to_s;
 extern ID id_call;
+extern ID id_compile_evaluate;
 
 extern VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+extern VALUE cLiquidVariableLookup, cLiquidRangeLookup;
 extern VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
 extern rb_encoding *utf8_encoding;
 extern int utf8_encoding_index;

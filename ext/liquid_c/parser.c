@@ -88,11 +88,13 @@ static VALUE parse_variable(parser_t *p)
 {
     VALUE name, lookups = rb_ary_new(), lookup;
     unsigned long long command_flags = 0;
+    bool static_variable_name = false;
 
     if (parser_consume(p, TOKEN_OPEN_SQUARE).type) {
         name = parse_expression(p);
         parser_must_consume(p, TOKEN_CLOSE_SQUARE);
     } else {
+        static_variable_name = true;
         name = token_to_rstr(parser_must_consume(p, TOKEN_IDENTIFIER));
     }
 
@@ -119,7 +121,7 @@ static VALUE parse_variable(parser_t *p)
         }
     }
 
-    if (RARRAY_LEN(lookups) == 0) {
+    if (RARRAY_LEN(lookups) == 0 && static_variable_name) {
         VALUE literal = rb_hash_lookup2(vLiquidExpressionLiterals, name, Qundef);
         if (literal != Qundef) return literal;
     }

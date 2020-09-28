@@ -474,11 +474,6 @@ typedef struct vm_render_rescue_args {
     size_t old_stack_byte_size;
 } vm_render_rescue_args_t;
 
-static inline unsigned int decode_node_line_number(const uint8_t *node_line_number)
-{
-    return (node_line_number[0] << 16) | (node_line_number[1] << 8) | node_line_number[2];
-}
-
 // Actually returns a bool resume_rendering value
 static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
 {

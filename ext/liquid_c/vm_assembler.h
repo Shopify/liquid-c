@@ -40,6 +40,7 @@ void init_liquid_vm_assembler();
 void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);
 void vm_assembler_gc_mark(vm_assembler_t *code);
+VALUE vm_assembler_disassemble(vm_assembler_t *code);
 void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src);
 void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count);
 

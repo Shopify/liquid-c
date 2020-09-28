@@ -43,7 +43,25 @@ Liquid::RangeLookup.class_eval do
   end
 end
 
+Liquid::Tag.class_eval do
+  # Avoid automatically inheriting compile methods other than the base compile
+  # method, so that compile methods can be added without breaking subclasses
+  # that override the render behaviour.
+  def self.inherited(subclass)
+    alias_method(:compile, :base_compile)
+    super
+  end
+
+  alias_method(:base_compile, :compile)
+end
+
 Liquid::Comment.class_eval do
   def compile(_code)
+  end
+end
+
+Liquid::Raw.class_eval do
+  def compile(code)
+    code.add_write_raw(@body)
   end
 end

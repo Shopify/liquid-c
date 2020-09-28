@@ -531,6 +531,13 @@ static VALUE block_body_add_filter(VALUE self, VALUE filter_name, VALUE num_args
     return self;
 }
 
+static VALUE block_body_add_write_raw(VALUE self, VALUE string)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_write_raw_from_ruby(&body->code, string);
+    return self;
+}
 
 void liquid_define_block_body()
 {
@@ -563,6 +570,7 @@ void liquid_define_block_body()
 
     rb_define_method(cLiquidCBlockBody, "add_hash_new", block_body_add_hash_new, 1);
     rb_define_method(cLiquidCBlockBody, "add_filter", block_body_add_filter, 2);
+    rb_define_method(cLiquidCBlockBody, "add_write_raw", block_body_add_write_raw, 1);
 
     rb_global_variable(&variable_placeholder);
 }

@@ -407,6 +407,14 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     vm_assembler_add_filter(code, filter_name, arg_count);
 }
 
+void vm_assembler_add_write_raw_from_ruby(vm_assembler_t *code, VALUE string)
+{
+    ensure_parsing(code);
+    Check_Type(string, T_STRING);
+    check_utf8_encoding(string, "raw string");
+    vm_assembler_add_write_raw(code, RSTRING_PTR(string), RSTRING_LEN(string));
+}
+
 void vm_assembler_add_write_node_from_ruby(vm_assembler_t *code, VALUE node)
 {
     ensure_parsing(code);

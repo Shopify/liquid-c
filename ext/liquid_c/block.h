@@ -24,7 +24,12 @@ typedef struct block_body {
     } as;
 } block_body_t;
 
+extern const rb_data_type_t block_body_data_type;
+
+#define BlockBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, block_body_t, &block_body_data_type, sval)
+
 void liquid_define_block_body();
+void block_body_ensure_intermediate(block_body_t *body);
 
 static inline uint8_t *block_body_instructions_ptr(block_body_header_t *body)
 {

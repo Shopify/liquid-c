@@ -407,6 +407,12 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     vm_assembler_add_filter(code, filter_name, arg_count);
 }
 
+void vm_assembler_add_write_node_from_ruby(vm_assembler_t *code, VALUE node)
+{
+    ensure_parsing(code);
+    vm_assembler_add_write_node(code, node);
+}
+
 void liquid_define_vm_assembler()
 {
     builtin_filter_table = st_init_numtable_with_size(ARRAY_LENGTH(builtin_filters));

@@ -71,6 +71,7 @@ void vm_assembler_add_lookup_key_from_ruby(vm_assembler_t *code, VALUE code_obj,
 void vm_assembler_add_new_int_range_from_ruby(vm_assembler_t *code);
 void vm_assembler_add_hash_new_from_ruby(vm_assembler_t *code, VALUE hash_size_obj);
 void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, VALUE arg_count_obj);
+void vm_assembler_add_write_node_from_ruby(vm_assembler_t *code, VALUE node);
 
 static inline size_t vm_assembler_alloc_memsize(const vm_assembler_t *code)
 {

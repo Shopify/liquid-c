@@ -535,7 +535,8 @@ static VALUE block_body_add_write_raw(VALUE self, VALUE string)
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
-    vm_assembler_add_write_raw_from_ruby(&body->code, string);
+    ensure_intermediate(body);
+    vm_assembler_add_write_raw_from_ruby(body->as.intermediate.code, string);
     return self;
 }
 

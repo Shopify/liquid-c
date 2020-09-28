@@ -42,3 +42,8 @@ Liquid::RangeLookup.class_eval do
     code.add_new_int_range
   end
 end
+
+Liquid::Comment.class_eval do
+  def compile(_code)
+  end
+end

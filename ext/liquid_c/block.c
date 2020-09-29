@@ -144,9 +144,8 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     .markup_end = token.str_trimmed + token.len_trimmed,
                     .body = body,
                     .parse_context = parse_context->ruby_obj,
-                    .line_number = token_start_line_number,
                 };
-                internal_variable_parse(&parse_args);
+                internal_variable_compile(&parse_args, token_start_line_number);
                 render_score_increment += 1;
                 body->blank = false;
                 break;

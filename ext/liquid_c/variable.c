@@ -13,10 +13,10 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
     init_parser(&p, parse_args->markup, parse_args->markup_end);
     vm_assembler_t *code = &parse_args->body->code;
 
-    if (p.cur.type == TOKEN_EOS)
+    if (p.cur.type == TOKEN_EOS) {
+        vm_assembler_add_push_nil(code);
         return Qnil;
-
-    vm_assembler_add_render_variable_rescue(code, parse_args->line_number);
+    }
 
     parse_and_compile_expression(&p, code);
 
@@ -70,8 +70,6 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
         vm_assembler_add_filter(code, filter_name, arg_count);
     }
 
-    vm_assembler_add_pop_write(code);
-
     parser_must_consume(&p, TOKEN_EOS);
 
     return Qnil;
@@ -106,17 +104,15 @@ static VALUE variable_strict_parse_rescue(VALUE uncast_args, VALUE exception)
 
     // lax parse
     code->protected_stack_size = code->stack_size;
-    vm_assembler_add_render_variable_rescue(code, parse_args->line_number);
     rb_funcall(variable_obj, id_compile_evaluate, 1, parse_args->body->obj);
     if (code->stack_size != code->protected_stack_size + 1) {
         rb_raise(rb_eRuntimeError, "Liquid::Variable#compile_evaluate didn't leave exactly 1 new element on the stack");
     }
-    vm_assembler_add_pop_write(code);
 
     return Qnil;
 }
 
-void internal_variable_parse(variable_parse_args_t *parse_args)
+void internal_variable_compile_evaluate(variable_parse_args_t *parse_args)
 {
     vm_assembler_t *code = &parse_args->body->code;
     variable_strict_parse_rescue_t rescue_args = {
@@ -126,6 +122,14 @@ void internal_variable_parse(variable_parse_args_t *parse_args)
         .stack_size = code->stack_size,
     };
     rb_rescue(try_variable_strict_parse, (VALUE)parse_args, variable_strict_parse_rescue, (VALUE)&rescue_args);
+}
+
+void internal_variable_compile(variable_parse_args_t *parse_args, unsigned int line_number)
+{
+    vm_assembler_t *code = &parse_args->body->code;
+    vm_assembler_add_render_variable_rescue(code, line_number);
+    internal_variable_compile_evaluate(parse_args);
+    vm_assembler_add_pop_write(code);
 }
 
 void init_liquid_variable(void)

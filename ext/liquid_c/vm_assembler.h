@@ -12,6 +12,7 @@ enum opcode {
     OP_WRITE_NODE = 2,
     OP_POP_WRITE,
     OP_WRITE_RAW_SKIP,
+    OP_ASSIGN,
     OP_PUSH_CONST,
     OP_PUSH_NIL,
     OP_PUSH_TRUE,
@@ -220,6 +221,13 @@ static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code,
     uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
     instructions[0] = OP_RENDER_VARIABLE_RESCUE;
     uint24_to_bytes((unsigned int)node_line_number, &instructions[1]);
+}
+
+static inline void vm_assembler_add_assign(vm_assembler_t *code, VALUE variable_name)
+{
+    code->stack_size--;
+    vm_assembler_write_ruby_constant(code, variable_name);
+    vm_assembler_write_opcode(code, OP_ASSIGN);
 }
 
 #endif

@@ -58,25 +58,16 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE start_l
     return Qnil;
 }
 
-// Internal method for creating a tokenizer from C.
-// This does not create a copy of the source string, and should be called with
-// a `source` value taken from an existing tokenizer.
-VALUE tokenizer_new_from_cstr(VALUE source, const char *cursor, const char *cursor_end, int line_number, bool for_liquid_tag)
+// Internal function to setup an existing tokenizer from C for a liquid tag.
+// This overwrites the passed in tokenizer, so a copy of the struct should
+// be used to reset the tokenizer after parsing the liquid tag.
+void tokenizer_setup_for_liquid_tag(tokenizer_t *tokenizer, const char *cursor, const char *cursor_end, int line_number)
 {
-    Check_Type(source, T_STRING);
-
-    VALUE rbtokenizer = tokenizer_allocate(cLiquidTokenizer);
-
-    tokenizer_t *tokenizer;
-    Tokenizer_Get_Struct(rbtokenizer, tokenizer);
-
-    tokenizer->source = source;
     tokenizer->cursor = cursor;
     tokenizer->cursor_end = cursor_end;
     tokenizer->lstrip_flag = false;
     tokenizer->line_number = line_number;
-    tokenizer->for_liquid_tag = for_liquid_tag;
-    return rbtokenizer;
+    tokenizer->for_liquid_tag = true;
 }
 
 // Tokenizes contents of {% liquid ... %}

@@ -7,3 +7,6 @@ tmp
 *.bundle
 ext/*/Makefile
 *.so
+instruments*.trace
+*.cpu
+*.object

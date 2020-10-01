@@ -45,6 +45,13 @@ namespace :benchmark do
   end
 end
 
+namespace :c_profile do
+  %i(run compile render).each do |task_name|
+    task(task_name) do
+      ruby "./performance/c_profile.rb #{task_name}"
+    end
+  end
+end
 
 namespace :profile do
   desc "Run the liquid profile/performance coverage"

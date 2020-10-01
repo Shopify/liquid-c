@@ -3,6 +3,7 @@
 
 #include <ruby.h>
 #include "block.h"
+#include "resource_limits.h"
 
 enum opcode {
     OP_LEAVE = 0,

@@ -2,18 +2,7 @@
 #include "resource_limits.h"
 
 VALUE cLiquidResourceLimits;
-static VALUE id_plus, id_minus, id_gt, id_bytesize;
-
-static void resource_limits_mark(void *ptr)
-{
-    resource_limits_t *resource_limits = ptr;
-    rb_gc_mark(resource_limits->render_length_limit);
-    rb_gc_mark(resource_limits->render_score_limit);
-    rb_gc_mark(resource_limits->assign_score_limit);
-    rb_gc_mark(resource_limits->last_capture_length);
-    rb_gc_mark(resource_limits->render_score);
-    rb_gc_mark(resource_limits->assign_score);
-}
+static VALUE id_bytesize;
 
 static void resource_limits_free(void *ptr)
 {
@@ -23,12 +12,12 @@ static void resource_limits_free(void *ptr)
 
 static size_t resource_limits_memsize(const void *ptr)
 {
-    return ptr ? sizeof(resource_limits_t) : 0;
+    return sizeof(resource_limits_t);
 }
 
 const rb_data_type_t resource_limits_data_type = {
     "liquid_resource_limits",
-    { resource_limits_mark, resource_limits_free, resource_limits_memsize },
+    { NULL, resource_limits_free, resource_limits_memsize },
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
@@ -43,24 +32,10 @@ static VALUE resource_limits_allocate(VALUE klass)
 
 static void resource_limits_reset(resource_limits_t *resource_limit)
 {
-    resource_limit->reached_limit = 0;
-    resource_limit->last_capture_length = Qnil;
-    resource_limit->render_score = INT2FIX(0);
-    resource_limit->assign_score = INT2FIX(0);
-}
-
-static VALUE resource_limits_initialize_method(VALUE self, VALUE limits)
-{
-    resource_limits_t *resource_limits;
-    ResourceLimits_Get_Struct(self, resource_limits);
-
-    resource_limits->render_length_limit = rb_hash_lookup(limits, ID2SYM(rb_intern("render_length_limit")));
-    resource_limits->render_score_limit = rb_hash_lookup(limits, ID2SYM(rb_intern("render_score_limit")));
-    resource_limits->assign_score_limit = rb_hash_lookup(limits, ID2SYM(rb_intern("assign_score_limit")));
-
-    resource_limits_reset(resource_limits);
-
-    return Qnil;
+    resource_limit->reached_limit = true;
+    resource_limit->last_capture_length = -1;
+    resource_limit->render_score = 0;
+    resource_limit->assign_score = 0;
 }
 
 static VALUE resource_limits_render_length_limit_method(VALUE self)
@@ -68,7 +43,7 @@ static VALUE resource_limits_render_length_limit_method(VALUE self)
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    return resource_limits->render_length_limit;
+    return LONG2NUM(resource_limits->render_length_limit);
 }
 
 static VALUE resource_limits_set_render_length_limit_method(VALUE self, VALUE render_length_limit)
@@ -76,7 +51,11 @@ static VALUE resource_limits_set_render_length_limit_method(VALUE self, VALUE re
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    resource_limits->render_length_limit = render_length_limit;
+     if (render_length_limit == Qnil) {
+        resource_limits->render_length_limit = LONG_MAX;
+    } else {
+        resource_limits->render_length_limit = NUM2LONG(render_length_limit);
+    }
 
     return Qnil;
 }
@@ -86,7 +65,7 @@ static VALUE resource_limits_render_score_limit_method(VALUE self)
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    return resource_limits->render_score_limit;
+    return LONG2NUM(resource_limits->render_score_limit);
 }
 
 static VALUE resource_limits_set_render_score_limit_method(VALUE self, VALUE render_score_limit)
@@ -94,7 +73,11 @@ static VALUE resource_limits_set_render_score_limit_method(VALUE self, VALUE ren
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    resource_limits->render_score_limit = render_score_limit;
+    if (render_score_limit == Qnil) {
+        resource_limits->render_score_limit = LONG_MAX;
+    } else {
+        resource_limits->render_score_limit = NUM2LONG(render_score_limit);
+    }
 
     return Qnil;
 }
@@ -104,7 +87,7 @@ static VALUE resource_limits_assign_score_limit_method(VALUE self)
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    return resource_limits->assign_score_limit;
+    return LONG2NUM(resource_limits->assign_score_limit);
 }
 
 static VALUE resource_limits_set_assign_score_limit_method(VALUE self, VALUE assign_score_limit)
@@ -112,7 +95,11 @@ static VALUE resource_limits_set_assign_score_limit_method(VALUE self, VALUE ass
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    resource_limits->assign_score_limit = assign_score_limit;
+    if (assign_score_limit == Qnil) {
+        resource_limits->assign_score_limit = LONG_MAX;
+    } else {
+        resource_limits->assign_score_limit = NUM2LONG(assign_score_limit);
+    }
 
     return Qnil;
 }
@@ -122,7 +109,7 @@ static VALUE resource_limits_render_score_method(VALUE self)
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    return resource_limits->render_score;
+    return LONG2NUM(resource_limits->render_score);
 }
 
 static VALUE resource_limits_assign_score_method(VALUE self)
@@ -130,14 +117,38 @@ static VALUE resource_limits_assign_score_method(VALUE self)
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    return resource_limits->assign_score;
+    return LONG2NUM(resource_limits->assign_score);
+}
+
+static VALUE resource_limits_initialize_method(VALUE self, VALUE render_length_limit,
+                                               VALUE render_score_limit, VALUE assign_score_limit)
+{
+    resource_limits_t *resource_limits;
+    ResourceLimits_Get_Struct(self, resource_limits);
+
+    resource_limits_set_render_length_limit_method(self, render_length_limit);
+    resource_limits_set_render_score_limit_method(self, render_score_limit);
+    resource_limits_set_assign_score_limit_method(self, assign_score_limit);
+
+    resource_limits_reset(resource_limits);
+
+    return Qnil;
 }
 
 __attribute__((noreturn))
-static void resource_limits_raise_limits_reached(resource_limits_t *resource_limit)
+void resource_limits_raise_limits_reached(resource_limits_t *resource_limit)
 {
-    resource_limit->reached_limit = 1;
+    resource_limit->reached_limit = true;
     rb_raise(cMemoryError, "Memory limits exceeded");
+}
+
+void resource_limits_increment_render_score(resource_limits_t *resource_limits, long amount)
+{
+    resource_limits->render_score = resource_limits->render_score + amount;
+
+    if (resource_limits->render_score > resource_limits->render_score_limit) {
+        resource_limits_raise_limits_reached(resource_limits);
+    }
 }
 
 static VALUE resource_limits_increment_render_score_method(VALUE self, VALUE amount)
@@ -145,22 +156,16 @@ static VALUE resource_limits_increment_render_score_method(VALUE self, VALUE amo
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    resource_limits->render_score = rb_funcall(resource_limits->render_score, id_plus, 1, amount);
-
-    if (resource_limits->render_score_limit != Qnil &&
-        rb_funcall(resource_limits->render_score, rb_intern(">"), 1, resource_limits->render_score_limit) == Qtrue) {
-        resource_limits_raise_limits_reached(resource_limits);
-    }
+    resource_limits_increment_render_score(resource_limits, NUM2LONG(amount));
 
     return Qnil;
 }
 
-static void resource_limits_increment_assign_score(resource_limits_t *resource_limits, VALUE amount)
+static void resource_limits_increment_assign_score(resource_limits_t *resource_limits, long amount)
 {
-    resource_limits->assign_score = rb_funcall(resource_limits->assign_score, id_plus, 1, amount);
+    resource_limits->assign_score = resource_limits->assign_score + amount;
 
-    if (resource_limits->assign_score_limit != Qnil &&
-        rb_funcall(resource_limits->assign_score, id_gt, 1, resource_limits->assign_score_limit) == Qtrue) {
+    if (resource_limits->assign_score > resource_limits->assign_score_limit) {
         resource_limits_raise_limits_reached(resource_limits);
     }
 }
@@ -170,9 +175,21 @@ static VALUE resource_limits_increment_assign_score_method(VALUE self, VALUE amo
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    resource_limits_increment_assign_score(resource_limits, amount);
+    resource_limits_increment_assign_score(resource_limits, NUM2LONG(amount));
 
     return Qnil;
+}
+
+void resource_limits_increment_write_score(resource_limits_t *resource_limits, VALUE output)
+{
+    long captured = NUM2LONG(rb_funcall(output, id_bytesize, 0));
+    if (resource_limits->last_capture_length >= 0) {
+        long increment = captured - resource_limits->last_capture_length;
+        resource_limits->last_capture_length = captured;
+        resource_limits_increment_assign_score(resource_limits, increment);
+    } else if (captured > resource_limits->render_length_limit) {
+        resource_limits_raise_limits_reached(resource_limits);
+    }
 }
 
 static VALUE resource_limits_increment_write_score_method(VALUE self, VALUE output)
@@ -180,17 +197,7 @@ static VALUE resource_limits_increment_write_score_method(VALUE self, VALUE outp
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    if (resource_limits->last_capture_length != Qnil) {
-        VALUE captured = rb_funcall(output, id_bytesize, 0);
-        VALUE increment = rb_funcall(captured, id_minus, 1, resource_limits->last_capture_length);
-        resource_limits->last_capture_length = captured;
-        resource_limits_increment_assign_score(resource_limits, increment);
-    } else if (resource_limits->render_length_limit != Qnil) {
-        VALUE captured = rb_funcall(output, id_bytesize, 0);
-        if (rb_funcall(captured, id_gt, 1, resource_limits->render_length_limit)) {
-            resource_limits_raise_limits_reached(resource_limits);
-        }
-    }
+    resource_limits_increment_write_score(resource_limits, output);
 
     return Qnil;
 }
@@ -208,17 +215,12 @@ static VALUE resource_limits_reached_method(VALUE self)
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
-    return resource_limits->reached_limit;
-}
-
-static VALUE yield_capture(VALUE _data)
-{
-    return rb_yield(Qundef);
+    return resource_limits->reached_limit ? Qtrue : Qfalse;
 }
 
 struct capture_ensure_t {
     resource_limits_t *resource_limits;
-    VALUE old_capture_length;
+    long old_capture_length;
 };
 
 static VALUE capture_ensure(VALUE data)
@@ -239,9 +241,9 @@ static VALUE resource_limits_with_capture_method(VALUE self)
         .old_capture_length = resource_limits->last_capture_length
     };
 
-    resource_limits->last_capture_length = INT2FIX(0);
+    resource_limits->last_capture_length = 0;
 
-    return rb_ensure(yield_capture, 0, capture_ensure, (VALUE)&ensure_data);
+    return rb_ensure(rb_yield, Qundef, capture_ensure, (VALUE)&ensure_data);
 }
 
 
@@ -255,16 +257,13 @@ static VALUE resource_limits_reset_method(VALUE self)
 
 void init_liquid_resource_limits()
 {
-    id_plus = rb_intern("+");
-    id_minus = rb_intern("-");
-    id_gt = rb_intern(">");
     id_bytesize = rb_intern("bytesize");
 
     cLiquidResourceLimits = rb_define_class_under(mLiquidC, "ResourceLimits", rb_cObject);
     rb_global_variable(&cLiquidResourceLimits);
 
     rb_define_alloc_func(cLiquidResourceLimits, resource_limits_allocate);
-    rb_define_method(cLiquidResourceLimits, "initialize", resource_limits_initialize_method, 1);
+    rb_define_method(cLiquidResourceLimits, "initialize", resource_limits_initialize_method, 3);
     rb_define_method(cLiquidResourceLimits, "render_length_limit", resource_limits_render_length_limit_method, 0);
     rb_define_method(cLiquidResourceLimits, "render_length_limit=", resource_limits_set_render_length_limit_method, 1);
     rb_define_method(cLiquidResourceLimits, "render_score_limit", resource_limits_render_score_limit_method, 0);

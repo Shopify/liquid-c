@@ -130,7 +130,11 @@ end
 Liquid::ResourceLimits.class_eval do
   def self.new(limits)
     if Liquid::C.enabled
-      Liquid::C::ResourceLimits.new(limits)
+      Liquid::C::ResourceLimits.new(
+        limits[:render_length_limit],
+        limits[:render_score_limit],
+        limits[:assign_score_limit]
+      )
     else
       super
     end

@@ -10,3 +10,4 @@ ext/*/Makefile
 instruments*.trace
 *.cpu
 *.object
+*.dSYM

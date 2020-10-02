@@ -13,9 +13,9 @@ VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cMemoryError, cLiquidVariable, cLiq
 rb_encoding *utf8_encoding;
 int utf8_encoding_index;
 
-__attribute__((noreturn)) void raise_non_utf8_encoding_error(const char *value_name)
+__attribute__((noreturn)) void raise_non_utf8_encoding_error(VALUE string, const char *value_name)
 {
-    rb_raise(rb_eEncCompatError, "non-UTF8 encoded %s (ASCII-8BIT) not supported", value_name);
+    rb_raise(rb_eEncCompatError, "non-UTF8 encoded %s (%"PRIsVALUE") not supported", value_name, rb_obj_encoding(string));
 }
 
 void Init_liquid_c(void)

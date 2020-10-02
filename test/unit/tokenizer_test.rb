@@ -45,6 +45,14 @@ class TokenizerTest < Minitest::Test
     assert_equal [source], output
   end
 
+  def test_non_utf8_encoded_template
+    source = String.new('ascii text', encoding: Encoding::BINARY)
+    exc = assert_raises(Encoding::CompatibilityError) do
+      Liquid::C::Tokenizer.new(source, 1, false)
+    end
+    assert_equal("non-UTF8 encoded source (ASCII-8BIT) not supported", exc.message)
+  end
+
   private
 
   def tokenize(source, for_liquid_tag: false, trimmed: false)

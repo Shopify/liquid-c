@@ -10,10 +10,18 @@
 
 VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 rb_encoding *utf8_encoding;
+int utf8_encoding_index;
+
+__attribute__((noreturn)) void raise_non_utf8_encoding_error(const char *value_name)
+{
+    rb_raise(rb_eEncCompatError, "non-UTF8 encoded %s (ASCII-8BIT) not supported", value_name);
+}
 
 void Init_liquid_c(void)
 {
     utf8_encoding = rb_utf8_encoding();
+    utf8_encoding_index = rb_enc_to_index(utf8_encoding);
+
     mLiquid = rb_define_module("Liquid");
     rb_global_variable(&mLiquid);
 

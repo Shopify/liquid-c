@@ -10,12 +10,12 @@ class BlockTest < MiniTest::Test
   end
 
   def test_raise_on_output_with_non_utf8_encoding
-    output = String.new(encoding: Encoding::BINARY)
+    output = String.new(encoding: Encoding::ASCII)
     template = Liquid::Template.parse("ascii text")
     exc = assert_raises(Encoding::CompatibilityError) do
       template.render!({}, output: output)
     end
-    assert_equal("non-UTF8 encoded output (ASCII-8BIT) not supported", exc.message)
+    assert_equal("non-UTF8 encoded output (US-ASCII) not supported", exc.message)
   end
 
   def test_write_unicode_characters

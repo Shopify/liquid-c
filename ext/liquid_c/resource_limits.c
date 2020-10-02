@@ -2,7 +2,6 @@
 #include "resource_limits.h"
 
 VALUE cLiquidResourceLimits;
-static VALUE id_bytesize;
 
 static void resource_limits_free(void *ptr)
 {
@@ -179,8 +178,6 @@ static VALUE resource_limits_increment_assign_score_method(VALUE self, VALUE amo
 
 void resource_limits_increment_write_score(resource_limits_t *resource_limits, VALUE output)
 {
-    Check_Type(output, T_STRING);
-
     long captured = RSTRING_LEN(output);
 
     if (resource_limits->last_capture_length >= 0) {
@@ -194,6 +191,8 @@ void resource_limits_increment_write_score(resource_limits_t *resource_limits, V
 
 static VALUE resource_limits_increment_write_score_method(VALUE self, VALUE output)
 {
+    Check_Type(output, T_STRING);
+
     resource_limits_t *resource_limits;
     ResourceLimits_Get_Struct(self, resource_limits);
 
@@ -257,8 +256,6 @@ static VALUE resource_limits_reset_method(VALUE self)
 
 void init_liquid_resource_limits()
 {
-    id_bytesize = rb_intern("bytesize");
-
     cLiquidResourceLimits = rb_define_class_under(mLiquidC, "ResourceLimits", rb_cObject);
     rb_global_variable(&cLiquidResourceLimits);
 

@@ -37,7 +37,7 @@ class TokenizerTest < Minitest::Test
     assert_equal ["funk", "so | brother"], tokenize(source, for_liquid_tag: true, trimmed: true)
   end
 
-  def test_utf8_encoded_template
+  def test_utf8_encoded_source
     source = 'auswählen'
     assert_equal Encoding::UTF_8, source.encoding
     output = tokenize(source)
@@ -45,8 +45,17 @@ class TokenizerTest < Minitest::Test
     assert_equal [source], output
   end
 
-  def test_non_utf8_encoded_template
-    source = String.new('ascii text', encoding: Encoding::BINARY)
+  def test_utf8_compatible_source
+    source = String.new('ascii', encoding: Encoding::ASCII)
+    tokenizer = Liquid::Tokenizer.new(source)
+    output = tokenizer.shift
+    assert_equal Encoding::UTF_8, output.encoding
+    assert_equal source, output
+    assert_nil(tokenizer.shift)
+  end
+
+  def test_non_utf8_compatible_source
+    source = 'üñicode'.force_encoding(Encoding::BINARY)
     exc = assert_raises(Encoding::CompatibilityError) do
       Liquid::C::Tokenizer.new(source, 1, false)
     end

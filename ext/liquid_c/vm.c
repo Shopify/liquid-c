@@ -2,6 +2,7 @@
 
 #include "liquid.h"
 #include "vm.h"
+#include "resource_limits.h"
 
 ID id_render_node;
 ID id_ivar_interrupts;
@@ -13,15 +14,6 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
     ResourceLimits_Get_Struct(rb_ivar_get(context, id_ivar_resource_limits), resource_limits);
 
     resource_limits_increment_render_score(resource_limits, body->render_score);
-
-    bool is_captured = resource_limits->last_capture_length != Qnil;
-    long render_length_limit = LONG_MAX;
-
-    if (!is_captured) {
-        VALUE render_length_limit_num = resource_limits->render_length_limit;
-        if (render_length_limit_num != Qnil)
-            render_length_limit = NUM2LONG(render_length_limit_num);
-    }
 
     const size_t *const_ptr = (const size_t *)body->constants.data;
     const uint8_t *ip = body->instructions.data;
@@ -48,11 +40,8 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
             default:
                 rb_bug("invalid opcode: %u", ip[-1]);
         }
-        if (RB_UNLIKELY(is_captured)) {
-            resource_limits_increment_write_score(resource_limits, output);
-        } else if (RSTRING_LEN(output) > render_length_limit) {
-            resource_limits_raise_limits_reached(resource_limits);
-        }
+
+        resource_limits_increment_write_score(resource_limits, output);
     }
 }
 

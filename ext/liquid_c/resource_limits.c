@@ -21,21 +21,23 @@ const rb_data_type_t resource_limits_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-static VALUE resource_limits_allocate(VALUE klass)
-{
-    resource_limits_t *resource_limits;
-
-    VALUE obj = TypedData_Make_Struct(klass, resource_limits_t, &resource_limits_data_type, resource_limits);
-
-    return obj;
-}
-
 static void resource_limits_reset(resource_limits_t *resource_limit)
 {
     resource_limit->reached_limit = true;
     resource_limit->last_capture_length = -1;
     resource_limit->render_score = 0;
     resource_limit->assign_score = 0;
+}
+
+static VALUE resource_limits_allocate(VALUE klass)
+{
+    resource_limits_t *resource_limits;
+
+    VALUE obj = TypedData_Make_Struct(klass, resource_limits_t, &resource_limits_data_type, resource_limits);
+
+    resource_limits_reset(resource_limits);
+
+    return obj;
 }
 
 static VALUE resource_limits_render_length_limit_method(VALUE self)
@@ -123,14 +125,9 @@ static VALUE resource_limits_assign_score_method(VALUE self)
 static VALUE resource_limits_initialize_method(VALUE self, VALUE render_length_limit,
                                                VALUE render_score_limit, VALUE assign_score_limit)
 {
-    resource_limits_t *resource_limits;
-    ResourceLimits_Get_Struct(self, resource_limits);
-
     resource_limits_set_render_length_limit_method(self, render_length_limit);
     resource_limits_set_render_score_limit_method(self, render_score_limit);
     resource_limits_set_assign_score_limit_method(self, assign_score_limit);
-
-    resource_limits_reset(resource_limits);
 
     return Qnil;
 }
@@ -182,7 +179,10 @@ static VALUE resource_limits_increment_assign_score_method(VALUE self, VALUE amo
 
 void resource_limits_increment_write_score(resource_limits_t *resource_limits, VALUE output)
 {
-    long captured = NUM2LONG(rb_funcall(output, id_bytesize, 0));
+    Check_Type(output, T_STRING);
+
+    long captured = RSTRING_LEN(output);
+
     if (resource_limits->last_capture_length >= 0) {
         long increment = captured - resource_limits->last_capture_length;
         resource_limits->last_capture_length = captured;

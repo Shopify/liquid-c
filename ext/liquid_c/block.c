@@ -287,6 +287,10 @@ static VALUE block_body_render_to_output_buffer(VALUE self, VALUE context, VALUE
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
+
+    Check_Type(output, T_STRING);
+    check_utf8_encoding(output, "output");
+
     liquid_vm_render(body, context, output);
     return output;
 }

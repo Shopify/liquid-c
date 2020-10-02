@@ -14,8 +14,6 @@ ID id_raise_limits_reached;
 
 void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
 {
-    Check_Type(output, T_STRING);
-
     VALUE resource_limits = rb_ivar_get(context, id_ivar_resource_limits);
     rb_funcall(resource_limits, id_increment_render_score, 1, INT2NUM(body->render_score));
 

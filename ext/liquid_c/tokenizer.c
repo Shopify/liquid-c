@@ -45,6 +45,8 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE start_l
     tokenizer_t *tokenizer;
 
     Check_Type(source, T_STRING);
+    check_utf8_encoding(source, "source");
+
     Tokenizer_Get_Struct(self, tokenizer);
     source = rb_str_dup_frozen(source);
     tokenizer->source = source;

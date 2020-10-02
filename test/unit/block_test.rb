@@ -9,29 +9,18 @@ class BlockTest < MiniTest::Test
     assert_equal 3, template.root.nodelist.size
   end
 
-  def test_pre_trim
-    template = Liquid::Template.parse("\n{%- raw %}{% endraw %}")
-    assert_equal "", template.render
-
-    template = Liquid::Template.parse("\n{%- if true %}{% endif %}")
-    assert_equal "", template.render
+  def test_raise_on_output_with_non_utf8_encoding
+    output = String.new(encoding: Encoding::BINARY)
+    template = Liquid::Template.parse("ascii text")
+    exc = assert_raises(Encoding::CompatibilityError) do
+      template.render!({}, output: output)
+    end
+    assert_equal("non-UTF8 encoded output (ASCII-8BIT) not supported", exc.message)
   end
 
-  # Temporary to test rollout of the fix for this bug
-  def test_bug_compatible_pre_trim
-    template = Liquid::Template.parse("\n {%- raw %}{% endraw %}", bug_compatible_whitespace_trimming: true)
-    assert_equal "\n", template.render
-
-    template = Liquid::Template.parse("\n {%- if true %}{% endif %}", bug_compatible_whitespace_trimming: true)
-    assert_equal "\n", template.render
-
-    template = Liquid::Template.parse("{{ 'B' }} \n{%- if true %}C{% endif %}", bug_compatible_whitespace_trimming: true)
-    assert_equal "B C", template.render
-
-    template = Liquid::Template.parse("B\n {%- raw %}{% endraw %}", bug_compatible_whitespace_trimming: true)
-    assert_equal "B", template.render
-
-    template = Liquid::Template.parse("B\n {%- if true %}{% endif %}", bug_compatible_whitespace_trimming: true)
-    assert_equal "B", template.render
+  def test_write_unicode_characters
+    output = String.new(encoding: Encoding::UTF_8)
+    template = Liquid::Template.parse("ü{{ unicode_char }}")
+    assert_equal("üñ", template.render!({ 'unicode_char' => 'ñ' }, output: output))
   end
 end

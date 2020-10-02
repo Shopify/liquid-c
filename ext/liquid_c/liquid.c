@@ -3,12 +3,13 @@
 #include "variable.h"
 #include "lexer.h"
 #include "parser.h"
+#include "resource_limits.h"
 #include "block.h"
 #include "context.h"
 #include "variable_lookup.h"
 #include "vm.h"
 
-VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cMemoryError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 rb_encoding *utf8_encoding;
 int utf8_encoding_index;
 
@@ -31,6 +32,9 @@ void Init_liquid_c(void)
     cLiquidSyntaxError = rb_const_get(mLiquid, rb_intern("SyntaxError"));
     rb_global_variable(&cLiquidSyntaxError);
 
+    cMemoryError = rb_const_get(mLiquid, rb_intern("MemoryError"));
+    rb_global_variable(&cMemoryError);
+
     cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
     rb_global_variable(&cLiquidVariable);
 
@@ -42,6 +46,7 @@ void Init_liquid_c(void)
 
     init_liquid_tokenizer();
     init_liquid_parser();
+    init_liquid_resource_limits();
     init_liquid_variable();
     init_liquid_block();
     init_liquid_context();

@@ -5,7 +5,7 @@
 #include <ruby/encoding.h>
 #include <stdbool.h>
 
-extern VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+extern VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cMemoryError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 extern rb_encoding *utf8_encoding;
 extern int utf8_encoding_index;
 

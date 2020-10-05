@@ -5,7 +5,7 @@ static void c_buffer_reserve(c_buffer_t *buffer, size_t required_capacity)
     if (buffer->capacity >= required_capacity)
         return;
 
-    size_t new_capacity = buffer->capacity;
+    size_t new_capacity = buffer->capacity + 1;
     do {
         new_capacity *= 2;
     } while (new_capacity < required_capacity);

@@ -22,7 +22,7 @@ void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node);
 
 static inline size_t vm_assembler_alloc_memsize(const vm_assembler_t *code)
 {
-    return code->instructions.capacity + code->constants.capacity;
+    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants);
 }
 
 static inline void vm_assembler_write_opcode(vm_assembler_t *code, enum opcode op)
@@ -42,7 +42,7 @@ static inline void vm_assembler_add_leave(vm_assembler_t *code)
 
 static inline void vm_assembler_remove_leave(vm_assembler_t *code)
 {
-    code->instructions.size -= 1;
+    code->instructions.data_end--;
 }
 
 #endif

@@ -309,7 +309,7 @@ static VALUE block_body_nodelist(VALUE self)
     VALUE nodelist = rb_attr_get(self, intern_ivar_nodelist);
     if (nodelist != Qnil)
         return nodelist;
-    nodelist = rb_ary_new_capa(body->code.instructions.size / sizeof(VALUE));
+    nodelist = rb_ary_new_capa(body->render_score);
 
     const size_t *const_ptr = (size_t *)body->code.constants.data;
     const uint8_t *ip = body->code.instructions.data;

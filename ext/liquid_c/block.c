@@ -32,33 +32,13 @@ static void block_body_mark(void *ptr)
 {
     block_body_t *body = ptr;
     rb_gc_mark(body->source);
-
-    size_t *const_ptr = (size_t *)body->constants.data;
-    const uint8_t *ip = body->instructions.data;
-    // Don't rely on a terminating OP_LEAVE instruction
-    // since this could be called in the middle of parsing
-    const uint8_t *end_ip = ip + body->instructions.size;
-    while (ip < end_ip) {
-        switch (*ip++) {
-            case OP_LEAVE:
-                break;
-            case OP_WRITE_RAW:
-                const_ptr += 2;
-                break;
-            case OP_WRITE_NODE:
-                rb_gc_mark(*const_ptr++);
-                break;
-            default:
-                rb_bug("invalid opcode: %u", ip[-1]);
-        }
-    }
+    vm_assembler_gc_mark(&body->code);
 }
 
 static void block_body_free(void *ptr)
 {
     block_body_t *body = ptr;
-    c_buffer_free(&body->instructions);
-    c_buffer_free(&body->constants);
+    vm_assembler_free(&body->code);
     xfree(body);
 }
 
@@ -66,7 +46,7 @@ static size_t block_body_memsize(const void *ptr)
 {
     const block_body_t *body = ptr;
     if (!ptr) return 0;
-    return sizeof(block_body_t) + body->instructions.capacity + body->constants.capacity;
+    return sizeof(block_body_t) + vm_assembler_alloc_memsize(&body->code);
 }
 
 const rb_data_type_t block_body_data_type = {
@@ -77,37 +57,13 @@ const rb_data_type_t block_body_data_type = {
 
 #define BlockBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, block_body_t, &block_body_data_type, sval)
 
-static inline void block_body_write_opcode(block_body_t *body, enum opcode op)
-{
-    c_buffer_write_byte(&body->instructions, op);
-}
-
-static inline void block_body_add_leave(block_body_t *body)
-{
-    block_body_write_opcode(body, OP_LEAVE);
-}
-
-static void block_body_add_write_raw(block_body_t *body, const char *string, size_t size)
-{
-    block_body_write_opcode(body, OP_WRITE_RAW);
-    size_t slice[2] = { (size_t)string, size };
-    c_buffer_write(&body->constants, &slice, sizeof(slice));
-}
-
-static void block_body_add_write_node(block_body_t *body, VALUE node)
-{
-    block_body_write_opcode(body, OP_WRITE_NODE);
-    c_buffer_write(&body->constants, &node, sizeof(VALUE));
-}
-
 static VALUE block_body_allocate(VALUE klass)
 {
     block_body_t *body;
 
     VALUE obj = TypedData_Make_Struct(klass, block_body_t, &block_body_data_type, body);
-    body->instructions = c_buffer_allocate(8);
-    block_body_add_leave(body);
-    body->constants = c_buffer_allocate(8 * sizeof(VALUE));
+    vm_assembler_init(&body->code);
+    vm_assembler_add_leave(&body->code);
     body->source = Qnil;
     body->render_score = 0;
     body->parsing = false;
@@ -168,7 +124,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 if (token_start == token_end)
                     break;
 
-                block_body_add_write_raw(body, token_start, token_end - token_start);
+                vm_assembler_add_write_raw(&body->code, token_start, token_end - token_start);
                 render_score_increment += 1;
 
                 if (body->blank) {
@@ -184,7 +140,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 VALUE args[2] = {rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding), parse_context->ruby_obj};
                 VALUE var = rb_class_new_instance(2, args, cLiquidVariable);
 
-                block_body_add_write_node(body, var);
+                vm_assembler_add_write_node(&body->code, var);
                 render_score_increment += 1;
                 body->blank = false;
                 break;
@@ -239,7 +195,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 if (body->blank && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
                     body->blank = false;
 
-                block_body_add_write_node(body, new_tag);
+                vm_assembler_add_write_node(&body->code, new_tag);
                 render_score_increment += 1;
                 break;
             }
@@ -274,11 +230,10 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
         rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse must be passed the same tokenizer when called multiple times");
     }
     body->parsing = true;
-    // remove terminating OP_LEAVE to resume parsing
-    body->instructions.size -= 1;
+    vm_assembler_remove_leave(&body->code); // to extend block
 
     tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
-    block_body_add_leave(body);
+    vm_assembler_add_leave(&body->code);
     body->parsing = false;
     return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
 }
@@ -312,8 +267,8 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     }
     ensure_not_parsing(body);
 
-    size_t *const_ptr = (size_t *)body->constants.data;
-    const uint8_t *ip = body->instructions.data;
+    size_t *const_ptr = (size_t *)body->code.constants.data;
+    const uint8_t *ip = body->code.instructions.data;
 
     while (true) {
         switch (*ip++) {
@@ -354,10 +309,10 @@ static VALUE block_body_nodelist(VALUE self)
     VALUE nodelist = rb_attr_get(self, intern_ivar_nodelist);
     if (nodelist != Qnil)
         return nodelist;
-    nodelist = rb_ary_new_capa(body->instructions.size / sizeof(VALUE));
+    nodelist = rb_ary_new_capa(body->code.instructions.size / sizeof(VALUE));
 
-    const size_t *const_ptr = (size_t *)body->constants.data;
-    const uint8_t *ip = body->instructions.data;
+    const size_t *const_ptr = (size_t *)body->code.constants.data;
+    const uint8_t *ip = body->code.instructions.data;
     while (true) {
         switch (*ip++) {
             case OP_LEAVE:

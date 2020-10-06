@@ -20,6 +20,10 @@ Liquid::Tokenizer.class_eval do
   end
 end
 
+Liquid::Raw.class_eval do
+  alias_method :ruby_parse, :parse
+end
+
 Liquid::ParseContext.class_eval do
   alias_method :ruby_new_block_body, :new_block_body
 
@@ -155,10 +159,12 @@ module Liquid
         if value
           Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
+          Liquid::Raw.send(:alias_method, :parse, :c_parse)
           Liquid::VariableLookup.send(:alias_method, :evaluate, :c_evaluate)
         else
           Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
+          Liquid::Raw.send(:alias_method, :parse, :ruby_parse)
           Liquid::VariableLookup.send(:alias_method, :evaluate, :ruby_evaluate)
         end
       end

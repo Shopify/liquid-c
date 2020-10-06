@@ -3,6 +3,7 @@
 #include "variable.h"
 #include "lexer.h"
 #include "parser.h"
+#include "raw.h"
 #include "resource_limits.h"
 #include "block.h"
 #include "context.h"
@@ -46,6 +47,7 @@ void Init_liquid_c(void)
 
     init_liquid_tokenizer();
     init_liquid_parser();
+    init_liquid_raw();
     init_liquid_resource_limits();
     init_liquid_variable();
     init_liquid_block();

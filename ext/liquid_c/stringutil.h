@@ -30,5 +30,10 @@ inline static int not_newline(int c)
     return c != '\n';
 }
 
+inline static bool is_word(char c)
+{
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_';
+}
+
 #endif
 

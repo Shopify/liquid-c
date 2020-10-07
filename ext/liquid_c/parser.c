@@ -130,6 +130,17 @@ static VALUE parse_variable(parser_t *p)
     return rb_class_new_instance(4, args, cLiquidVariableLookup);
 }
 
+bool will_parse_constant_expression_next(parser_t *p)
+{
+    switch (p->cur.type) {
+        case TOKEN_IDENTIFIER:
+        case TOKEN_OPEN_SQUARE:
+            return false;
+        default:
+            return true;
+    }
+}
+
 VALUE parse_expression(parser_t *p)
 {
     switch (p->cur.type) {

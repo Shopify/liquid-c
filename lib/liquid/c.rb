@@ -10,6 +10,28 @@ Liquid::C::BlockBody.class_eval do
   end
 end
 
+module Liquid
+  BlockBody.class_eval do
+    def self.c_rescue_render_node(context, output, line_number, exc, blank_tag)
+      # There seems to be a MRI ruby bug with how the rb_rescue C function,
+      # where $! gets set for its rescue callback, but it doesn't stay set
+      # after a nested exception is raised and handled as is the case in
+      # Liquid::Context#internal_error. This isn't a problem for plain ruby code,
+      # so use a ruby rescue block to have setup $! properly.
+      raise(exc)
+    rescue => exc
+      rescue_render_node(context, output, line_number, exc, blank_tag)
+    end
+  end
+end
+
+# Placeholder for variables in the Liquid::C::BlockBody#nodelist.
+class Liquid::C::VariablePlaceholder
+  class << self
+    private :new
+  end
+end
+
 Liquid::Tokenizer.class_eval do
   def self.new(source, line_numbers = false, line_number: nil, for_liquid_tag: false)
     if Liquid::C.enabled
@@ -62,18 +84,53 @@ module Liquid::C
 end
 
 Liquid::Variable.class_eval do
+  class << self
+    # @api private
+    def call_variable_fallback_stats_callback(parse_context)
+      callbacks = parse_context[:stats_callbacks]
+      callbacks[:variable_fallback]&.call if callbacks
+    end
+
+    private
+
+    # helper method for C code
+    def rescue_strict_parse_syntax_error(error, markup, parse_context)
+      error.line_number = parse_context.line_number
+      error.markup_context = "in \"{{#{markup}}}\""
+      case parse_context.error_mode
+      when :strict
+        raise
+      when :warn
+        parse_context.warnings << error
+      end
+      call_variable_fallback_stats_callback(parse_context)
+      lax_parse(markup, parse_context) # Avoid redundant strict parse
+    end
+
+    def lax_parse(markup, parse_context)
+      old_error_mode = parse_context.error_mode
+      begin
+        set_error_mode(parse_context, :lax)
+        new(markup, parse_context)
+      ensure
+        set_error_mode(parse_context, old_error_mode)
+      end
+    end
+
+    def set_error_mode(parse_context, mode)
+      parse_context.instance_variable_set(:@error_mode, mode)
+    end
+  end
+
   alias_method :ruby_lax_parse, :lax_parse
   alias_method :ruby_strict_parse, :strict_parse
 
   def lax_parse(markup)
-    stats = options[:stats_callbacks]
-    stats[:variable_parse].call if stats
-
     if Liquid::C.enabled
       begin
         return strict_parse(markup)
       rescue Liquid::SyntaxError
-        stats[:variable_fallback].call if stats
+        Liquid::Variable.call_variable_fallback_stats_callback(parse_context)
       end
     end
 
@@ -85,6 +142,20 @@ Liquid::Variable.class_eval do
       @name = Liquid::Variable.c_strict_parse(markup, @filters = [])
     else
       ruby_strict_parse(markup)
+    end
+  end
+end
+
+Liquid::StrainerTemplate.class_eval do
+  class << self
+    private
+
+    def filter_methods_hash
+      @filter_methods_hash ||= {}.tap do |hash|
+        filter_methods.each do |method_name|
+          hash[method_name.to_sym] = true
+        end
+      end
     end
   end
 end

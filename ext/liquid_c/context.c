@@ -3,8 +3,8 @@
 #include "variable_lookup.h"
 
 static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
-ID id_aset, id_call, id_to_liquid, id_set_context;
-static ID id_evaluate, id_has_key, id_aref;
+ID id_aset, id_set_context;
+static ID id_has_key, id_aref;
 static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables;
 
 VALUE context_evaluate(VALUE self, VALUE expression)
@@ -124,12 +124,9 @@ variable_found:
 
 void init_liquid_context()
 {
-    id_evaluate = rb_intern("evaluate");
-    id_call = rb_intern("call");
     id_has_key = rb_intern("key?");
     id_aset = rb_intern("[]=");
     id_aref = rb_intern("[]");
-    id_to_liquid = rb_intern("to_liquid");
     id_set_context = rb_intern("context=");
 
     id_ivar_scopes = rb_intern("@scopes");

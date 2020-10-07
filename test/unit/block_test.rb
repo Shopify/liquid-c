@@ -2,10 +2,10 @@ require 'test_helper'
 
 class BlockTest < MiniTest::Test
   def test_no_allocation_of_trimmed_strings
-    template = Liquid::Template.parse("{{ -}}     {{- }}")
+    template = Liquid::Template.parse("{{ a -}}     {{- b }}")
     assert_equal 2, template.root.nodelist.size
 
-    template = Liquid::Template.parse("{{ -}} foo {{- }}")
+    template = Liquid::Template.parse("{{ a -}} foo {{- b }}")
     assert_equal 3, template.root.nodelist.size
   end
 

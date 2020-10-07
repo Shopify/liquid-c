@@ -80,17 +80,93 @@ class VariableTest < Minitest::Test
     variable_fallbacks = 0
 
     callbacks = {
-      variable_parse: lambda { variable_parses += 1 },
       variable_fallback: lambda { variable_fallbacks += 1 }
     }
 
     create_variable('abc', error_mode: :lax, stats_callbacks: callbacks)
-    assert_equal 1, variable_parses
     assert_equal 0, variable_fallbacks
 
     create_variable('@!#', error_mode: :lax, stats_callbacks: callbacks)
-    assert_equal 2, variable_parses
     assert_equal 1, variable_fallbacks
+  end
+
+  def test_write_string
+    output = Liquid::Template.parse("{{ str }}").render({ 'str' => 'foo' })
+    assert_equal "foo", output
+  end
+
+  def test_write_fixnum
+    output = Liquid::Template.parse("{{ num }}").render({ 'num' => 123456 })
+    assert_equal "123456", output
+  end
+
+  def test_write_array
+    output = Liquid::Template.parse("{{ ary }}").render({ 'ary' => ['foo', 123, ['nested', 'ary'], nil, 0.5] })
+    assert_equal "foo123nestedary0.5", output
+  end
+
+  def test_write_nil
+    output = Liquid::Template.parse("{{ obj }}").render({ 'obj' => nil })
+    assert_equal "", output
+  end
+
+  class StringifiableObject
+    def initialize(as_string)
+      @as_string = as_string
+    end
+
+    def to_s
+      @as_string
+    end
+
+    def to_liquid
+      self
+    end
+  end
+
+  def test_write_unknown_object
+    output = Liquid::Template.parse("{{ obj }}").render({ 'obj' => StringifiableObject.new('foo') })
+    assert_equal "foo", output
+  end
+
+  def test_filter_without_args
+    output = Liquid::Template.parse("{{ var | upcase }}").render({ 'var' => 'Hello' })
+    assert_equal "HELLO", output
+  end
+
+  def test_filter_with_const_arg
+    output = Liquid::Template.parse("{{ x | plus: 2 }}").render({ 'x' => 3 })
+    assert_equal "5", output
+  end
+
+  def test_filter_with_variable_arg
+    output = Liquid::Template.parse("{{ x | plus: y }}").render({ 'x' => 10, 'y' => 123 })
+    assert_equal "133", output
+  end
+
+  def test_filter_with_variable_arg_after_const_arg
+    output = Liquid::Template.parse("{{ ary | slice: 1, 2 }}").render({ 'ary' => [1, 2, 3, 4] })
+    assert_equal "23", output
+  end
+
+  def test_filter_with_const_keyword_arg
+    output = Liquid::Template.parse("{{ value | default: 'None' }}").render({ 'value' => false })
+    assert_equal 'None', output
+
+    output = Liquid::Template.parse("{{ value | default: 'None', allow_false: true }}").render({ 'value' => false })
+    assert_equal 'false', output
+  end
+
+  def test_filter_with_variable_keyword_arg
+    template = Liquid::Template.parse("{{ value | default: 'None', allow_false: false_allowed }}")
+
+    assert_equal 'None', template.render({ 'value' => false, 'false_allowed' => false })
+    assert_equal 'false', template.render({ 'value' => false, 'false_allowed' => true })
+  end
+
+  def test_filter_error
+    output = Liquid::Template.parse("before ({{ ary | concat: 2 }}) after").render({ 'ary' => [1] })
+    assert_equal 'before (Liquid error: concat filter requires an array argument) after', output
   end
 
   private

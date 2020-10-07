@@ -5,7 +5,11 @@ $LOAD_PATH << liquid_test_dir
 require 'test_helper'
 require 'liquid/c'
 
-test_files = FileList[File.join(liquid_test_dir, '{integration,unit}/**/*_test.rb')]
+test_files = FileList[File.join(liquid_test_dir, 'integration/**/*_test.rb')]
+
+# Test the Variable#strict_parse patch
+test_files << File.join(liquid_test_dir, 'unit/variable_unit_test.rb')
+
 test_files.each do |test_file|
   require test_file
 end

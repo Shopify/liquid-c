@@ -3,18 +3,9 @@
 #include "stringutil.h"
 #include "tokenizer.h"
 
-VALUE cLiquidRaw;
-static VALUE id_parse_context, id_locale, id_translate, id_block_name, id_block_delimiter, id_ivar_body;
-
-__attribute__((noreturn)) static void raise_translated_syntax_error(VALUE self, const char *key, VALUE args)
-{
-    VALUE key_str = rb_str_new_cstr(key);
-    VALUE msg = rb_funcall(rb_funcall(rb_funcall(self, id_parse_context, 0), id_locale, 0), id_translate, 2, key_str, args);
-    rb_raise(cLiquidSyntaxError, "%.*s", (int)RSTRING_LEN(msg), RSTRING_PTR(msg));
-}
+static VALUE id_block_name, id_raise_tag_never_closed, id_block_delimiter, id_ivar_body;
 
 struct full_token_possibly_invalid_t {
-    const char *body_start;
     long body_len;
     const char *delimiter_start;
     long delimiter_len;
@@ -25,7 +16,6 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
     const char *str = token->str_full;
     long len = token->len_full;
 
-    match->body_start = str;
     match->body_len = 0;
     match->delimiter_start = NULL;
     match->delimiter_len = 0;
@@ -39,7 +29,7 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
     for (long i = len - 3; i >= 0; i--) {
         char c = str[i];
 
-        if (is_word(c)) {
+        if (is_word_char(c)) {
             curr_delimiter_start = str + i;
             curr_delimiter_len++;
         } else {
@@ -63,8 +53,6 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
 
 static VALUE raw_parse_method(VALUE self, VALUE tokens)
 {
-    c_buffer_t body = c_buffer_allocate(0);
-
     tokenizer_t *tokenizer;
     Tokenizer_Get_Struct(tokens, tokenizer);
 
@@ -76,39 +64,42 @@ static VALUE raw_parse_method(VALUE self, VALUE tokens)
     char *block_delimiter_str = RSTRING_PTR(block_delimiter);
     long block_delimiter_len = RSTRING_LEN(block_delimiter);
 
+    const char *body = NULL;
+    long body_len = 0;
+
     while (true) {
         tokenizer_next(tokenizer, &token);
 
         if (!token.type) break;
 
+        if (body == NULL) {
+            body = token.str_full;
+        }
+
         if (match_full_token_possibly_invalid(&token, &match)
                 && match.delimiter_len == block_delimiter_len
-                && strncmp(match.delimiter_start, block_delimiter_str, block_delimiter_len) == 0) {
-            c_buffer_write(&body, (void *)match.body_start, match.body_len);
-            VALUE body_str = rb_str_new((char *)body.data,  c_buffer_size(&body));
+                && memcmp(match.delimiter_start, block_delimiter_str, block_delimiter_len) == 0) {
+            body_len += match.body_len;
+            VALUE body_str = rb_enc_str_new(body, body_len, utf8_encoding);
             rb_ivar_set(self, id_ivar_body, body_str);
             return Qnil;
         }
 
-        c_buffer_write(&body, (char *)token.str_full, token.len_full);
+        body_len += token.len_full;
     }
 
-    VALUE hash = rb_hash_new();
-    rb_hash_aset(hash, id_block_name, rb_funcall(self, id_block_name, 0));
-    raise_translated_syntax_error(self, "errors.syntax.tag_never_closed", hash);
+    rb_funcall(self, id_raise_tag_never_closed, 1, rb_funcall(self, id_block_name, 0));
+    return Qnil;
 }
 
 void init_liquid_raw()
 {
-    id_parse_context = rb_intern("parse_context");
-    id_locale = rb_intern("locale");
-    id_translate = rb_intern("t");
     id_block_name = rb_intern("block_name");
+    id_raise_tag_never_closed = rb_intern("raise_tag_never_closed");
     id_block_delimiter = rb_intern("block_delimiter");
     id_ivar_body = rb_intern("@body");
 
-    cLiquidRaw = rb_const_get(mLiquid, rb_intern("Raw"));
-    rb_global_variable(&cLiquidRaw);
+    VALUE cLiquidRaw = rb_const_get(mLiquid, rb_intern("Raw"));
 
     rb_define_method(cLiquidRaw, "c_parse", raw_parse_method, 1);
 }

@@ -30,5 +30,10 @@ inline static int not_newline(int c)
     return c != '\n';
 }
 
+inline static bool is_word_char(char c)
+{
+    return ISALNUM(c) || c == '_';
+}
+
 #endif
 

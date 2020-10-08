@@ -26,6 +26,7 @@ typedef struct vm {
     resource_limits_t *resource_limits;
     VALUE global_filter;
     bool strict_filters;
+    bool invoking_filter;
 } vm_t;
 
 static void vm_mark(void *ptr)
@@ -78,6 +79,7 @@ static VALUE vm_internal_new(VALUE context)
 
     vm->strict_filters = RTEST(rb_funcall(context, id_strict_filters, 0));
     vm->global_filter = rb_funcall(context, id_global_filter, 0);
+    vm->invoking_filter = false;
     return obj;
 }
 
@@ -182,7 +184,9 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *
         return args[0];
     }
 
+    vm->invoking_filter = true;
     VALUE result = rb_funcallv(vm->strainer, RB_SYM2ID(filter_name), num_args, args);
+    vm->invoking_filter = false;
     return rb_funcall(result, id_to_liquid, 0);
 }
 
@@ -338,6 +342,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     vm_render_rescue_args_t *args = (void *)uncast_args;
     VALUE blank_tag = Qfalse; // tags are still rendered using Liquid::BlockBody.render_node
     vm_render_until_error_args_t *render_args = args->render_args;
+    vm_t *vm = render_args->vm;
 
     const uint8_t *ip = render_args->ip;
     if (ip) {
@@ -349,9 +354,16 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
             liquid_vm_next_instruction(&ip, &render_args->const_ptr);
         } while (last_op != OP_POP_WRITE_VARIABLE);
         render_args->ip = ip;
-        vm_t *vm = render_args->vm;
         // remove temporary stack values from variable evaluation
         vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;
+    }
+
+    if (vm->invoking_filter) {
+        if (rb_obj_is_kind_of(exception, rb_eArgError)) {
+            VALUE cLiquidStrainerTemplate = rb_const_get(mLiquid, rb_intern("StrainerTemplate"));
+            exception = rb_funcall(cLiquidStrainerTemplate, rb_intern("arg_exc_to_liquid_exc"), 1, exception);
+        }
+        vm->invoking_filter = false;
     }
 
     VALUE line_number = render_args->node_line_number == 0 ? Qnil : UINT2NUM(render_args->node_line_number);

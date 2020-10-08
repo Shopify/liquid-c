@@ -157,6 +157,14 @@ Liquid::StrainerTemplate.class_eval do
         end
       end
     end
+
+    # Convert wrong number of argument error into a liquid exception to
+    # treat it as an error in the template, not an internal error.
+    def arg_exc_to_liquid_exc(argument_error)
+      raise Liquid::ArgumentError, argument_error.message, argument_error.backtrace
+    rescue Liquid::ArgumentError => liquid_exc
+      liquid_exc
+    end
   end
 end
 

@@ -14,7 +14,8 @@ ID id_evaluate;
 ID id_to_liquid;
 ID id_call;
 
-VALUE mLiquid, mLiquidC, cLiquidSyntaxError, cMemoryError, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
 rb_encoding *utf8_encoding;
 int utf8_encoding_index;
 
@@ -37,6 +38,9 @@ void Init_liquid_c(void)
 
     mLiquidC = rb_define_module_under(mLiquid, "C");
     rb_global_variable(&mLiquidC);
+
+    cLiquidArgumentError = rb_const_get(mLiquid, rb_intern("ArgumentError"));
+    rb_global_variable(&cLiquidArgumentError);
 
     cLiquidSyntaxError = rb_const_get(mLiquid, rb_intern("SyntaxError"));
     rb_global_variable(&cLiquidSyntaxError);

@@ -101,8 +101,10 @@ static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_na
 
 static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)
 {
-    c_buffer_write(&code->constants, &node_line_number, sizeof(size_t));
-    vm_assembler_write_opcode(code, OP_RENDER_VARIABLE_RESCUE);
+    assert(node_line_number < (1 << 24));
+
+    uint8_t instructions[4] = { OP_RENDER_VARIABLE_RESCUE, node_line_number >> 16, node_line_number >> 8, node_line_number };
+    c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
 }
 
 #endif

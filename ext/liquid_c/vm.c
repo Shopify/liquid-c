@@ -273,9 +273,10 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             case OP_RENDER_VARIABLE_RESCUE:
                 // Save state used by vm_render_rescue to rescue from a variable rendering exception
-                args->node_line_number = (unsigned int)*const_ptr++;
+                args->node_line_number = (ip[0] << 16) | (ip[1] << 8) | ip[2];
                 // vm_render_rescue will iterate from this instruction to the instruction
                 // following OP_POP_WRITE_VARIABLE to resume rendering from
+                ip += 3;
                 args->ip = ip;
                 args->const_ptr = const_ptr;
                 break;
@@ -312,8 +313,11 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
         case OP_WRITE_NODE:
         case OP_PUSH_CONST:
         case OP_PUSH_EVAL_EXPR:
-        case OP_RENDER_VARIABLE_RESCUE:
             (*const_ptr_ptr)++;
+            break;
+
+        case OP_RENDER_VARIABLE_RESCUE:
+            ip += 3;
             break;
 
         case OP_FILTER:

@@ -169,6 +169,14 @@ class VariableTest < Minitest::Test
     assert_equal 'before (Liquid error: concat filter requires an array argument) after', output
   end
 
+  def test_line_number_too_large
+    err = assert_raises(RuntimeError) do
+      Liquid::Template.parse("\n" * (2 ** 24) + "{{ foo }}", line_numbers: true)
+    end
+
+    assert_equal "Line number 16777217 is too large", err.message
+  end
+
   private
 
   def create_variable(markup, options={})

@@ -62,6 +62,14 @@ class TokenizerTest < Minitest::Test
     assert_equal("non-UTF8 encoded source (ASCII-8BIT) not supported", exc.message)
   end
 
+  def test_source_too_large
+    err = assert_raises(ArgumentError) do
+      tokenize("a" * 2**24)
+    end
+
+    assert_match(/Source too large, max \d+ bytes/, err.message)
+  end
+
   private
 
   def tokenize(source, for_liquid_tag: false, trimmed: false)

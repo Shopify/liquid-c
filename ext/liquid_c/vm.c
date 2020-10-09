@@ -194,7 +194,7 @@ typedef struct vm_render_until_error_args {
     vm_t *vm;
     const uint8_t *ip; // use for initial address and to save an address for rescuing
     const size_t *const_ptr;
-    unsigned int node_line_number;
+    uint8_t node_line_number[3];
     VALUE context;
     VALUE output;
 } vm_render_until_error_args_t;
@@ -273,7 +273,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             case OP_RENDER_VARIABLE_RESCUE:
                 // Save state used by vm_render_rescue to rescue from a variable rendering exception
-                args->node_line_number = (ip[0] << 16) | (ip[1] << 8) | ip[2];
+                memcpy(&args->node_line_number, ip, sizeof(args->node_line_number));
                 // vm_render_rescue will iterate from this instruction to the instruction
                 // following OP_POP_WRITE_VARIABLE to resume rendering from
                 ip += 3;
@@ -340,6 +340,11 @@ typedef struct vm_render_rescue_args {
     size_t old_stack_byte_size;
 } vm_render_rescue_args_t;
 
+static inline unsigned int decode_node_line_number(uint8_t *node_line_number)
+{
+    return (node_line_number[0] << 16) | (node_line_number[1] << 8) | node_line_number[2];
+}
+
 // Actually returns a bool resume_rendering value
 static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
 {
@@ -370,7 +375,8 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
         vm->invoking_filter = false;
     }
 
-    VALUE line_number = render_args->node_line_number == 0 ? Qnil : UINT2NUM(render_args->node_line_number);
+    unsigned int node_line_number = decode_node_line_number(render_args->node_line_number);
+    VALUE line_number = node_line_number == 0 ? Qnil : UINT2NUM(node_line_number);
 
     rb_funcall(cLiquidBlockBody, rb_intern("c_rescue_render_node"), 5,
         render_args->context, render_args->output, line_number, exception, blank_tag);

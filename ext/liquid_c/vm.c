@@ -290,6 +290,18 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             }
 
+            // Filters instructions
+
+            case OP_APPEND:
+            {
+                VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, 2);
+                VALUE result = rb_str_plus(
+                    rb_obj_as_string(args_ptr[0]),
+                    rb_obj_as_string(args_ptr[1]));
+                vm_stack_push(vm, result);
+                break;
+            }
+
             default:
                 rb_bug("invalid opcode: %u", ip[-1]);
         }
@@ -303,6 +315,7 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
     switch (*ip++) {
         case OP_LEAVE:
         case OP_POP_WRITE_VARIABLE:
+        case OP_APPEND:
             break;
 
         case OP_HASH_NEW:

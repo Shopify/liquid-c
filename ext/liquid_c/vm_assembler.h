@@ -14,6 +14,7 @@ enum opcode {
     OP_FILTER,
     OP_PUSH_EVAL_EXPR,
     OP_RENDER_VARIABLE_RESCUE, // setup state to rescue variable rendering
+    OP_APPEND,
 };
 
 typedef struct vm_assembler {
@@ -93,10 +94,15 @@ static inline void vm_assembler_add_push_eval_expr(vm_assembler_t *code, VALUE e
 
 static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, uint8_t arg_count)
 {
-    code->stack_size -= arg_count;
-    vm_assembler_write_ruby_constant(code, filter_name);
-    uint8_t instructions[2] = { OP_FILTER, arg_count + 1 /* include input */ };
-    c_buffer_write(&code->instructions, &instructions, 2);
+    if (SYM2ID(filter_name) == rb_intern("append")) {
+        code->stack_size -= 1;
+        vm_assembler_write_opcode(code, OP_APPEND);
+    } else {
+        code->stack_size -= arg_count;
+        vm_assembler_write_ruby_constant(code, filter_name);
+        uint8_t instructions[2] = { OP_FILTER, arg_count + 1 /* include input */ };
+        c_buffer_write(&code->instructions, &instructions, 2);
+    }
 }
 
 static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)

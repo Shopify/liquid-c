@@ -25,6 +25,7 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
         switch (*ip++) {
             case OP_LEAVE:
             case OP_POP_WRITE_VARIABLE:
+            case OP_APPEND:
                 break;
 
             case OP_HASH_NEW:

@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include "c_buffer.h"
+#include "util.h"
 
 enum opcode {
     OP_LEAVE = 0,
@@ -94,7 +95,10 @@ static inline void vm_assembler_add_push_eval_expr(vm_assembler_t *code, VALUE e
 
 static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, uint8_t arg_count)
 {
-    if (SYM2ID(filter_name) == rb_intern("append")) {
+    // Using rb_sym2id and friends can make it permanent object.
+    VALUE filter_name_str = rb_sym2str(filter_name);
+
+    if (strncmp(RSTRING_PTR(filter_name_str), "append", MIN(RSTRING_LEN(filter_name_str), 6)) == 0) {
         code->stack_size -= 1;
         vm_assembler_write_opcode(code, OP_APPEND);
     } else {

@@ -102,10 +102,6 @@ static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_na
 
 static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)
 {
-    if (RB_UNLIKELY(node_line_number >= (1 << 24))) {
-        rb_enc_raise(utf8_encoding, rb_eRuntimeError, "Line number %ld is too large", node_line_number);
-    }
-
     uint8_t instructions[4] = { OP_RENDER_VARIABLE_RESCUE, node_line_number >> 16, node_line_number >> 8, node_line_number };
     c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
 }

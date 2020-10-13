@@ -47,6 +47,12 @@ static VALUE tokenizer_initialize_method(VALUE self, VALUE source, VALUE start_l
     Check_Type(source, T_STRING);
     check_utf8_encoding(source, "source");
 
+#define MAX_SOURCE_CODE_BYTES ((1 << 24) - 1)
+    if (RSTRING_LEN(source) > MAX_SOURCE_CODE_BYTES) {
+        rb_enc_raise(utf8_encoding, rb_eArgError, "Source too large, max %d bytes", MAX_SOURCE_CODE_BYTES);
+    }
+#undef MAX_SOURCE_CODE_BYTES
+
     Tokenizer_Get_Struct(self, tokenizer);
     source = rb_str_dup_frozen(source);
     tokenizer->source = source;

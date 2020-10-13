@@ -32,6 +32,10 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
                 break;
 
             case OP_RENDER_VARIABLE_RESCUE:
+                ip += 1;
+                break;
+
+            case OP_RENDER_VARIABLE_RESCUE_W:
                 ip += 3;
                 break;
 

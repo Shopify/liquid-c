@@ -194,6 +194,7 @@ typedef struct vm_render_until_error_args {
     vm_t *vm;
     const uint8_t *ip; // use for initial address and to save an address for rescuing
     const size_t *const_ptr;
+    bool is_wide;
     const uint8_t *node_line_number;
     VALUE context;
     VALUE output;
@@ -273,6 +274,18 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             case OP_RENDER_VARIABLE_RESCUE:
                 // Save state used by vm_render_rescue to rescue from a variable rendering exception
+                args->is_wide = false;
+                args->node_line_number = ip;
+                // vm_render_rescue will iterate from this instruction to the instruction
+                // following OP_POP_WRITE_VARIABLE to resume rendering from
+                ip += 1;
+                args->ip = ip;
+                args->const_ptr = const_ptr;
+                break;
+
+            case OP_RENDER_VARIABLE_RESCUE_W:
+                // Save state used by vm_render_rescue to rescue from a variable rendering exception
+                args->is_wide = true;
                 args->node_line_number = ip;
                 // vm_render_rescue will iterate from this instruction to the instruction
                 // following OP_POP_WRITE_VARIABLE to resume rendering from
@@ -280,6 +293,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 args->ip = ip;
                 args->const_ptr = const_ptr;
                 break;
+
             case OP_POP_WRITE_VARIABLE:
             {
                 VALUE var_result = vm_stack_pop(vm);
@@ -317,6 +331,10 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
             break;
 
         case OP_RENDER_VARIABLE_RESCUE:
+            ip += 1;
+            break;
+
+        case OP_RENDER_VARIABLE_RESCUE_W:
             ip += 3;
             break;
 
@@ -377,7 +395,14 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
 
     VALUE line_number = Qnil;
     if (render_args->node_line_number) {
-        unsigned int node_line_number = decode_node_line_number(render_args->node_line_number);
+        unsigned int node_line_number = 0;
+
+        if (render_args->is_wide) {
+            node_line_number = decode_node_line_number(render_args->node_line_number);
+        } else {
+            node_line_number = *render_args->node_line_number;
+        }
+
         if (node_line_number != 0) {
             line_number = UINT2NUM(node_line_number);
         }

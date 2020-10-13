@@ -15,6 +15,7 @@ enum opcode {
     OP_FILTER,
     OP_PUSH_EVAL_EXPR,
     OP_RENDER_VARIABLE_RESCUE, // setup state to rescue variable rendering
+    OP_RENDER_VARIABLE_RESCUE_W
 };
 
 typedef struct vm_assembler {
@@ -102,8 +103,13 @@ static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_na
 
 static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)
 {
-    uint8_t instructions[4] = { OP_RENDER_VARIABLE_RESCUE, node_line_number >> 16, node_line_number >> 8, node_line_number };
-    c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    if (node_line_number > UINT8_MAX) {
+        uint8_t instructions[4] = { OP_RENDER_VARIABLE_RESCUE_W, node_line_number >> 16, node_line_number >> 8, node_line_number };
+        c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    } else {
+        uint8_t instructions[2] = { OP_RENDER_VARIABLE_RESCUE, node_line_number };
+        c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    }
 }
 
 #endif

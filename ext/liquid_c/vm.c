@@ -9,6 +9,7 @@ ID id_render_node;
 ID id_ivar_interrupts;
 ID id_ivar_resource_limits;
 ID id_to_s;
+ID id_to_str;
 ID id_vm;
 ID id_strainer;
 ID id_filter_methods_hash;
@@ -113,9 +114,36 @@ static void write_fixnum(VALUE output, VALUE fixnum)
     snprintf(RSTRING_PTR(output) + old_size, write_length + 1, "%lld", number);
 }
 
+static VALUE obj_check_to_str(VALUE obj)
+{
+    VALUE str = rb_check_funcall(obj, id_to_str, 0, NULL);
+    if (RB_UNLIKELY(str != Qundef && !RB_TYPE_P(str, T_STRING))) {
+        rb_raise(rb_eTypeError, "%"PRIsVALUE"#to_str returned a non-String value of type %"PRIsVALUE,
+                rb_obj_class(obj), rb_obj_class(str));
+    }
+    return str;
+}
+
+static VALUE obj_to_s(VALUE obj)
+{
+    VALUE str = rb_funcall(obj, id_to_s, 0);
+    if (RB_TYPE_P(str, T_STRING))
+        return str;
+
+    VALUE to_str_result = obj_check_to_str(str);
+    if (RB_UNLIKELY(to_str_result == Qundef)) {
+        rb_raise(rb_eTypeError, "%"PRIsVALUE"#to_s returned a non-String convertible value of type %"PRIsVALUE,
+                rb_obj_class(obj), rb_obj_class(str));
+    }
+    return to_str_result;
+}
+
 static void write_obj(VALUE output, VALUE obj)
 {
     switch (TYPE(obj)) {
+        default:
+            obj = obj_to_s(obj);
+            // fallthrough
         case T_STRING:
             rb_str_buf_append(output, obj);
             break;
@@ -137,10 +165,6 @@ static void write_obj(VALUE output, VALUE obj)
             }
             break;
         case T_NIL:
-            break;
-        default:
-            obj = rb_funcall(obj, id_to_s, 0);
-            rb_str_append(output, obj);
             break;
     }
 }
@@ -403,6 +427,7 @@ void init_liquid_vm()
     id_ivar_interrupts = rb_intern("@interrupts");
     id_ivar_resource_limits = rb_intern("@resource_limits");
     id_to_s = rb_intern("to_s");
+    id_to_str = rb_intern("to_str");
     id_vm = rb_intern("vm");
     id_strainer = rb_intern("strainer");
     id_filter_methods_hash = rb_intern("filter_methods_hash");

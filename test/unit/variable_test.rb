@@ -137,35 +137,15 @@ class VariableTest < Minitest::Test
     assert_equal("VariableTest::StringConvertible#to_s returned a non-String convertible value of type Integer", exc.message)
   end
 
-  class ImplicitlyStringConvertible
-    def initialize(as_string)
-      @as_string = as_string
-    end
-
+  class DerivedString < String
     def to_s
       self
     end
-
-    def to_str
-      @as_string
-    end
-
-    def to_liquid
-      self
-    end
   end
 
-  def test_write_to_str_convertible_object
-    output = Liquid::Template.parse("{{ obj }}").render!({ 'obj' => ImplicitlyStringConvertible.new('foo') })
-    assert_equal "foo", output
-  end
-
-  def test_write_object_with_broken_to_str
-    template = Liquid::Template.parse("{{ obj }}")
-    exc = assert_raises(TypeError) do
-      template.render!({ 'obj' => ImplicitlyStringConvertible.new(123) })
-    end
-    assert_equal("VariableTest::ImplicitlyStringConvertible#to_str returned a non-String value of type Integer", exc.message)
+  def test_write_derived_string
+    output = Liquid::Template.parse("{{ obj }}").render!({ 'obj' => DerivedString.new('bar') })
+    assert_equal "bar", output
   end
 
   def test_filter_without_args

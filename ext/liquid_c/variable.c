@@ -50,7 +50,6 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
         VALUE filter_name = token_to_rsym(filter_name_token);
 
         size_t arg_count = 0;
-        bool const_keyword_args = true;
         VALUE keyword_args = Qnil;
 
         if (parser_consume(&p, TOKEN_COLON).type) {
@@ -59,8 +58,6 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
                     VALUE key = token_to_rstr(parser_consume_any(&p));
                     parser_consume_any(&p);
 
-                    if (const_keyword_args && !will_parse_constant_expression_next(&p))
-                        const_keyword_args = false;
                     if (keyword_args == Qnil)
                         keyword_args = rb_hash_new();
                     rb_hash_aset(keyword_args, key, parse_expression(&p));
@@ -76,12 +73,8 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
             if (RHASH_SIZE(keyword_args) > 255) {
                 rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter keyword arguments");
             }
-            if (const_keyword_args) {
-                vm_assembler_add_push_const(code, keyword_args);
-            } else {
-                rb_hash_foreach(keyword_args, compile_each_keyword_arg, (VALUE)code);
-                vm_assembler_add_hash_new(code, RHASH_SIZE(keyword_args));
-            }
+            rb_hash_foreach(keyword_args, compile_each_keyword_arg, (VALUE)code);
+            vm_assembler_add_hash_new(code, RHASH_SIZE(keyword_args));
         }
         if (arg_count > 254) {
             rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter arguments");

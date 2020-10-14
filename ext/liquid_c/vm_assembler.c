@@ -52,8 +52,12 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
                 break;
 
             case OP_WRITE_RAW:
-                const_ptr += 2;
+            case OP_WRITE_RAW_SKIP:
+            {
+                size_t size = bytes_to_uint24(ip);
+                ip += 3 + size;
                 break;
+            }
 
             case OP_WRITE_NODE:
             case OP_PUSH_CONST:
@@ -202,10 +206,11 @@ void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count)
 
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size)
 {
-    vm_assembler_write_opcode(code, OP_WRITE_RAW);
-    VALUE *constants = c_buffer_extend_for_write(&code->constants, 2 * sizeof(VALUE));
-    constants[0] = (size_t)string;
-    constants[1] = size;
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
+    instructions[0] = OP_WRITE_RAW;
+    uint24_to_bytes((unsigned int)size, &instructions[1]);
+
+    c_buffer_write(&code->instructions, (char *)string, size);
 }
 
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)

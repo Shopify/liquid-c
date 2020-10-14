@@ -1,5 +1,6 @@
 #include "liquid.h"
 #include "block.h"
+#include "intutil.h"
 #include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
@@ -272,17 +273,16 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     ensure_not_parsing(body);
 
     size_t *const_ptr = (size_t *)body->code.constants.data;
-    const uint8_t *ip = body->code.instructions.data;
+    uint8_t *ip = (uint8_t *)body->code.instructions.data;
 
     while (*ip != OP_LEAVE) {
         if (*ip == OP_WRITE_RAW) {
-            size_t *size_ptr = &const_ptr[1];
-            if (*size_ptr) {
-                *size_ptr = 0; // effectively a no-op
+            if (ip[1] || ip[2] || ip[3]) { // if (size != 0)
+                ip[0] = OP_WRITE_RAW_SKIP; // effectively a no-op
                 body->render_score--;
             }
         }
-        liquid_vm_next_instruction(&ip, (const size_t **)&const_ptr);
+        liquid_vm_next_instruction((const uint8_t **)&ip, (const size_t **)&const_ptr);
     }
 
     return Qnil;
@@ -318,8 +318,8 @@ static VALUE block_body_nodelist(VALUE self)
                 goto loop_break;
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)const_ptr[0];
-                size_t size = const_ptr[1];
+                const char *text = (const char *)&ip[4];
+                size_t size = bytes_to_uint24(&ip[1]);
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
                 rb_ary_push(nodelist, string);
                 break;

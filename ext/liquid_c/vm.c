@@ -6,6 +6,7 @@
 #include "resource_limits.h"
 #include "context.h"
 #include "variable_lookup.h"
+#include "intutil.h"
 
 ID id_render_node;
 ID id_ivar_interrupts;
@@ -357,12 +358,20 @@ static VALUE vm_render_until_error(VALUE uncast_args)
 
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)*const_ptr++;
-                size_t size = *const_ptr++;
+                const char *text = (const char *)&ip[3];
+                size_t size = bytes_to_uint24(ip);
                 rb_str_cat(output, text, size);
                 resource_limits_increment_write_score(vm->resource_limits, output);
+                ip += 3 + size;
                 break;
             }
+            case OP_WRITE_RAW_SKIP:
+            {
+                size_t size = bytes_to_uint24(ip);
+                ip += 3 + size;
+                break;
+            }
+
             case OP_WRITE_NODE:
                 rb_funcall(cLiquidBlockBody, id_render_node, 3, args->context, output, (VALUE)*const_ptr++);
                 if (RARRAY_LEN(vm->interrupts)) {
@@ -460,8 +469,12 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
             break;
 
         case OP_WRITE_RAW:
-            (*const_ptr_ptr) += 2;
+        case OP_WRITE_RAW_SKIP:
+        {
+            size_t size = bytes_to_uint24(ip);
+            ip += 3 + size;
             break;
+        }
 
         default:
             rb_bug("invalid opcode: %u", ip[-1]);
@@ -506,7 +519,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
 
     VALUE line_number = Qnil;
     if (render_args->node_line_number) {
-        unsigned int node_line_number = decode_node_line_number(render_args->node_line_number);
+        unsigned int node_line_number = bytes_to_uint24(render_args->node_line_number);
         if (node_line_number != 0) {
             line_number = UINT2NUM(node_line_number);
         }

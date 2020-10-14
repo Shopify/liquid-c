@@ -1,6 +1,7 @@
 #include "liquid.h"
 #include "context.h"
 #include "variable_lookup.h"
+#include "vm.h"
 
 static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
 ID id_aset, id_set_context;
@@ -122,6 +123,14 @@ variable_found:
     return variable;
 }
 
+// Shopify requires checking if we are filtering, so provide a
+// way to do that in liquid-c until we figure out how we want to
+// support that longer term.
+VALUE context_filtering_p(VALUE self)
+{
+    return liquid_vm_filtering(self) ? Qtrue : Qfalse;
+}
+
 void init_liquid_context()
 {
     id_has_key = rb_intern("key?");
@@ -143,4 +152,5 @@ void init_liquid_context()
     VALUE cLiquidContext = rb_const_get(mLiquid, rb_intern("Context"));
     rb_define_method(cLiquidContext, "c_evaluate", context_evaluate, 1);
     rb_define_method(cLiquidContext, "c_find_variable", context_find_variable, 2);
+    rb_define_private_method(cLiquidContext, "c_filtering?", context_filtering_p, 0);
 }

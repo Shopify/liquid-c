@@ -55,4 +55,18 @@ class ContextTest < Minitest::Test
     assert_equal 0, called_ruby_method_count
     assert_equal 1, called_c_method_count # context.evaluate call
   end
+
+  class TestDrop < Liquid::Drop
+    def is_filtering
+      @context.send(:c_filtering?)
+    end
+  end
+
+  def test_c_filtering_predicate
+    context = Liquid::Context.new({ 'test' => [TestDrop.new] })
+    template = Liquid::Template.parse('{{ test[0].is_filtering }},{{ test | map: "is_filtering" }}')
+
+    assert_equal "false,true", template.render!(context)
+    assert_equal false, context.send(:c_filtering?)
+  end
 end

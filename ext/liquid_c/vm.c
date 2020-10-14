@@ -94,6 +94,15 @@ static vm_t *vm_from_context(VALUE context)
     return DATA_PTR(vm_obj);
 }
 
+bool liquid_vm_filtering(VALUE context)
+{
+    VALUE vm_obj = rb_attr_get(context, id_vm);
+    if (vm_obj == Qnil)
+        return false;
+    vm_t *vm = DATA_PTR(vm_obj);
+    return vm->invoking_filter;
+}
+
 static void write_fixnum(VALUE output, VALUE fixnum)
 {
     long long number = RB_NUM2LL(fixnum);

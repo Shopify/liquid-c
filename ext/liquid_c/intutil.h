@@ -1,6 +1,7 @@
 #ifndef LIQUID_INTUTIL_H
 #define LIQUID_INTUTIL_H
 
+#include <assert.h>
 #include <stdint.h>
 
 static inline unsigned int bytes_to_uint24(const uint8_t *bytes)

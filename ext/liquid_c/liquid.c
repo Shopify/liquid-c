@@ -6,6 +6,7 @@
 #include "raw.h"
 #include "resource_limits.h"
 #include "expression.h"
+#include "document_body.h"
 #include "block.h"
 #include "context.h"
 #include "variable_lookup.h"
@@ -79,6 +80,7 @@ void Init_liquid_c(void)
     init_liquid_resource_limits();
     init_liquid_expression();
     init_liquid_variable();
+    init_liquid_document_body();
     init_liquid_block();
     init_liquid_context();
     init_liquid_variable_lookup();

@@ -3,6 +3,7 @@
 
 #include <ruby.h>
 #include "block.h"
+#include "vm_assembler.h"
 #include "context.h"
 
 typedef struct vm {

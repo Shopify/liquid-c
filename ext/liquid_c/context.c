@@ -4,11 +4,12 @@
 #include "variable.h"
 #include "vm.h"
 #include "expression.h"
+#include "document_body.h"
 
 static VALUE cLiquidUndefinedVariable;
 ID id_aset, id_set_context;
 static ID id_has_key, id_aref, id_strainer, id_filter_methods_hash, id_strict_filters, id_global_filter;
-static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables, id_ivar_interrupts, id_ivar_resource_limits;
+static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables, id_ivar_interrupts, id_ivar_resource_limits, id_ivar_document_body;
 
 void context_internal_init(VALUE context_obj, context_t *context)
 {
@@ -193,6 +194,27 @@ VALUE context_filtering_p(VALUE self)
     return liquid_vm_filtering(self) ? Qtrue : Qfalse;
 }
 
+bool context_init_document_body(VALUE self)
+{
+    if (rb_ivar_defined(self, id_ivar_document_body) == Qfalse) {
+        VALUE document_body = document_body_new_instance();
+        rb_ivar_set(self, id_ivar_document_body, document_body);
+        return true;
+    }
+
+    return false;
+}
+
+VALUE context_get_document_body(VALUE self)
+{
+    return rb_ivar_get(self, id_ivar_document_body);
+}
+
+void context_remove_document_body(VALUE self)
+{
+    rb_obj_remove_instance_variable(self, ID2SYM(id_ivar_document_body));
+}
+
 void init_liquid_context()
 {
     id_has_key = rb_intern("key?");
@@ -210,6 +232,7 @@ void init_liquid_context()
     id_ivar_strict_variables = rb_intern("@strict_variables");
     id_ivar_interrupts = rb_intern("@interrupts");
     id_ivar_resource_limits = rb_intern("@resource_limits");
+    id_ivar_document_body = rb_intern("@document_body");
 
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
     rb_global_variable(&cLiquidVariableLookup);

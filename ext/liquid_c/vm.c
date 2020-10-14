@@ -5,6 +5,7 @@
 #include "vm.h"
 #include "variable_lookup.h"
 #include "intutil.h"
+#include "document_body.h"
 
 ID id_render_node;
 ID id_vm;
@@ -135,7 +136,7 @@ static void write_obj(VALUE output, VALUE obj)
 static inline void vm_stack_push(vm_t *vm, VALUE value)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
-    assert(stack_ptr < (VALUE *)vm->stack.capacity_end);
+    assert(stack_ptr <= (VALUE *)vm->stack.capacity_end);
     *stack_ptr++ = value;
     vm->stack.data_end = (uint8_t *)stack_ptr;
 }
@@ -406,7 +407,7 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
     return ret;
 }
 
-void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr)
+void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_ptr)
 {
     const uint8_t *ip = *ip_ptr;
 
@@ -524,13 +525,13 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
 {
     vm_t *vm = vm_from_context(context);
 
-    vm_stack_reserve_for_write(vm, body->code.max_stack_size);
-    resource_limits_increment_render_score(vm->context.resource_limits, body->render_score);
+    vm_stack_reserve_for_write(vm, body->max_stack_size);
+    resource_limits_increment_render_score(vm->resource_limits, body->render_score);
 
     vm_render_until_error_args_t render_args = {
         .vm = vm,
-        .const_ptr = (const size_t *)body->code.constants.data,
-        .ip = body->code.instructions.data,
+        .const_ptr = block_body_constants_ptr(body),
+        .ip = block_body_instructions_ptr(body),
         .output = output,
     };
     vm_render_rescue_args_t rescue_args = {

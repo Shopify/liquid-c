@@ -113,9 +113,23 @@ static void write_fixnum(VALUE output, VALUE fixnum)
     snprintf(RSTRING_PTR(output) + old_size, write_length + 1, "%lld", number);
 }
 
+static VALUE obj_to_s(VALUE obj)
+{
+    VALUE str = rb_funcall(obj, id_to_s, 0);
+
+    if (RB_LIKELY(RB_TYPE_P(str, T_STRING)))
+        return str;
+
+    rb_raise(rb_eTypeError, "%"PRIsVALUE"#to_s returned a non-String convertible value of type %"PRIsVALUE,
+            rb_obj_class(obj), rb_obj_class(str));
+}
+
 static void write_obj(VALUE output, VALUE obj)
 {
     switch (TYPE(obj)) {
+        default:
+            obj = obj_to_s(obj);
+            // fallthrough
         case T_STRING:
             rb_str_buf_append(output, obj);
             break;
@@ -137,10 +151,6 @@ static void write_obj(VALUE output, VALUE obj)
             }
             break;
         case T_NIL:
-            break;
-        default:
-            obj = rb_funcall(obj, id_to_s, 0);
-            rb_str_append(output, obj);
             break;
     }
 }

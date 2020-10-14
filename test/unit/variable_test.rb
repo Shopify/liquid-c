@@ -110,7 +110,7 @@ class VariableTest < Minitest::Test
     assert_equal "", output
   end
 
-  class StringifiableObject
+  class StringConvertible
     def initialize(as_string)
       @as_string = as_string
     end
@@ -124,9 +124,28 @@ class VariableTest < Minitest::Test
     end
   end
 
-  def test_write_unknown_object
-    output = Liquid::Template.parse("{{ obj }}").render({ 'obj' => StringifiableObject.new('foo') })
+  def test_write_to_s_convertible_object
+    output = Liquid::Template.parse("{{ obj }}").render!({ 'obj' => StringConvertible.new('foo') })
     assert_equal "foo", output
+  end
+
+  def test_write_object_with_broken_to_s
+    template = Liquid::Template.parse("{{ obj }}")
+    exc = assert_raises(TypeError) do
+      template.render!({ 'obj' => StringConvertible.new(123) })
+    end
+    assert_equal("VariableTest::StringConvertible#to_s returned a non-String convertible value of type Integer", exc.message)
+  end
+
+  class DerivedString < String
+    def to_s
+      self
+    end
+  end
+
+  def test_write_derived_string
+    output = Liquid::Template.parse("{{ obj }}").render!({ 'obj' => DerivedString.new('bar') })
+    assert_equal "bar", output
   end
 
   def test_filter_without_args

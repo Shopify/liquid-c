@@ -63,7 +63,10 @@ Liquid::ParseContext.class_eval do
   def disable_liquid_c_nodes
     # Liquid::Profiler exposes the internal parse tree that we don't want to build when
     # parsing with liquid-c, so consider liquid-c to be disabled when using it.
-    @disable_liquid_c_nodes ||= !Liquid::C.enabled || @template_options[:profile]
+    # Also, some templates are parsed before the profiler is running, on which case we
+    # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
+    # so the profiler can use it on future runs.
+    @disable_liquid_c_nodes ||= !Liquid::C.enabled || @template_options[:profile] || @template_options[:disable_liquid_c_nodes]
   end
 end
 

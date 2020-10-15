@@ -32,7 +32,8 @@ typedef struct vm {
 static void vm_mark(void *ptr)
 {
     vm_t *vm = ptr;
-    rb_gc_mark_locations((VALUE *)vm->stack.data, (VALUE *)vm->stack.data_end);
+
+    c_buffer_rb_gc_mark(&vm->stack);
     rb_gc_mark(vm->strainer);
     rb_gc_mark(vm->filter_methods);
     rb_gc_mark(vm->interrupts);

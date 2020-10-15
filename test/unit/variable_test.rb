@@ -98,7 +98,6 @@ class VariableTest < Minitest::Test
   end
 
   def test_callbacks
-    variable_parses = 0
     variable_fallbacks = 0
 
     callbacks = {

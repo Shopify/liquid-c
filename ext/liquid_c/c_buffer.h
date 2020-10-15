@@ -46,4 +46,12 @@ inline void c_buffer_write_ruby_value(c_buffer_t *buffer, VALUE value) {
     c_buffer_write(buffer, &value, sizeof(VALUE));
 }
 
+inline void c_buffer_rb_gc_mark(c_buffer_t *buffer)
+{
+    VALUE *buffer_end = (VALUE *)buffer->data_end;
+    for (VALUE *obj_ptr = (VALUE *)buffer->data; obj_ptr < buffer_end; obj_ptr++) {
+        rb_gc_mark(*obj_ptr);
+    }
+}
+
 #endif

@@ -33,10 +33,7 @@ static void vm_mark(void *ptr)
 {
     vm_t *vm = ptr;
 
-    VALUE *stack_end = (VALUE *)vm->stack.data_end;
-    for (VALUE *obj_ptr = (VALUE *)vm->stack.data; obj_ptr < stack_end; obj_ptr++) {
-        rb_gc_mark(*obj_ptr);
-    }
+    c_buffer_rb_gc_mark(&vm->stack);
     rb_gc_mark(vm->strainer);
     rb_gc_mark(vm->filter_methods);
     rb_gc_mark(vm->interrupts);

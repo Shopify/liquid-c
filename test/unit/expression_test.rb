@@ -4,8 +4,8 @@ class ExpressionTest < MiniTest::Test
   def test_literals
     assert_equal true, Liquid::C::Expression.strict_parse('true')
     assert_equal false, Liquid::C::Expression.strict_parse('false')
-    assert_equal nil, Liquid::C::Expression.strict_parse('nil')
-    assert_equal nil, Liquid::C::Expression.strict_parse('null')
+    assert_nil Liquid::C::Expression.strict_parse('nil')
+    assert_nil Liquid::C::Expression.strict_parse('null')
 
     empty = Liquid::C::Expression.strict_parse('empty')
     assert_equal '', empty

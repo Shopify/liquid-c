@@ -365,7 +365,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 ip += 3 + size;
                 break;
             }
-            case OP_WRITE_RAW_SKIP:
+            case OP_JUMP_FWD:
             {
                 size_t size = bytes_to_uint24(ip);
                 ip += 3 + size;
@@ -469,7 +469,7 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
             break;
 
         case OP_WRITE_RAW:
-        case OP_WRITE_RAW_SKIP:
+        case OP_JUMP_FWD:
         {
             size_t size = bytes_to_uint24(ip);
             ip += 3 + size;

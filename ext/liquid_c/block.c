@@ -278,7 +278,7 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     while (*ip != OP_LEAVE) {
         if (*ip == OP_WRITE_RAW) {
             if (ip[1] || ip[2] || ip[3]) { // if (size != 0)
-                ip[0] = OP_WRITE_RAW_SKIP; // effectively a no-op
+                ip[0] = OP_JUMP_FWD; // effectively a no-op
                 body->render_score--;
             }
         }

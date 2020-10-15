@@ -27,6 +27,7 @@ enum opcode {
     OP_HASH_NEW, // rb_hash_new & rb_hash_bulk_insert
     OP_FILTER,
     OP_RENDER_VARIABLE_RESCUE, // setup state to rescue variable rendering
+    OP_JUMP_FWD,
 };
 
 typedef struct vm_assembler {

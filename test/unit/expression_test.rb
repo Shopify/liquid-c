@@ -14,14 +14,14 @@ class ExpressionTest < MiniTest::Test
 
   def test_byte_int
     assert_equal 127, Liquid::C::Expression.strict_parse('127')
-    assert_equal -128, Liquid::C::Expression.strict_parse('-128')
+    assert_equal(-128, Liquid::C::Expression.strict_parse('-128'))
   end
 
   def test_short_int
     assert_equal 128, Liquid::C::Expression.strict_parse('128')
-    assert_equal -129, Liquid::C::Expression.strict_parse('-129')
+    assert_equal(-129, Liquid::C::Expression.strict_parse('-129'))
     assert_equal 32767, Liquid::C::Expression.strict_parse('32767')
-    assert_equal -32768, Liquid::C::Expression.strict_parse('-32768')
+    assert_equal(-32768, Liquid::C::Expression.strict_parse('-32768'))
   end
 
   def test_float

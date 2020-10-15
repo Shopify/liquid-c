@@ -42,8 +42,19 @@ inline static VALUE token_to_rstr(lexer_token_t token) {
     return rb_enc_str_new(token.val, token.val_end - token.val, utf8_encoding);
 }
 
+inline static VALUE token_check_for_symbol(lexer_token_t token) {
+    return rb_check_symbol_cstr(token.val, token.val_end - token.val, utf8_encoding);
+}
+
+inline static VALUE token_to_rstr_leveraging_existing_symbol(lexer_token_t token) {
+    VALUE sym = token_check_for_symbol(token);
+    if (RB_LIKELY(sym != Qnil))
+        return rb_sym2str(sym);
+    return token_to_rstr(token);
+}
+
 inline static VALUE token_to_rsym(lexer_token_t token) {
-    VALUE sym = rb_check_symbol_cstr(token.val, token.val_end - token.val, utf8_encoding);
+    VALUE sym = token_check_for_symbol(token);
     if (RB_LIKELY(sym != Qnil))
         return sym;
     return rb_str_intern(token_to_rstr(token));

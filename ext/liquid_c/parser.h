@@ -2,6 +2,7 @@
 #define LIQUID_PARSER_H
 
 #include "lexer.h"
+#include "vm_assembler.h"
 
 typedef struct parser {
     lexer_token_t cur, next;
@@ -14,8 +15,8 @@ lexer_token_t parser_must_consume(parser_t *parser, unsigned char type);
 lexer_token_t parser_consume(parser_t *parser, unsigned char type);
 lexer_token_t parser_consume_any(parser_t *parser);
 
-VALUE parse_expression(parser_t *parser);
-bool will_parse_constant_expression_next(parser_t *parser);
+void parse_and_compile_expression(parser_t *p, vm_assembler_t *code);
+VALUE try_parse_constant_expression(parser_t *p);
 
 void init_liquid_parser(void);
 

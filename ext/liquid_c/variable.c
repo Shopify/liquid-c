@@ -1,35 +1,10 @@
 #include "liquid.h"
 #include "variable.h"
 #include "parser.h"
+#include "expression.h"
 #include <stdio.h>
 
 static ID id_rescue_strict_parse_syntax_error;
-
-static void compile_expression(vm_assembler_t *code, VALUE expression, bool const_expression)
-{
-    if (const_expression)
-        vm_assembler_add_push_const(code, expression);
-    else
-        vm_assembler_add_push_eval_expr(code, expression);
-}
-
-static int compile_each_keyword_arg(VALUE key, VALUE value, VALUE func_arg)
-{
-    vm_assembler_t *code = (vm_assembler_t *)func_arg;
-
-    vm_assembler_add_push_const(code, key);
-
-    bool is_const_expr = !rb_respond_to(value, id_evaluate);
-    compile_expression(code, value, is_const_expr);
-
-    return ST_CONTINUE;
-}
-
-static inline void parse_and_compile_expression(parser_t *p, vm_assembler_t *code)
-{
-    bool is_const = will_parse_constant_expression_next(p);
-    compile_expression(code, parse_expression(p), is_const);
-}
 
 static VALUE try_variable_strict_parse(VALUE uncast_args)
 {
@@ -50,7 +25,9 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
         VALUE filter_name = token_to_rsym(filter_name_token);
 
         size_t arg_count = 0;
-        VALUE keyword_args = Qnil;
+        size_t keyword_arg_count = 0;
+        VALUE push_keywords_obj = Qnil;
+        vm_assembler_t *push_keywords_code = NULL;
 
         if (parser_consume(&p, TOKEN_COLON).type) {
             do {
@@ -58,9 +35,18 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
                     VALUE key = token_to_rstr(parser_consume_any(&p));
                     parser_consume_any(&p);
 
-                    if (keyword_args == Qnil)
-                        keyword_args = rb_hash_new();
-                    rb_hash_aset(keyword_args, key, parse_expression(&p));
+                    keyword_arg_count++;
+
+                    if (push_keywords_obj == Qnil) {
+                        expression_t *push_keywords_expr;
+                        // use an object to automatically free on an exception
+                        push_keywords_obj = expression_new(&push_keywords_expr);
+                        rb_obj_hide(push_keywords_obj);
+                        push_keywords_code = &push_keywords_expr->code;
+                    }
+
+                    vm_assembler_add_push_const(push_keywords_code, key);
+                    parse_and_compile_expression(&p, push_keywords_code);
                 } else {
                     parse_and_compile_expression(&p, code);
                     arg_count++;
@@ -68,13 +54,18 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
             } while (parser_consume(&p, TOKEN_COMMA).type);
         }
 
-        if (keyword_args != Qnil) {
+        if (keyword_arg_count) {
             arg_count++;
-            if (RHASH_SIZE(keyword_args) > 255) {
+            if (keyword_arg_count > 255)
                 rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter keyword arguments");
-            }
-            rb_hash_foreach(keyword_args, compile_each_keyword_arg, (VALUE)code);
-            vm_assembler_add_hash_new(code, RHASH_SIZE(keyword_args));
+
+            vm_assembler_concat(code, push_keywords_code);
+            vm_assembler_add_hash_new(code, keyword_arg_count);
+
+            // There are no external references to this temporary object, so we can eagerly free it
+            DATA_PTR(push_keywords_obj) = NULL;
+            vm_assembler_free(push_keywords_code);
+            rb_gc_force_recycle(push_keywords_obj); // also acts as a RB_GC_GUARD(push_keywords_obj);
         }
         if (arg_count > 254) {
             rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter arguments");
@@ -132,54 +123,8 @@ void internal_variable_parse(variable_parse_args_t *parse_args)
     rb_rescue(try_variable_strict_parse, (VALUE)parse_args, variable_strict_parse_rescue, (VALUE)&rescue_args);
 }
 
-static VALUE rb_variable_parse(VALUE self, VALUE markup, VALUE filters)
-{
-    StringValue(markup);
-    char *start = RSTRING_PTR(markup);
-
-    parser_t p;
-    init_parser(&p, start, start + RSTRING_LEN(markup));
-
-    if (p.cur.type == TOKEN_EOS)
-        return Qnil;
-
-    VALUE name = parse_expression(&p);
-
-    while (parser_consume(&p, TOKEN_PIPE).type) {
-        lexer_token_t filter_name = parser_must_consume(&p, TOKEN_IDENTIFIER);
-
-        VALUE filter_args = rb_ary_new(), keyword_args = Qnil, filter;
-
-        if (parser_consume(&p, TOKEN_COLON).type) {
-            do {
-                if (p.cur.type == TOKEN_IDENTIFIER && p.next.type == TOKEN_COLON) {
-                    VALUE key = token_to_rstr(parser_consume_any(&p));
-                    parser_consume_any(&p);
-
-                    if (keyword_args == Qnil) keyword_args = rb_hash_new();
-                    rb_hash_aset(keyword_args, key, parse_expression(&p));
-                } else {
-                    rb_ary_push(filter_args, parse_expression(&p));
-                }
-            } while (parser_consume(&p, TOKEN_COMMA).type);
-        }
-
-        if (keyword_args == Qnil) {
-            filter = rb_ary_new3(2, token_to_rstr(filter_name), filter_args);
-        } else {
-            filter = rb_ary_new3(3, token_to_rstr(filter_name), filter_args, keyword_args);
-        }
-        rb_ary_push(filters, filter);
-    }
-
-    parser_must_consume(&p, TOKEN_EOS);
-    return name;
-}
-
 void init_liquid_variable(void)
 {
     id_rescue_strict_parse_syntax_error = rb_intern("rescue_strict_parse_syntax_error");
-
-    rb_define_singleton_method(cLiquidVariable, "c_strict_parse", rb_variable_parse, 2);
 }
 

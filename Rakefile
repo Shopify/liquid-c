@@ -4,7 +4,7 @@ require 'bundler/gem_tasks'
 require 'rake/extensiontask'
 require 'benchmark'
 
-ENV['DEBUG'] = 'true'
+ENV['DEBUG'] ||= 'true'
 ext_task = Rake::ExtensionTask.new("liquid_c")
 
 # For MacOS, generate debug information that ruby can read

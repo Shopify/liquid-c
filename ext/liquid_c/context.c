@@ -2,32 +2,32 @@
 #include "context.h"
 #include "variable_lookup.h"
 #include "vm.h"
+#include "expression.h"
 
 static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
 ID id_aset, id_set_context;
 static ID id_has_key, id_aref;
 static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables;
 
-VALUE context_evaluate(VALUE self, VALUE expression)
+static VALUE context_evaluate(VALUE self, VALUE expression)
 {
-    // Scalar type stored directly in the VALUE, this is a nearly free check, saving a #respond_to?
+    // Scalar type stored directly in the VALUE, this needs to be checked anyways to use RB_BUILTIN_TYPE
     if (RB_SPECIAL_CONST_P(expression))
         return expression;
 
-    VALUE klass = RBASIC(expression)->klass;
-
-    // Basic types that do not respond to #evaluate
-    if (klass == rb_cString || klass == rb_cArray || klass == rb_cHash)
-        return expression;
-
-    // Liquid::VariableLookup is by far the most common type after String, call
-    // the C implementation directly to avoid a Ruby dispatch.
-    if (klass == cLiquidVariableLookup)
-        return variable_lookup_evaluate(expression, self);
-
-    if (rb_respond_to(expression, id_evaluate))
-        return rb_funcall(expression, id_evaluate, 1, self);
-
+    switch (RB_BUILTIN_TYPE(expression)) {
+        case T_DATA:
+            if (RBASIC_CLASS(expression) == cLiquidCExpression)
+                return internal_expression_evaluate(DATA_PTR(expression), self);
+            break; // e.g. BigDecimal
+        case T_OBJECT: // may be Liquid::VariableLookup or Liquid::RangeLookup
+        {
+            VALUE result = rb_check_funcall(expression, id_evaluate, 1, &self);
+            return RB_LIKELY(result != Qundef) ? result : expression;
+        }
+        default:
+            break;
+    }
     return expression;
 }
 

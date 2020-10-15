@@ -1,14 +1,15 @@
 #include <stdint.h>
+#include <assert.h>
 
 #include "liquid.h"
 #include "vm.h"
 #include "resource_limits.h"
 #include "context.h"
+#include "variable_lookup.h"
 
 ID id_render_node;
 ID id_ivar_interrupts;
 ID id_ivar_resource_limits;
-ID id_to_s;
 ID id_vm;
 ID id_strainer;
 ID id_filter_methods_hash;
@@ -168,6 +169,7 @@ static void write_obj(VALUE output, VALUE obj)
 static inline void vm_stack_push(vm_t *vm, VALUE value)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
+    assert(stack_ptr < (VALUE *)vm->stack.capacity_end);
     *stack_ptr++ = value;
     vm->stack.data_end = (uint8_t *)stack_ptr;
 }
@@ -176,6 +178,7 @@ static inline VALUE vm_stack_pop(vm_t *vm)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
     stack_ptr--;
+    assert((VALUE *)vm->stack.data <= stack_ptr);
     vm->stack.data_end = (uint8_t *)stack_ptr;
     return *stack_ptr;
 }
@@ -184,6 +187,7 @@ static inline VALUE *vm_stack_pop_n_use_in_place(vm_t *vm, size_t n)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
     stack_ptr -= n;
+    assert((VALUE *)vm->stack.data <= stack_ptr);
     vm->stack.data_end = (uint8_t *)stack_ptr;
     return stack_ptr;
 }
@@ -214,10 +218,37 @@ typedef struct vm_render_until_error_args {
     vm_t *vm;
     const uint8_t *ip; // use for initial address and to save an address for rescuing
     const size_t *const_ptr;
-    const uint8_t *node_line_number;
     VALUE context;
+
+    /* rendering fields */
     VALUE output;
+    const uint8_t *node_line_number;
 } vm_render_until_error_args_t;
+
+static VALUE raise_invalid_integer(VALUE unused_arg, VALUE exc)
+{
+    rb_raise(cLiquidArgumentError, "invalid integer");
+}
+
+// Equivalent to Integer(string) if string is an instance of String
+static VALUE try_string_to_integer(VALUE string)
+{
+    return rb_str_to_inum(string, 0, true);
+}
+
+static VALUE range_value_to_integer(VALUE value)
+{
+    if (RB_INTEGER_TYPE_P(value)) {
+        return value;
+    } else if (value == Qnil) {
+        return INT2FIX(0);
+    } else if (RB_TYPE_P(value, T_STRING)) {
+        return rb_str_to_inum(value, 0, false); // equivalent to String#to_i
+    } else {
+        value = obj_to_s(value);
+        return rb_rescue2(try_string_to_integer, value, raise_invalid_integer, Qnil, rb_eArgError, (VALUE)0);
+    }
+}
 
 #ifdef HAVE_RB_HASH_BULK_INSERT
 #define hash_bulk_insert rb_hash_bulk_insert
@@ -248,6 +279,60 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             case OP_PUSH_CONST:
                 vm_stack_push(vm, (VALUE)*const_ptr++);
                 break;
+            case OP_PUSH_NIL:
+                vm_stack_push(vm, Qnil);
+                break;
+            case OP_PUSH_TRUE:
+                vm_stack_push(vm, Qtrue);
+                break;
+            case OP_PUSH_FALSE:
+                vm_stack_push(vm, Qfalse);
+                break;
+            case OP_PUSH_INT8:
+            {
+                int num = *(int8_t *)ip++; // signed
+                vm_stack_push(vm, RB_INT2FIX(num));
+                break;
+            }
+            case OP_PUSH_INT16:
+            {
+                int num = *(int8_t *)ip++; // big endian encoding, so first byte has sign
+                num = (num << 8) | *ip++;
+                vm_stack_push(vm, RB_INT2FIX(num));
+                break;
+            }
+            case OP_FIND_STATIC_VAR:
+                vm_stack_push(vm, (VALUE)*const_ptr++);
+                /* fallthrough */
+            case OP_FIND_VAR:
+            {
+                VALUE key = vm_stack_pop(vm);
+                VALUE value = context_find_variable(args->context, key, Qtrue);
+                vm_stack_push(vm, value);
+                break;
+            }
+            case OP_LOOKUP_CONST_KEY:
+            case OP_LOOKUP_COMMAND:
+                vm_stack_push(vm, (VALUE)*const_ptr++);
+                /* fallthrough */
+            case OP_LOOKUP_KEY:
+            {
+                bool is_command = ip[-1] == OP_LOOKUP_COMMAND;
+                VALUE key = vm_stack_pop(vm);
+                VALUE object = vm_stack_pop(vm);
+                VALUE result = variable_lookup_key(args->context, object, key, is_command);
+                vm_stack_push(vm, result);
+                break;
+            }
+
+            case OP_NEW_INT_RANGE:
+            {
+                VALUE end = range_value_to_integer(vm_stack_pop(vm));
+                VALUE begin = range_value_to_integer(vm_stack_pop(vm));
+                bool exclude_end = false;
+                vm_stack_push(vm, rb_range_new(begin, end, exclude_end));
+                break;
+            }
             case OP_HASH_NEW:
             {
                 size_t hash_size = *ip++;
@@ -265,12 +350,6 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, num_args);
                 VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
                 vm_stack_push(vm, result);
-                break;
-            }
-            case OP_PUSH_EVAL_EXPR:
-            {
-                VALUE expression = (VALUE)*const_ptr++;
-                vm_stack_push(vm, context_evaluate(args->context, expression));
                 break;
             }
 
@@ -317,6 +396,28 @@ static VALUE vm_render_until_error(VALUE uncast_args)
     }
 }
 
+// Evaluate instructions that avoid using rendering instructions and leave with the result on
+// the top of the stack
+VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
+{
+    vm_t *vm = vm_from_context(context);
+    vm_stack_reserve_for_write(vm, code->max_stack_size);
+#ifndef NDEBUG
+    size_t old_stack_byte_size = c_buffer_size(&vm->stack);
+#endif
+
+    vm_render_until_error_args_t args = {
+        .vm = vm,
+        .const_ptr = (const size_t *)code->constants.data,
+        .ip = code->instructions.data,
+        .context = context,
+    };
+    vm_render_until_error((VALUE)&args);
+    VALUE ret = vm_stack_pop(vm);
+    assert(old_stack_byte_size == c_buffer_size(&vm->stack));
+    return ret;
+}
+
 void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr)
 {
     const uint8_t *ip = *ip_ptr;
@@ -324,15 +425,28 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
     switch (*ip++) {
         case OP_LEAVE:
         case OP_POP_WRITE_VARIABLE:
+        case OP_PUSH_NIL:
+        case OP_PUSH_TRUE:
+        case OP_PUSH_FALSE:
+        case OP_FIND_VAR:
+        case OP_LOOKUP_KEY:
+        case OP_NEW_INT_RANGE:
             break;
 
         case OP_HASH_NEW:
+        case OP_PUSH_INT8:
             ip++;
+            break;
+
+        case OP_PUSH_INT16:
+            ip += 2;
             break;
 
         case OP_WRITE_NODE:
         case OP_PUSH_CONST:
-        case OP_PUSH_EVAL_EXPR:
+        case OP_FIND_STATIC_VAR:
+        case OP_LOOKUP_CONST_KEY:
+        case OP_LOOKUP_COMMAND:
             (*const_ptr_ptr)++;
             break;
 
@@ -429,6 +543,7 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
 
     while (rb_rescue(vm_render_until_error, (VALUE)&render_args, vm_render_rescue, (VALUE)&rescue_args)) {
     }
+    assert(rescue_args.old_stack_byte_size == c_buffer_size(&vm->stack));
 }
 
 
@@ -437,7 +552,6 @@ void init_liquid_vm()
     id_render_node = rb_intern("render_node");
     id_ivar_interrupts = rb_intern("@interrupts");
     id_ivar_resource_limits = rb_intern("@resource_limits");
-    id_to_s = rb_intern("to_s");
     id_vm = rb_intern("vm");
     id_strainer = rb_intern("strainer");
     id_filter_methods_hash = rb_intern("filter_methods_hash");

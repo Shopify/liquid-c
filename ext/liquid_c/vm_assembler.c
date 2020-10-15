@@ -21,61 +21,7 @@ void vm_assembler_free(vm_assembler_t *code)
 
 void vm_assembler_gc_mark(vm_assembler_t *code)
 {
-    size_t *const_ptr = (size_t *)code->constants.data;
-    const uint8_t *ip = code->instructions.data;
-    // Don't rely on a terminating OP_LEAVE instruction
-    // since this could be called in the middle of parsing
-    const uint8_t *end_ip = code->instructions.data_end;
-    while (ip < end_ip) {
-        switch (*ip++) {
-            case OP_LEAVE:
-            case OP_POP_WRITE:
-            case OP_PUSH_NIL:
-            case OP_PUSH_TRUE:
-            case OP_PUSH_FALSE:
-            case OP_FIND_VAR:
-            case OP_LOOKUP_KEY:
-            case OP_NEW_INT_RANGE:
-                break;
-
-            case OP_HASH_NEW:
-            case OP_PUSH_INT8:
-                ip++;
-                break;
-
-            case OP_PUSH_INT16:
-                ip += 2;
-                break;
-
-            case OP_RENDER_VARIABLE_RESCUE:
-                ip += 3;
-                break;
-
-            case OP_WRITE_RAW:
-            case OP_WRITE_RAW_SKIP:
-            {
-                size_t size = bytes_to_uint24(ip);
-                ip += 3 + size;
-                break;
-            }
-
-            case OP_WRITE_NODE:
-            case OP_PUSH_CONST:
-            case OP_FIND_STATIC_VAR:
-            case OP_LOOKUP_CONST_KEY:
-            case OP_LOOKUP_COMMAND:
-                rb_gc_mark(*const_ptr++);
-                break;
-
-            case OP_FILTER:
-                ip++;
-                rb_gc_mark(*const_ptr++);
-                break;
-
-            default:
-                rb_bug("invalid opcode: %u", ip[-1]);
-        }
-    }
+    c_buffer_rb_gc_mark(&code->constants);
 }
 
 VALUE vm_assembler_disassemble(vm_assembler_t *code)

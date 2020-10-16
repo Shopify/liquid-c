@@ -277,8 +277,13 @@ static VALUE block_body_remove_blank_strings(VALUE self)
 
     while (*ip != OP_LEAVE) {
         if (*ip == OP_WRITE_RAW) {
-            if (ip[1] || ip[2] || ip[3]) { // if (size != 0)
+            if (ip[1]) { // if (size != 0)
                 ip[0] = OP_JUMP_FWD; // effectively a no-op
+                body->render_score--;
+            }
+        } else if (*ip == OP_WRITE_RAW_W) {
+            if (ip[1] || ip[2] || ip[3]) { // if (size != 0)
+                ip[0] = OP_JUMP_FWD_W; // effectively a no-op
                 body->render_score--;
             }
         }
@@ -316,10 +321,18 @@ static VALUE block_body_nodelist(VALUE self)
         switch (*ip) {
             case OP_LEAVE:
                 goto loop_break;
+            case OP_WRITE_RAW_W:
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)&ip[4];
-                size_t size = bytes_to_uint24(&ip[1]);
+                const char *text;
+                size_t size;
+                if (*ip == OP_WRITE_RAW_W) {
+                    size = bytes_to_uint24(&ip[1]);
+                    text = (const char *)&ip[4];
+                } else {
+                    size = ip[1];
+                    text = (const char *)&ip[2];
+                }
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
                 rb_ary_push(nodelist, string);
                 break;

@@ -356,19 +356,35 @@ static VALUE vm_render_until_error(VALUE uncast_args)
 
             // Rendering instructions
 
+            case OP_WRITE_RAW_W:
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)&ip[3];
-                size_t size = bytes_to_uint24(ip);
+                const char *text;
+                size_t size;
+                if (ip[-1] == OP_WRITE_RAW_W) {
+                    size = bytes_to_uint24(ip);
+                    text = (const char *)&ip[3];
+                    ip += 3 + size;
+                } else {
+                    size = *ip;
+                    text = (const char *)&ip[1];
+                    ip += 1 + size;
+                }
                 rb_str_cat(output, text, size);
                 resource_limits_increment_write_score(vm->resource_limits, output);
+                break;
+            }
+            case OP_JUMP_FWD_W:
+            {
+                size_t size = bytes_to_uint24(ip);
                 ip += 3 + size;
                 break;
             }
+
             case OP_JUMP_FWD:
             {
-                size_t size = bytes_to_uint24(ip);
-                ip += 3 + size;
+                uint8_t size = *ip;
+                ip += 1 + size;
                 break;
             }
 
@@ -468,11 +484,19 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
             (*const_ptr_ptr)++;
             break;
 
-        case OP_WRITE_RAW:
-        case OP_JUMP_FWD:
+        case OP_WRITE_RAW_W:
+        case OP_JUMP_FWD_W:
         {
             size_t size = bytes_to_uint24(ip);
             ip += 3 + size;
+            break;
+        }
+
+        case OP_WRITE_RAW:
+        case OP_JUMP_FWD:
+        {
+            uint8_t size = *ip;
+            ip += 1 + size;
             break;
         }
 

@@ -152,9 +152,15 @@ void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count)
 
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size)
 {
-    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
-    instructions[0] = OP_WRITE_RAW;
-    uint24_to_bytes((unsigned int)size, &instructions[1]);
+    if (size > UINT8_MAX) {
+        uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
+        instructions[0] = OP_WRITE_RAW_W;
+        uint24_to_bytes((unsigned int)size, &instructions[1]);
+    } else {
+        uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 2);
+        instructions[0] = OP_WRITE_RAW;
+        instructions[1] = size;
+    }
 
     c_buffer_write(&code->instructions, (char *)string, size);
 }

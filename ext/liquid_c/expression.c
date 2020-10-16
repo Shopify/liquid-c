@@ -54,6 +54,7 @@ static VALUE internal_expression_parse(parser_t *p)
     VALUE expr_obj = expression_new(&expression);
 
     parse_and_compile_expression(p, &expression->code);
+    assert(expression->code.stack_size == 1);
     vm_assembler_add_leave(&expression->code);
 
     return expr_obj;

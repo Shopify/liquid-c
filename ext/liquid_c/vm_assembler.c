@@ -223,8 +223,6 @@ void vm_assembler_add_hash_new_from_ruby(vm_assembler_t *code, VALUE hash_size_o
 {
     ensure_parsing(code);
     unsigned int hash_size = NUM2USHORT(hash_size_obj);
-    if (hash_size > 255)
-        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Hash literal has too many keys");
     vm_assembler_require_stack_args(code, hash_size * 2);
 
     vm_assembler_add_hash_new(code, hash_size);

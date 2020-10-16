@@ -104,8 +104,10 @@ static inline void vm_assembler_add_pop_write(vm_assembler_t *code)
     vm_assembler_write_opcode(code, OP_POP_WRITE);
 }
 
-static inline void vm_assembler_add_hash_new(vm_assembler_t *code, uint8_t hash_size)
+static inline void vm_assembler_add_hash_new(vm_assembler_t *code, size_t hash_size)
 {
+    if (hash_size > 255)
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Hash literal has too many keys");
     code->stack_size -= hash_size * 2;
     code->stack_size++;
     uint8_t instructions[2] = { OP_HASH_NEW, hash_size };

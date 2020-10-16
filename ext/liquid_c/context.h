@@ -1,8 +1,17 @@
 #if !defined(LIQUID_CONTEXT_H)
 #define LIQUID_CONTEXT_H
 
+typedef struct context {
+    VALUE self;
+    VALUE environments;
+    VALUE static_environments;
+    VALUE scopes;
+} context_t;
+
 void init_liquid_context();
-VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found);
+void context_internal_init(VALUE context_obj, context_t *context);
+void context_mark(context_t *context);
+VALUE context_find_variable(context_t *context, VALUE key, VALUE raise_on_not_found);
 void context_maybe_raise_undefined_variable(VALUE self, VALUE key);
 
 extern ID id_aset, id_set_context;

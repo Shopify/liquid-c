@@ -10,6 +10,33 @@ ID id_aset, id_set_context;
 static ID id_has_key, id_aref;
 static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables;
 
+void context_internal_init(VALUE context_obj, context_t *context)
+{
+    context->self = context_obj;
+
+    context->environments = rb_ivar_get(context_obj, id_ivar_environments);
+    Check_Type(context->environments, T_ARRAY);
+
+    context->static_environments = rb_ivar_get(context_obj, id_ivar_static_environments);
+    Check_Type(context->static_environments, T_ARRAY);
+
+    context->scopes = rb_ivar_get(context_obj, id_ivar_scopes);
+    Check_Type(context->scopes, T_ARRAY);
+}
+
+void context_mark(context_t *context)
+{
+    rb_gc_mark(context->self);
+    rb_gc_mark(context->environments);
+    rb_gc_mark(context->static_environments);
+    rb_gc_mark(context->scopes);
+}
+
+static context_t *context_from_obj(VALUE self)
+{
+    return &vm_from_context(self)->context;
+}
+
 static VALUE context_evaluate(VALUE self, VALUE expression)
 {
     // Scalar type stored directly in the VALUE, this needs to be checked anyways to use RB_BUILTIN_TYPE
@@ -79,13 +106,12 @@ static bool environments_find_variable(VALUE environments, VALUE key, VALUE stri
     return false;
 }
 
-VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
+VALUE context_find_variable(context_t *context, VALUE key, VALUE raise_on_not_found)
 {
+    VALUE self = context->self;
     VALUE scope = Qnil, variable = Qnil;
 
-    VALUE scopes = rb_ivar_get(self, id_ivar_scopes);
-    Check_Type(scopes, T_ARRAY);
-
+    VALUE scopes = context->scopes;
     for (long i = 0; i < RARRAY_LEN(scopes); i++) {
         VALUE this_scope = RARRAY_AREF(scopes, i);
         if (RB_LIKELY(TYPE(this_scope) == T_HASH)) {
@@ -106,12 +132,10 @@ VALUE context_find_variable(VALUE self, VALUE key, VALUE raise_on_not_found)
 
     VALUE strict_variables = rb_ivar_get(self, id_ivar_strict_variables);
 
-    VALUE environments = rb_ivar_get(self, id_ivar_environments);
-    if (environments_find_variable(environments, key, strict_variables, raise_on_not_found, &scope, &variable))
+    if (environments_find_variable(context->environments, key, strict_variables, raise_on_not_found, &scope, &variable))
         goto variable_found;
 
-    VALUE static_environments = rb_ivar_get(self, id_ivar_static_environments);
-    if (environments_find_variable(static_environments, key, strict_variables, raise_on_not_found, &scope, &variable))
+    if (environments_find_variable(context->static_environments, key, strict_variables, raise_on_not_found, &scope, &variable))
         goto variable_found;
 
     if (RTEST(raise_on_not_found)) {
@@ -124,6 +148,11 @@ variable_found:
     variable = value_to_liquid_and_set_context(variable, self);
 
     return variable;
+}
+
+static VALUE context_find_variable_method(VALUE self, VALUE key, VALUE raise_on_not_found)
+{
+    return context_find_variable(context_from_obj(self), key, raise_on_not_found);
 }
 
 // Shopify requires checking if we are filtering, so provide a
@@ -154,6 +183,6 @@ void init_liquid_context()
 
     VALUE cLiquidContext = rb_const_get(mLiquid, rb_intern("Context"));
     rb_define_method(cLiquidContext, "c_evaluate", context_evaluate, 1);
-    rb_define_method(cLiquidContext, "c_find_variable", context_find_variable, 2);
+    rb_define_method(cLiquidContext, "c_find_variable", context_find_variable_method, 2);
     rb_define_private_method(cLiquidContext, "c_filtering?", context_filtering_p, 0);
 }

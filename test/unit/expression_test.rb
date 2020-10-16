@@ -1,7 +1,7 @@
 require 'test_helper'
 
 class ExpressionTest < MiniTest::Test
-  def test_literals
+  def test_constant_literals
     assert_equal true, Liquid::C::Expression.strict_parse('true')
     assert_equal false, Liquid::C::Expression.strict_parse('false')
     assert_nil Liquid::C::Expression.strict_parse('nil')
@@ -12,25 +12,48 @@ class ExpressionTest < MiniTest::Test
     assert_same empty, Liquid::C::Expression.strict_parse('blank')
   end
 
-  def test_byte_int
-    assert_equal 127, Liquid::C::Expression.strict_parse('127')
-    assert_equal(-128, Liquid::C::Expression.strict_parse('-128'))
+  def test_push_literals
+    assert_nil compile_and_eval('nil')
+    assert_equal true, compile_and_eval('true')
+    assert_equal false, compile_and_eval('false')
   end
 
-  def test_short_int
-    assert_equal 128, Liquid::C::Expression.strict_parse('128')
-    assert_equal(-129, Liquid::C::Expression.strict_parse('-129'))
-    assert_equal 32767, Liquid::C::Expression.strict_parse('32767')
-    assert_equal(-32768, Liquid::C::Expression.strict_parse('-32768'))
+  def test_constant_integer
+    assert_equal 42, Liquid::C::Expression.strict_parse('42')
+  end
+
+  def test_push_int8
+    assert_equal 127, compile_and_eval('127')
+    assert_equal -128, compile_and_eval('-128')
+  end
+
+  def test_push_int16
+    assert_equal 128, compile_and_eval('128')
+    assert_equal -129, compile_and_eval('-129')
+    assert_equal 32767, compile_and_eval('32767')
+    assert_equal -32768, compile_and_eval('-32768')
+  end
+
+  def test_push_large_fixnum
+    assert_equal 32768, compile_and_eval('32768')
+    assert_equal -2147483648, compile_and_eval('-2147483648')
+    assert_equal 2147483648, compile_and_eval('2147483648')
+    assert_equal 4611686018427387903, compile_and_eval('4611686018427387903')
+  end
+
+  def test_push_big_int
+    num = 1 << 128
+    assert_equal num, compile_and_eval(num.to_s)
   end
 
   def test_float
     assert_equal 123.4, Liquid::C::Expression.strict_parse('123.4')
+    assert_equal -1.5, compile_and_eval('-1.5')
   end
 
   def test_string
     assert_equal "hello", Liquid::C::Expression.strict_parse('"hello"')
-    assert_equal "world", Liquid::C::Expression.strict_parse("'world'")
+    assert_equal "world", compile_and_eval("'world'")
   end
 
   def test_find_static_variable
@@ -105,5 +128,19 @@ class ExpressionTest < MiniTest::Test
     expr = Liquid::C::Expression.strict_parse('(1..var)')
     assert_instance_of(Liquid::C::Expression, expr)
     assert_equal (1..42), context.evaluate(expr)
+  end
+
+  private
+
+  class ReturnKeyDrop < Liquid::Drop
+    def liquid_method_missing(key)
+      key
+    end
+  end
+
+  def compile_and_eval(source)
+    context = Liquid::Context.new({ 'ret_key' => ReturnKeyDrop.new })
+    expr = Liquid::C::Expression.strict_parse("ret_key[#{source}]")
+    context.evaluate(expr)
   end
 end

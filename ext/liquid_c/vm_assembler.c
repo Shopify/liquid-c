@@ -85,7 +85,7 @@ void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)
 
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num)
 {
-    int x = FIX2INT(num);
+    long x = FIX2LONG(num);
     if (x >= INT8_MIN && x <= INT8_MAX) {
         vm_assembler_add_push_int8(code, x);
     } else if (x >= INT16_MIN && x <= INT16_MAX) {

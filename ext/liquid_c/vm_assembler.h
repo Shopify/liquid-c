@@ -65,6 +65,12 @@ static inline void vm_assembler_increment_stack_size(vm_assembler_t *code, size_
         code->max_stack_size = code->stack_size;
 }
 
+static inline void vm_assembler_reserve_stack_size(vm_assembler_t *code, size_t amount)
+{
+    vm_assembler_increment_stack_size(code, amount);
+    code->stack_size -= amount;
+}
+
 static inline void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src)
 {
     c_buffer_concat(&dest->instructions, &src->instructions);
@@ -158,20 +164,20 @@ static inline void vm_assembler_add_find_variable(vm_assembler_t *code)
 
 static inline void vm_assembler_add_lookup_const_key(vm_assembler_t *code, VALUE key)
 {
-    vm_assembler_increment_stack_size(code, 1);
+    vm_assembler_reserve_stack_size(code, 1); // push 1, pop 2, push 1
     vm_assembler_write_ruby_constant(code, key);
     vm_assembler_write_opcode(code, OP_LOOKUP_CONST_KEY);
 }
 
 static inline void vm_assembler_add_lookup_key(vm_assembler_t *code)
 {
-    // pop 1, push 1
+    code->stack_size--; // pop 2, push 1
     vm_assembler_write_opcode(code, OP_LOOKUP_KEY);
 }
 
 static inline void vm_assembler_add_lookup_command(vm_assembler_t *code, VALUE command)
 {
-    vm_assembler_increment_stack_size(code, 1);
+    vm_assembler_reserve_stack_size(code, 1); // push 1, pop 2, push 1
     vm_assembler_write_ruby_constant(code, command);
     vm_assembler_write_opcode(code, OP_LOOKUP_COMMAND);
 }

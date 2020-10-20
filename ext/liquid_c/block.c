@@ -66,9 +66,9 @@ static VALUE block_body_allocate(VALUE klass)
     VALUE obj = TypedData_Make_Struct(klass, block_body_t, &block_body_data_type, body);
     vm_assembler_init(&body->code);
     vm_assembler_add_leave(&body->code);
+    body->obj = obj;
     body->source = Qnil;
     body->render_score = 0;
-    body->parsing = false;
     body->blank = true;
     return obj;
 }
@@ -142,7 +142,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 variable_parse_args_t parse_args = {
                     .markup = token.str_trimmed,
                     .markup_end = token.str_trimmed + token.len_trimmed,
-                    .code = &body->code,
+                    .body = body,
                     .parse_context = parse_context->ruby_obj,
                     .line_number = token_start_line_number,
                 };
@@ -214,7 +214,7 @@ loop_break:
 
 static void ensure_not_parsing(block_body_t *body)
 {
-    if (body->parsing) {
+    if (body->code.parsing) {
         rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
     }
 }
@@ -235,12 +235,10 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     } else if (body->source != parse_context.tokenizer->source) {
         rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse must be passed the same tokenizer when called multiple times");
     }
-    body->parsing = true;
     vm_assembler_remove_leave(&body->code); // to extend block
 
     tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
     vm_assembler_add_leave(&body->code);
-    body->parsing = false;
     return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
 }
 
@@ -334,7 +332,7 @@ static VALUE block_body_nodelist(VALUE self)
                 break;
             }
 
-            case OP_POP_WRITE_VARIABLE:
+            case OP_RENDER_VARIABLE_RESCUE:
                 rb_ary_push(nodelist, variable_placeholder);
                 break;
         }
@@ -346,6 +344,63 @@ loop_break:
     rb_ivar_set(self, intern_ivar_nodelist, nodelist);
     return nodelist;
 }
+
+static VALUE block_body_add_evaluate_expression(VALUE self, VALUE expression)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_evaluate_expression_from_ruby(&body->code, self, expression);
+    return self;
+}
+
+static VALUE block_body_add_find_variable(VALUE self, VALUE expression)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_find_variable_from_ruby(&body->code, self, expression);
+    return self;
+}
+
+static VALUE block_body_add_lookup_command(VALUE self, VALUE name)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_lookup_command_from_ruby(&body->code, name);
+    return self;
+}
+
+static VALUE block_body_add_lookup_key(VALUE self, VALUE expression)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_lookup_key_from_ruby(&body->code, self, expression);
+    return self;
+}
+
+static VALUE block_body_add_new_int_range(VALUE self)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_new_int_range_from_ruby(&body->code);
+    return self;
+}
+
+static VALUE block_body_add_hash_new(VALUE self, VALUE hash_size)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_hash_new_from_ruby(&body->code, hash_size);
+    return self;
+}
+
+static VALUE block_body_add_filter(VALUE self, VALUE filter_name, VALUE num_args)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    vm_assembler_add_filter_from_ruby(&body->code, filter_name, num_args);
+    return self;
+}
+
 
 void init_liquid_block()
 {
@@ -369,6 +424,15 @@ void init_liquid_block()
     rb_define_method(cLiquidCBlockBody, "remove_blank_strings", block_body_remove_blank_strings, 0);
     rb_define_method(cLiquidCBlockBody, "blank?", block_body_blank_p, 0);
     rb_define_method(cLiquidCBlockBody, "nodelist", block_body_nodelist, 0);
+
+    rb_define_method(cLiquidCBlockBody, "add_evaluate_expression", block_body_add_evaluate_expression, 1);
+    rb_define_method(cLiquidCBlockBody, "add_find_variable", block_body_add_find_variable, 1);
+    rb_define_method(cLiquidCBlockBody, "add_lookup_command", block_body_add_lookup_command, 1);
+    rb_define_method(cLiquidCBlockBody, "add_lookup_key", block_body_add_lookup_key, 1);
+    rb_define_method(cLiquidCBlockBody, "add_new_int_range", block_body_add_new_int_range, 0);
+
+    rb_define_method(cLiquidCBlockBody, "add_hash_new", block_body_add_hash_new, 1);
+    rb_define_method(cLiquidCBlockBody, "add_filter", block_body_add_filter, 2);
 
     rb_global_variable(&variable_placeholder);
 }

@@ -379,7 +379,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 args->ip = ip;
                 args->const_ptr = const_ptr;
                 break;
-            case OP_POP_WRITE_VARIABLE:
+            case OP_POP_WRITE:
             {
                 VALUE var_result = vm_stack_pop(vm);
                 if (vm->global_filter != Qnil)
@@ -424,7 +424,7 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
 
     switch (*ip++) {
         case OP_LEAVE:
-        case OP_POP_WRITE_VARIABLE:
+        case OP_POP_WRITE:
         case OP_PUSH_NIL:
         case OP_PUSH_TRUE:
         case OP_PUSH_FALSE:
@@ -495,7 +495,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
         do {
             last_op = *ip;
             liquid_vm_next_instruction(&ip, &render_args->const_ptr);
-        } while (last_op != OP_POP_WRITE_VARIABLE);
+        } while (last_op != OP_POP_WRITE);
         render_args->ip = ip;
         // remove temporary stack values from variable evaluation
         vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;

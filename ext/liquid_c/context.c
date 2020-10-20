@@ -4,7 +4,7 @@
 #include "vm.h"
 #include "expression.h"
 
-static VALUE cLiquidVariableLookup, cLiquidUndefinedVariable;
+static VALUE cLiquidUndefinedVariable;
 ID id_aset, id_set_context;
 static ID id_has_key, id_aref;
 static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables;

@@ -15,9 +15,12 @@ ID id_evaluate;
 ID id_to_liquid;
 ID id_to_s;
 ID id_call;
+ID id_compile_evaluate;
 
 VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+VALUE cLiquidVariableLookup, cLiquidRangeLookup;
 VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
+
 rb_encoding *utf8_encoding;
 int utf8_encoding_index;
 
@@ -32,6 +35,7 @@ void Init_liquid_c(void)
     id_to_liquid = rb_intern("to_liquid");
     id_to_s = rb_intern("to_s");
     id_call = rb_intern("call");
+    id_compile_evaluate = rb_intern("compile_evaluate");
 
     utf8_encoding = rb_utf8_encoding();
     utf8_encoding_index = rb_enc_to_index(utf8_encoding);
@@ -59,6 +63,12 @@ void Init_liquid_c(void)
 
     cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_global_variable(&cLiquidBlockBody);
+
+    cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
+    rb_global_variable(&cLiquidVariableLookup);
+
+    cLiquidRangeLookup = rb_const_get(mLiquid, rb_intern("RangeLookup"));
+    rb_global_variable(&cLiquidRangeLookup);
 
     init_liquid_tokenizer();
     init_liquid_parser();

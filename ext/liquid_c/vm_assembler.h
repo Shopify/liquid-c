@@ -9,7 +9,7 @@ enum opcode {
     OP_LEAVE = 0,
     OP_WRITE_RAW = 1,
     OP_WRITE_NODE = 2,
-    OP_POP_WRITE_VARIABLE,
+    OP_POP_WRITE,
     OP_PUSH_CONST,
     OP_PUSH_NIL,
     OP_PUSH_TRUE,
@@ -32,16 +32,29 @@ typedef struct vm_assembler {
     c_buffer_t constants;
     size_t max_stack_size;
     size_t stack_size;
+    size_t protected_stack_size;
+    bool parsing; // prevent executing when incomplete or extending when complete
 } vm_assembler_t;
 
 void init_liquid_vm_assembler();
 void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);
 void vm_assembler_gc_mark(vm_assembler_t *code);
+void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src);
+void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count);
+
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size);
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node);
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num);
 void vm_assembler_add_push_literal(vm_assembler_t *code, VALUE literal);
+
+void vm_assembler_add_evaluate_expression_from_ruby(vm_assembler_t *code, VALUE code_obj, VALUE expression);
+void vm_assembler_add_find_variable_from_ruby(vm_assembler_t *code, VALUE code_obj, VALUE expression);
+void vm_assembler_add_lookup_command_from_ruby(vm_assembler_t *code, VALUE command);
+void vm_assembler_add_lookup_key_from_ruby(vm_assembler_t *code, VALUE code_obj, VALUE expression);
+void vm_assembler_add_new_int_range_from_ruby(vm_assembler_t *code);
+void vm_assembler_add_hash_new_from_ruby(vm_assembler_t *code, VALUE hash_size_obj);
+void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, VALUE arg_count_obj);
 
 static inline size_t vm_assembler_alloc_memsize(const vm_assembler_t *code)
 {
@@ -71,38 +84,30 @@ static inline void vm_assembler_reserve_stack_size(vm_assembler_t *code, size_t 
     code->stack_size -= amount;
 }
 
-static inline void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src)
-{
-    c_buffer_concat(&dest->instructions, &src->instructions);
-    c_buffer_concat(&dest->constants, &src->constants);
-
-    size_t max_src_stack_size = dest->stack_size + src->max_stack_size;
-    if (max_src_stack_size > dest->max_stack_size)
-        dest->max_stack_size = max_src_stack_size;
-
-    dest->stack_size += src->stack_size;
-}
-
 
 static inline void vm_assembler_add_leave(vm_assembler_t *code)
 {
     vm_assembler_write_opcode(code, OP_LEAVE);
+    code->parsing = false;
 }
 
 static inline void vm_assembler_remove_leave(vm_assembler_t *code)
 {
+    code->parsing = true;
     code->instructions.data_end--;
     assert(*code->instructions.data_end == OP_LEAVE);
 }
 
-static inline void vm_assembler_add_pop_write_variable(vm_assembler_t *code)
+static inline void vm_assembler_add_pop_write(vm_assembler_t *code)
 {
     code->stack_size -= 1;
-    vm_assembler_write_opcode(code, OP_POP_WRITE_VARIABLE);
+    vm_assembler_write_opcode(code, OP_POP_WRITE);
 }
 
-static inline void vm_assembler_add_hash_new(vm_assembler_t *code, uint8_t hash_size)
+static inline void vm_assembler_add_hash_new(vm_assembler_t *code, size_t hash_size)
 {
+    if (hash_size > 255)
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Hash literal has too many keys");
     code->stack_size -= hash_size * 2;
     code->stack_size++;
     uint8_t instructions[2] = { OP_HASH_NEW, hash_size };
@@ -188,8 +193,11 @@ static inline void vm_assembler_add_new_int_range(vm_assembler_t *code)
     vm_assembler_write_opcode(code, OP_NEW_INT_RANGE);
 }
 
-static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, uint8_t arg_count)
+static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg_count)
 {
+    if (arg_count > 254) {
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter arguments");
+    }
     code->stack_size -= arg_count; // pop arg_count + 1, push 1
     vm_assembler_write_ruby_constant(code, filter_name);
     uint8_t instructions[2] = { OP_FILTER, arg_count + 1 /* include input */ };

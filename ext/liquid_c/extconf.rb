@@ -8,6 +8,7 @@ if ENV['DEBUG'] == 'true'
   if compiler =~ /gcc|g\+\+/
     $CFLAGS << ' -fbounds-check'
   end
+  CONFIG['optflags'] = ' -O0'
 else
   $CFLAGS << ' -DNDEBUG'
 end

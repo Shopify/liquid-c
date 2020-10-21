@@ -119,6 +119,13 @@ class ExpressionTest < MiniTest::Test
     end
   end
 
+  def test_lookup_on_var_with_literal_name
+    context = Liquid::Context.new({ "blank" => { "x" => "result" } })
+
+    assert_equal("result", context.evaluate(Liquid::C::Expression.strict_parse('blank.x')))
+    assert_equal("result", context.evaluate(Liquid::C::Expression.strict_parse('blank["x"]')))
+  end
+
   def test_const_range
     assert_equal (1..2), Liquid::C::Expression.strict_parse('(1..2)')
   end

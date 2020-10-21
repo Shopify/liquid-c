@@ -146,6 +146,9 @@ static void parse_and_compile_variable_lookup(parser_t *p, vm_assembler_t *code)
 
 static VALUE try_parse_literal(parser_t *p)
 {
+    if (p->next.type == TOKEN_DOT || p->next.type == TOKEN_OPEN_SQUARE)
+        return Qundef;
+
     const char *str = p->cur.val;
     long size = p->cur.val_end - str;
     VALUE result = Qundef;

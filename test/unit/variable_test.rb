@@ -37,6 +37,8 @@ class VariableTest < Minitest::Test
     assert_equal 'blank_value', variable_strict_parse('[blank]').render!({ '' => 'blank_value' })
     assert_equal 'result', variable_strict_parse('[true][blank]').render!({ true => { '' => 'result' } })
     assert_equal 'result', variable_strict_parse('x["size"]').render!({ 'x' => { 'size' => 'result' } })
+    assert_equal 'result', variable_strict_parse('blank.x').render!({ 'blank' => { 'x' => 'result' } })
+    assert_equal 'result', variable_strict_parse('blank["x"]').render!({ 'blank' => { 'x' => 'result' } })
   end
 
   module InspectCallFilters

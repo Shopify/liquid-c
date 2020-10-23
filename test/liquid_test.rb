@@ -1,4 +1,5 @@
-liquid_lib_dir = $LOAD_PATH.detect{ |p| File.exist?(File.join(p, 'liquid.rb')) }
+# frozen_string_literal: true
+liquid_lib_dir = $LOAD_PATH.detect { |p| File.exist?(File.join(p, 'liquid.rb')) }
 liquid_test_dir = File.join(File.dirname(liquid_lib_dir), 'test')
 $LOAD_PATH << liquid_test_dir
 

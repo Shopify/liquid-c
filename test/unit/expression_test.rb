@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'test_helper'
 
 class ExpressionTest < MiniTest::Test
@@ -9,7 +10,7 @@ class ExpressionTest < MiniTest::Test
 
     empty = Liquid::C::Expression.strict_parse('empty')
     assert_equal('', empty)
-    assert_same empty, Liquid::C::Expression.strict_parse('blank')
+    assert_same(empty, Liquid::C::Expression.strict_parse('blank'))
   end
 
   def test_push_literals
@@ -57,7 +58,7 @@ class ExpressionTest < MiniTest::Test
   end
 
   def test_find_static_variable
-    context = Liquid::Context.new({"x" => 123})
+    context = Liquid::Context.new({ "x" => 123 })
     expr = Liquid::C::Expression.strict_parse('x')
 
     assert_instance_of(Liquid::C::Expression, expr)
@@ -65,7 +66,7 @@ class ExpressionTest < MiniTest::Test
   end
 
   def test_find_dynamic_variable
-    context = Liquid::Context.new({"x" => "y", "y" => 42})
+    context = Liquid::Context.new({ "x" => "y", "y" => 42 })
     expr = Liquid::C::Expression.strict_parse('[x]')
     assert_equal(42, context.evaluate(expr))
   end
@@ -84,7 +85,7 @@ class ExpressionTest < MiniTest::Test
   end
 
   def test_lookup_const_key
-    context = Liquid::Context.new({"obj" => { "prop" => "some value" }})
+    context = Liquid::Context.new({ "obj" => { "prop" => "some value" } })
 
     expr = Liquid::C::Expression.strict_parse('obj.prop')
     assert_equal('some value', context.evaluate(expr))
@@ -94,13 +95,13 @@ class ExpressionTest < MiniTest::Test
   end
 
   def test_lookup_variable_key
-    context = Liquid::Context.new({"field_name" => "prop", "obj" => { "prop" => "another value" }})
+    context = Liquid::Context.new({ "field_name" => "prop", "obj" => { "prop" => "another value" } })
     expr = Liquid::C::Expression.strict_parse('obj[field_name]')
     assert_equal('another value', context.evaluate(expr))
   end
 
   def test_lookup_command
-    context = Liquid::Context.new({"ary" => ['a', 'b', 'c']})
+    context = Liquid::Context.new({ "ary" => ['a', 'b', 'c'] })
     assert_equal(3, context.evaluate(Liquid::C::Expression.strict_parse('ary.size')))
     assert_equal('a', context.evaluate(Liquid::C::Expression.strict_parse('ary.first')))
     assert_equal('c', context.evaluate(Liquid::C::Expression.strict_parse('ary.last')))
@@ -131,7 +132,7 @@ class ExpressionTest < MiniTest::Test
   end
 
   def test_dynamic_range
-    context = Liquid::Context.new({"var" => 42})
+    context = Liquid::Context.new({ "var" => 42 })
     expr = Liquid::C::Expression.strict_parse('(1..var)')
     assert_instance_of(Liquid::C::Expression, expr)
     assert_equal((1..42), context.evaluate(expr))

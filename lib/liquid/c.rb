@@ -27,9 +27,13 @@ module Liquid
 end
 
 # Placeholder for variables in the Liquid::C::BlockBody#nodelist.
-class Liquid::C::VariablePlaceholder
-  class << self
-    private :new
+module Liquid
+  module C
+    class VariablePlaceholder
+      class << self
+        private :new
+      end
+    end
   end
 end
 
@@ -67,24 +71,27 @@ Liquid::ParseContext.class_eval do
     # Also, some templates are parsed before the profiler is running, on which case we
     # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
     # so the profiler can use it on future runs.
-    @disable_liquid_c_nodes ||= !Liquid::C.enabled || @template_options[:profile] || @template_options[:disable_liquid_c_nodes]
+    @disable_liquid_c_nodes ||=
+      !Liquid::C.enabled || @template_options[:profile] || @template_options[:disable_liquid_c_nodes]
   end
 end
 
-module Liquid::C
-  # Temporary to test rollout of the fix for this bug
-  module DocumentPatch
-    def parse(
-      tokenizer,
-      parse_context = self.parse_context # no longer necessary, so allow the liquid gem to stop passing it in
-    )
-      if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]
-        tokenizer.bug_compatible_whitespace_trimming!
+module Liquid
+  module C
+    # Temporary to test rollout of the fix for this bug
+    module DocumentPatch
+      def parse(
+        tokenizer,
+        parse_context = self.parse_context # no longer necessary, so allow the liquid gem to stop passing it in
+      )
+        if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]
+          tokenizer.bug_compatible_whitespace_trimming!
+        end
+        super
       end
-      super
     end
+    Liquid::Document.prepend(DocumentPatch)
   end
-  Liquid::Document.prepend(DocumentPatch)
 end
 
 Liquid::Variable.class_eval do
@@ -160,6 +167,7 @@ Liquid::Expression.class_eval do
         begin
           return Liquid::C::Expression.strict_parse(markup)
         rescue Liquid::SyntaxError
+          # no-op
         end
       end
       ruby_parse(markup)

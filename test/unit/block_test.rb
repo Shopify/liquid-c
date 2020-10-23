@@ -1,12 +1,13 @@
+# frozen_string_literal: true
 require 'test_helper'
 
 class BlockTest < MiniTest::Test
   def test_no_allocation_of_trimmed_strings
     template = Liquid::Template.parse("{{ a -}}     {{- b }}")
-    assert_equal 2, template.root.nodelist.size
+    assert_equal(2, template.root.nodelist.size)
 
     template = Liquid::Template.parse("{{ a -}} foo {{- b }}")
-    assert_equal 3, template.root.nodelist.size
+    assert_equal(3, template.root.nodelist.size)
   end
 
   def test_raise_on_output_with_non_utf8_encoding

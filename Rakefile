@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'rake'
 require 'rake/testtask'
 require 'bundler/gem_tasks'
@@ -9,7 +10,7 @@ ext_task = Rake::ExtensionTask.new("liquid_c")
 
 # For MacOS, generate debug information that ruby can read
 dsymutil = RbConfig::CONFIG['dsymutil']
-if !dsymutil.to_s.empty?
+unless dsymutil.to_s.empty?
   ext_lib_path = "lib/#{ext_task.binary}"
   dsym_path = "#{ext_lib_path}.dSYM"
 
@@ -19,19 +20,18 @@ if !dsymutil.to_s.empty?
   Rake::Task['compile'].enhance([dsym_path])
 end
 
+task default: :test
 
-task :default => :test
-
-task :test => ['test:unit', 'test:liquid']
+task test: ['test:unit', 'test:liquid']
 
 namespace :test do
-  Rake::TestTask.new(:unit => :compile) do |t|
+  Rake::TestTask.new(unit: :compile) do |t|
     t.libs << 'lib' << 'test'
     t.test_files = FileList['test/unit/**/*_test.rb']
   end
 
   desc 'run test suite with default parser'
-  Rake::TestTask.new(:base_liquid => :compile) do |t|
+  Rake::TestTask.new(base_liquid: :compile) do |t|
     t.libs << 'lib'
     t.test_files = ['test/liquid_test.rb']
   end

@@ -2,7 +2,7 @@
 
 require 'liquid'
 require 'liquid/c'
-liquid_lib_dir = $LOAD_PATH.detect{ |p| File.exists?(File.join(p, 'liquid.rb')) }
+liquid_lib_dir = $LOAD_PATH.detect { |p| File.exist?(File.join(p, 'liquid.rb')) }
 require File.join(File.dirname(liquid_lib_dir), "performance/theme_runner")
 
 TASK_NAMES = %w(run compile render)
@@ -14,12 +14,10 @@ task = ThemeRunner.new.method(task_name)
 
 runner_id = fork do
   end_time = Time.now + 5.0
-  until Time.now >= end_time
-    task.call
-  end
+  task.call until Time.now >= end_time
 end
 
-profiler_pid = spawn "instruments -t 'Time Profiler' -p #{runner_id}"
+profiler_pid = spawn("instruments -t 'Time Profiler' -p #{runner_id}")
 
 Process.waitpid(runner_id)
 Process.waitpid(profiler_pid)

@@ -12,7 +12,6 @@ static ID
     intern_is_blank,
     intern_parse,
     intern_square_brackets,
-    intern_set_line_number,
     intern_unknown_tag_in_liquid_tag,
     intern_ivar_nodelist;
 
@@ -88,7 +87,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
     while (true) {
         int token_start_line_number = tokenizer->line_number;
         if (token_start_line_number != 0) {
-            rb_funcall(parse_context->ruby_obj, intern_set_line_number, 1, UINT2NUM(token_start_line_number));
+            rb_ivar_set(parse_context->ruby_obj, id_ivar_line_number, UINT2NUM(token_start_line_number));
         }
         tokenizer_next(tokenizer, &token);
 
@@ -409,7 +408,6 @@ void init_liquid_block()
     intern_is_blank = rb_intern("blank?");
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
-    intern_set_line_number = rb_intern("line_number=");
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
     intern_ivar_nodelist = rb_intern("@nodelist");
 

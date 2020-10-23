@@ -16,6 +16,7 @@ ID id_to_liquid;
 ID id_to_s;
 ID id_call;
 ID id_compile_evaluate;
+ID id_ivar_line_number;
 
 VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 VALUE cLiquidVariableLookup, cLiquidRangeLookup;
@@ -36,6 +37,7 @@ void Init_liquid_c(void)
     id_to_s = rb_intern("to_s");
     id_call = rb_intern("call");
     id_compile_evaluate = rb_intern("compile_evaluate");
+    id_ivar_line_number = rb_intern("@line_number");
 
     utf8_encoding = rb_utf8_encoding();
     utf8_encoding_index = rb_enc_to_index(utf8_encoding);

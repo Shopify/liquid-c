@@ -204,10 +204,10 @@ static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_na
     c_buffer_write(&code->instructions, &instructions, 2);
 }
 
-static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)
+static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, uint32_t node_line_number)
 {
-    uint8_t instructions[4] = { OP_RENDER_VARIABLE_RESCUE, node_line_number >> 16, node_line_number >> 8, node_line_number };
-    c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    vm_assembler_write_opcode(code, OP_RENDER_VARIABLE_RESCUE);
+    c_buffer_write(&code->instructions, &node_line_number, sizeof(uint32_t));
 }
 
 #endif

@@ -47,7 +47,7 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
                 break;
 
             case OP_RENDER_VARIABLE_RESCUE:
-                ip += 3;
+                ip += sizeof(uint32_t);
                 break;
 
             case OP_WRITE_RAW:

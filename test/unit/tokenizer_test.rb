@@ -65,7 +65,7 @@ class TokenizerTest < Minitest::Test
 
   def test_source_too_large
     err = assert_raises(ArgumentError) do
-      tokenize("a" * 2**24)
+      tokenize("a" * 2**32)
     end
 
     assert_match(/Source too large, max \d+ bytes/, err.message)

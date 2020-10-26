@@ -222,7 +222,7 @@ typedef struct vm_render_until_error_args {
 
     /* rendering fields */
     VALUE output;
-    const uint8_t *node_line_number;
+    uint32_t node_line_number;
 } vm_render_until_error_args_t;
 
 static VALUE raise_invalid_integer(VALUE unused_arg, VALUE exc)
@@ -372,10 +372,10 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             case OP_RENDER_VARIABLE_RESCUE:
                 // Save state used by vm_render_rescue to rescue from a variable rendering exception
-                args->node_line_number = ip;
+                args->node_line_number = *(uint32_t *)ip;
                 // vm_render_rescue will iterate from this instruction to the instruction
                 // following OP_POP_WRITE_VARIABLE to resume rendering from
-                ip += 3;
+                ip += sizeof(uint32_t);
                 args->ip = ip;
                 args->const_ptr = const_ptr;
                 break;
@@ -451,7 +451,7 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
             break;
 
         case OP_RENDER_VARIABLE_RESCUE:
-            ip += 3;
+            ip += sizeof(uint32_t);
             break;
 
         case OP_FILTER:
@@ -473,11 +473,6 @@ typedef struct vm_render_rescue_args {
     vm_render_until_error_args_t *render_args;
     size_t old_stack_byte_size;
 } vm_render_rescue_args_t;
-
-static inline unsigned int decode_node_line_number(const uint8_t *node_line_number)
-{
-    return (node_line_number[0] << 16) | (node_line_number[1] << 8) | node_line_number[2];
-}
 
 // Actually returns a bool resume_rendering value
 static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
@@ -510,11 +505,8 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     }
 
     VALUE line_number = Qnil;
-    if (render_args->node_line_number) {
-        unsigned int node_line_number = decode_node_line_number(render_args->node_line_number);
-        if (node_line_number != 0) {
-            line_number = UINT2NUM(node_line_number);
-        }
+    if (render_args->node_line_number != 0) {
+        line_number = UINT2NUM(render_args->node_line_number);
     }
 
     rb_funcall(cLiquidBlockBody, rb_intern("c_rescue_render_node"), 5,

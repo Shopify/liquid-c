@@ -33,7 +33,6 @@ typedef struct parse_context {
 static void block_body_mark(void *ptr)
 {
     block_body_t *body = ptr;
-    rb_gc_mark(body->source);
     vm_assembler_gc_mark(&body->code);
 }
 
@@ -67,7 +66,6 @@ static VALUE block_body_allocate(VALUE klass)
     vm_assembler_init(&body->code);
     vm_assembler_add_leave(&body->code);
     body->obj = obj;
-    body->source = Qnil;
     body->render_score = 0;
     body->blank = true;
     body->nodelist = Qundef;
@@ -231,11 +229,6 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     BlockBody_Get_Struct(self, body);
 
     ensure_not_parsing(body);
-    if (body->source == Qnil) {
-        body->source = parse_context.tokenizer->source;
-    } else if (body->source != parse_context.tokenizer->source) {
-        rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse must be passed the same tokenizer when called multiple times");
-    }
     vm_assembler_remove_leave(&body->code); // to extend block
 
     tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);

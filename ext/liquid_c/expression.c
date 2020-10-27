@@ -62,6 +62,9 @@ static VALUE internal_expression_parse(parser_t *p)
 
 static VALUE expression_strict_parse(VALUE klass, VALUE markup)
 {
+    if (NIL_P(markup))
+        return Qnil;
+
     StringValue(markup);
     char *start = RSTRING_PTR(markup);
 

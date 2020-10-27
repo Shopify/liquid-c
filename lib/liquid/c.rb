@@ -70,7 +70,6 @@ Liquid::ParseContext.class_eval do
   end
 
   alias_method :ruby_new_tokenizer, :new_tokenizer
-
   def new_tokenizer(source, start_line_number: nil, for_liquid_tag: false)
     unless liquid_c_nodes_disabled?
       source = source.to_s.to_str
@@ -83,6 +82,14 @@ Liquid::ParseContext.class_eval do
     end
 
     ruby_new_tokenizer(source, start_line_number: start_line_number, for_liquid_tag: for_liquid_tag)
+  end
+
+  def parse_expression(markup)
+    if liquid_c_nodes_disabled?
+      Liquid::Expression.ruby_parse(markup)
+    else
+      Liquid::C::Expression.lax_parse(markup)
+    end
   end
 
   # @api private
@@ -195,21 +202,22 @@ Liquid::StrainerTemplate.class_eval do
   end
 end
 
+Liquid::C::Expression.class_eval do
+  class << self
+    def lax_parse(markup)
+      strict_parse(markup)
+    rescue Liquid::SyntaxError
+      Liquid::Expression.ruby_parse(markup)
+    end
+  end
+end
+
 Liquid::Expression.class_eval do
   class << self
     alias_method :ruby_parse, :parse
 
-    def parse(markup)
-      return nil unless markup
-
-      if Liquid::C.enabled
-        begin
-          return Liquid::C::Expression.strict_parse(markup)
-        rescue Liquid::SyntaxError
-          # no-op
-        end
-      end
-      ruby_parse(markup)
+    def c_parse(markup)
+      Liquid::C::Expression.lax_parse(markup)
     end
   end
 end
@@ -251,10 +259,12 @@ module Liquid
           Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
           Liquid::Context.send(:alias_method, :strict_variables=, :c_strict_variables=)
+          Liquid::Expression.singleton_class.send(:alias_method, :parse, :c_parse)
         else
           Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
           Liquid::Context.send(:alias_method, :strict_variables=, :ruby_strict_variables=)
+          Liquid::Expression.singleton_class.send(:alias_method, :parse, :ruby_parse)
         end
       end
     end

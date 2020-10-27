@@ -20,7 +20,7 @@ unless dsymutil.to_s.empty?
   Rake::Task['compile'].enhance([dsym_path])
 end
 
-task default: :test
+task default: [:test, :rubocop]
 
 task test: ['test:unit', 'test:liquid']
 
@@ -44,6 +44,11 @@ namespace :test do
     Rake::Task['test:base_liquid'].reenable
     Rake::Task['test:base_liquid'].invoke
   end
+end
+
+task :rubocop do
+  require 'rubocop/rake_task'
+  RuboCop::RakeTask.new
 end
 
 namespace :benchmark do

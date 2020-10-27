@@ -14,7 +14,7 @@ typedef struct vm {
 
 void init_liquid_vm();
 vm_t *vm_from_context(VALUE context);
-void liquid_vm_render(block_body_t *block, VALUE context, VALUE output);
+void liquid_vm_render(block_body_header_t *block, const VALUE *const_ptr, VALUE context, VALUE output);
 void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr);
 bool liquid_vm_filtering(VALUE context);
 VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code);

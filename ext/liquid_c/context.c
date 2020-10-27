@@ -194,27 +194,6 @@ VALUE context_filtering_p(VALUE self)
     return liquid_vm_filtering(self) ? Qtrue : Qfalse;
 }
 
-bool context_init_document_body(VALUE self)
-{
-    if (rb_ivar_defined(self, id_ivar_document_body) == Qfalse) {
-        VALUE document_body = document_body_new_instance();
-        rb_ivar_set(self, id_ivar_document_body, document_body);
-        return true;
-    }
-
-    return false;
-}
-
-VALUE context_get_document_body(VALUE self)
-{
-    return rb_ivar_get(self, id_ivar_document_body);
-}
-
-void context_remove_document_body(VALUE self)
-{
-    rb_obj_remove_instance_variable(self, ID2SYM(id_ivar_document_body));
-}
-
 void init_liquid_context()
 {
     id_has_key = rb_intern("key?");

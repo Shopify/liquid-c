@@ -85,7 +85,7 @@ class TokenizerTest < Minitest::Test
     Liquid::Document.parse(liquid_c_tokenizer, parse_context)
     refute(parse_context.send(:disable_liquid_c_nodes))
     Liquid::Document.parse(fallback_tokenizer, parse_context)
-    assert(true, parse_context.send(:disable_liquid_c_nodes))
+    assert_equal(true, parse_context.send(:disable_liquid_c_nodes))
   end
 
   private

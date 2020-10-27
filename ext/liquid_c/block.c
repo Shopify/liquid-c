@@ -69,6 +69,7 @@ static VALUE block_body_allocate(VALUE klass)
     body->source = Qnil;
     body->render_score = 0;
     body->blank = true;
+    body->nodelist = Qundef;
     return obj;
 }
 
@@ -304,12 +305,10 @@ static VALUE block_body_nodelist(VALUE self)
     ensure_not_parsing(body);
     memoize_variable_placeholder();
 
-    // Use rb_attr_get insteaad of rb_ivar_get to avoid an instance variable not
-    // initialized warning.
-    VALUE nodelist = rb_attr_get(self, intern_ivar_nodelist);
-    if (nodelist != Qnil)
-        return nodelist;
-    nodelist = rb_ary_new_capa(body->render_score);
+    if (body->nodelist != Qundef)
+        return body->nodelist;
+
+    VALUE nodelist = rb_ary_new_capa(body->render_score);
 
     const size_t *const_ptr = (size_t *)body->code.constants.data;
     const uint8_t *ip = body->code.instructions.data;
@@ -340,7 +339,7 @@ static VALUE block_body_nodelist(VALUE self)
 loop_break:
 
     rb_ary_freeze(nodelist);
-    rb_ivar_set(self, intern_ivar_nodelist, nodelist);
+    body->nodelist = nodelist;
     return nodelist;
 }
 

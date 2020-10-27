@@ -9,6 +9,7 @@ typedef struct block_body {
     VALUE source; // hold a reference to the ruby object that OP_WRITE_RAW points to
     bool blank;
     int render_score;
+    VALUE nodelist;
 } block_body_t;
 
 void init_liquid_block();

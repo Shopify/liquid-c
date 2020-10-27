@@ -43,8 +43,9 @@ end
 
 Liquid::Tokenizer.class_eval do
   def self.new(source, line_numbers = false, line_number: nil, for_liquid_tag: false)
+    source = source.to_s
     if Liquid::C.enabled && source.bytesize <= Liquid::C::Tokenizer::MAX_SOURCE_BYTE_SIZE
-      source = source.to_s.encode(Encoding::UTF_8)
+      source = source.encode(Encoding::UTF_8)
       Liquid::C::Tokenizer.new(source, line_number || (line_numbers ? 1 : 0), for_liquid_tag)
     else
       super

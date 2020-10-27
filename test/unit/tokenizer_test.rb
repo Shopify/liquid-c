@@ -3,6 +3,11 @@
 require 'test_helper'
 
 class TokenizerTest < Minitest::Test
+  def test_tokenizer_nil
+    tokenizer = Liquid::Tokenizer.new(nil)
+    assert_nil(tokenizer.shift)
+  end
+
   def test_tokenize_strings
     assert_equal([' '], tokenize(' '))
     assert_equal(['hello world'], tokenize('hello world'))

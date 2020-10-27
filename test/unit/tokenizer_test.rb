@@ -64,11 +64,28 @@ class TokenizerTest < Minitest::Test
   end
 
   def test_source_too_large
-    err = assert_raises(ArgumentError) do
-      tokenize("a" * 2**24)
-    end
+    too_large_source = "a" * 2**24
+    max_length_source = too_large_source.chop
 
+    # C safety check
+    err = assert_raises(ArgumentError) do
+      Liquid::C::Tokenizer.new(too_large_source, 1, false)
+    end
     assert_match(/Source too large, max \d+ bytes/, err.message)
+
+    # ruby patch fallback
+    liquid_c_tokenizer = Liquid::Tokenizer.new(max_length_source)
+    assert_instance_of(Liquid::C::Tokenizer, liquid_c_tokenizer)
+    fallback_tokenizer = Liquid::Tokenizer.new(too_large_source)
+    assert_instance_of(Liquid::Tokenizer, fallback_tokenizer)
+
+    # Document.parse patch parse context update
+    parse_context = Liquid::ParseContext.new
+    refute(parse_context.send(:disable_liquid_c_nodes))
+    Liquid::Document.parse(liquid_c_tokenizer, parse_context)
+    refute(parse_context.send(:disable_liquid_c_nodes))
+    Liquid::Document.parse(fallback_tokenizer, parse_context)
+    assert(true, parse_context.send(:disable_liquid_c_nodes))
   end
 
   private

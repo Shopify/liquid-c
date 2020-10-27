@@ -26,20 +26,24 @@ module Liquid
   end
 end
 
-# Placeholder for variables in the Liquid::C::BlockBody#nodelist.
 module Liquid
   module C
+    # Placeholder for variables in the Liquid::C::BlockBody#nodelist.
     class VariablePlaceholder
       class << self
         private :new
       end
+    end
+
+    class Tokenizer
+      MAX_SOURCE_BYTE_SIZE = (1 << 24) - 1
     end
   end
 end
 
 Liquid::Tokenizer.class_eval do
   def self.new(source, line_numbers = false, line_number: nil, for_liquid_tag: false)
-    if Liquid::C.enabled
+    if Liquid::C.enabled && source.bytesize <= Liquid::C::Tokenizer::MAX_SOURCE_BYTE_SIZE
       source = source.to_s.encode(Encoding::UTF_8)
       Liquid::C::Tokenizer.new(source, line_number || (line_numbers ? 1 : 0), for_liquid_tag)
     else
@@ -78,19 +82,22 @@ end
 
 module Liquid
   module C
-    # Temporary to test rollout of the fix for this bug
-    module DocumentPatch
-      def parse(
-        tokenizer,
-        parse_context = self.parse_context # no longer necessary, so allow the liquid gem to stop passing it in
-      )
-        if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]
-          tokenizer.bug_compatible_whitespace_trimming!
+    module DocumentClassPatch
+      def parse(tokenizer, parse_context)
+        if tokenizer.is_a?(Liquid::C::Tokenizer)
+          # Temporary to test rollout of the fix for this bug
+          if parse_context[:bug_compatible_whitespace_trimming]
+            tokenizer.bug_compatible_whitespace_trimming!
+          end
+        else
+          # Liquid::Tokenizer.new may return a Liquid::Tokenizer if the source is too large
+          # to be supported, so indicate in the parse context that the liquid VM won't be used
+          parse_context.instance_variable_set(:@disable_liquid_c_nodes, true)
         end
         super
       end
     end
-    Liquid::Document.prepend(DocumentPatch)
+    Liquid::Document.singleton_class.prepend(DocumentClassPatch)
   end
 end
 

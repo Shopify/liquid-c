@@ -6,6 +6,12 @@
 
 static ID id_rescue_strict_parse_syntax_error;
 
+static ID id_ivar_parse_context;
+static ID id_ivar_name;
+static ID id_ivar_filters;
+
+static VALUE frozen_empty_array;
+
 static VALUE try_variable_strict_parse(VALUE uncast_args)
 {
     variable_parse_args_t *parse_args = (void *)uncast_args;
@@ -132,8 +138,46 @@ void internal_variable_compile(variable_parse_args_t *parse_args, unsigned int l
     vm_assembler_add_pop_write(code);
 }
 
+static VALUE variable_strict_parse_method(VALUE self, VALUE markup)
+{
+    StringValue(markup);
+    check_utf8_encoding(markup, "markup");
+
+    VALUE parse_context = rb_ivar_get(self, id_ivar_parse_context);
+
+    expression_t *expression;
+    VALUE expression_obj = expression_new(&expression);
+
+    variable_parse_args_t parse_args = {
+        .markup = RSTRING_PTR(markup),
+        .markup_end = RSTRING_END(markup),
+        .code = &expression->code,
+        .code_obj = expression_obj,
+        .parse_context = parse_context,
+    };
+    try_variable_strict_parse((VALUE)&parse_args);
+    RB_GC_GUARD(markup);
+    assert(expression->code.stack_size == 1);
+    vm_assembler_add_leave(&expression->code);
+
+    rb_ivar_set(self, id_ivar_name, expression_obj);
+    rb_ivar_set(self, id_ivar_filters, frozen_empty_array);
+
+    return Qnil;
+}
+
 void init_liquid_variable(void)
 {
     id_rescue_strict_parse_syntax_error = rb_intern("rescue_strict_parse_syntax_error");
+
+    id_ivar_parse_context = rb_intern("@parse_context");
+    id_ivar_name = rb_intern("@name");
+    id_ivar_filters = rb_intern("@filters");
+
+    frozen_empty_array = rb_ary_new();
+    rb_ary_freeze(frozen_empty_array);
+    rb_global_variable(&frozen_empty_array);
+
+    rb_define_method(cLiquidVariable, "c_strict_parse", variable_strict_parse_method, 1);
 }
 

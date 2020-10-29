@@ -25,6 +25,12 @@ class BlockTest < MiniTest::Test
     assert_equal("üñ", template.render!({ 'unicode_char' => 'ñ' }, output: output))
   end
 
+  def test_op_write_raw_w
+    output = "a" * 2**8
+    template = Liquid::Template.parse(output)
+    assert_equal(output, template.render!)
+  end
+
   def test_disassemble
     source = <<~LIQUID
       raw

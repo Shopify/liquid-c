@@ -1,11 +1,20 @@
 #if !defined(LIQUID_CONTEXT_H)
 #define LIQUID_CONTEXT_H
 
+#include "resource_limits.h"
+
 typedef struct context {
     VALUE self;
     VALUE environments;
     VALUE static_environments;
     VALUE scopes;
+    VALUE strainer;
+    VALUE filter_methods;
+    VALUE interrupts;
+    VALUE resource_limits_obj;
+    resource_limits_t *resource_limits;
+    VALUE global_filter;
+    bool strict_filters;
 } context_t;
 
 void init_liquid_context();

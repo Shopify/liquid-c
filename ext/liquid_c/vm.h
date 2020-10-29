@@ -4,17 +4,9 @@
 #include <ruby.h>
 #include "block.h"
 #include "context.h"
-#include "resource_limits.h"
 
 typedef struct vm {
     c_buffer_t stack;
-    VALUE strainer;
-    VALUE filter_methods;
-    VALUE interrupts;
-    VALUE resource_limits_obj;
-    resource_limits_t *resource_limits;
-    VALUE global_filter;
-    bool strict_filters;
     bool invoking_filter;
     context_t context;
 } vm_t;

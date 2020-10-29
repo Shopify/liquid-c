@@ -22,11 +22,6 @@ static void vm_mark(void *ptr)
     vm_t *vm = ptr;
 
     c_buffer_rb_gc_mark(&vm->stack);
-    rb_gc_mark(vm->strainer);
-    rb_gc_mark(vm->filter_methods);
-    rb_gc_mark(vm->interrupts);
-    rb_gc_mark(vm->resource_limits_obj);
-    rb_gc_mark(vm->global_filter);
     context_mark(&vm->context);
 }
 
@@ -55,20 +50,20 @@ static VALUE vm_internal_new(VALUE context)
     VALUE obj = TypedData_Make_Struct(cLiquidCVM, vm_t, &vm_data_type, vm);
     vm->stack = c_buffer_init();
 
-    vm->strainer = rb_funcall(context, id_strainer, 0);
-    Check_Type(vm->strainer, T_OBJECT);
+    vm->context.strainer = rb_funcall(context, id_strainer, 0);
+    Check_Type(vm->context.strainer, T_OBJECT);
 
-    vm->filter_methods = rb_funcall(RBASIC_CLASS(vm->strainer), id_filter_methods_hash, 0);
-    Check_Type(vm->filter_methods, T_HASH);
+    vm->context.filter_methods = rb_funcall(RBASIC_CLASS(vm->context.strainer), id_filter_methods_hash, 0);
+    Check_Type(vm->context.filter_methods, T_HASH);
 
-    vm->interrupts = rb_ivar_get(context, id_ivar_interrupts);
-    Check_Type(vm->interrupts, T_ARRAY);
+    vm->context.interrupts = rb_ivar_get(context, id_ivar_interrupts);
+    Check_Type(vm->context.interrupts, T_ARRAY);
 
-    vm->resource_limits_obj = rb_ivar_get(context, id_ivar_resource_limits);;
-    ResourceLimits_Get_Struct(vm->resource_limits_obj, vm->resource_limits);
+    vm->context.resource_limits_obj = rb_ivar_get(context, id_ivar_resource_limits);;
+    ResourceLimits_Get_Struct(vm->context.resource_limits_obj, vm->context.resource_limits);
 
-    vm->strict_filters = RTEST(rb_funcall(context, id_strict_filters, 0));
-    vm->global_filter = rb_funcall(context, id_global_filter, 0);
+    vm->context.strict_filters = RTEST(rb_funcall(context, id_strict_filters, 0));
+    vm->context.global_filter = rb_funcall(context, id_global_filter, 0);
     vm->invoking_filter = false;
 
     context_internal_init(context, &vm->context);
@@ -190,9 +185,9 @@ static inline void vm_stack_reserve_for_write(vm_t *vm, size_t num_values)
 
 static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *args)
 {
-    bool not_invokable = rb_hash_lookup(vm->filter_methods, filter_name) != Qtrue;
+    bool not_invokable = rb_hash_lookup(vm->context.filter_methods, filter_name) != Qtrue;
     if (RB_UNLIKELY(not_invokable)) {
-        if (vm->strict_filters) {
+        if (vm->context.strict_filters) {
             VALUE error_class = rb_const_get(mLiquid, rb_intern("UndefinedFilter"));
             rb_raise(error_class, "undefined filter %"PRIsVALUE, rb_sym2str(filter_name));
         }
@@ -200,7 +195,7 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *
     }
 
     vm->invoking_filter = true;
-    VALUE result = rb_funcallv(vm->strainer, RB_SYM2ID(filter_name), num_args, args);
+    VALUE result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);
     vm->invoking_filter = false;
     return rb_funcall(result, id_to_liquid, 0);
 }
@@ -360,7 +355,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                     ip += 1 + size;
                 }
                 rb_str_cat(output, text, size);
-                resource_limits_increment_write_score(vm->resource_limits, output);
+                resource_limits_increment_write_score(vm->context.resource_limits, output);
                 break;
             }
             case OP_JUMP_FWD_W:
@@ -379,10 +374,10 @@ static VALUE vm_render_until_error(VALUE uncast_args)
 
             case OP_WRITE_NODE:
                 rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, (VALUE)*const_ptr++);
-                if (RARRAY_LEN(vm->interrupts)) {
+                if (RARRAY_LEN(vm->context.interrupts)) {
                     return false;
                 }
-                resource_limits_increment_write_score(vm->resource_limits, output);
+                resource_limits_increment_write_score(vm->context.resource_limits, output);
                 break;
             case OP_RENDER_VARIABLE_RESCUE:
                 // Save state used by vm_render_rescue to rescue from a variable rendering exception
@@ -396,11 +391,11 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             case OP_POP_WRITE:
             {
                 VALUE var_result = vm_stack_pop(vm);
-                if (vm->global_filter != Qnil)
-                    var_result = rb_funcall(vm->global_filter, id_call, 1, var_result);
+                if (vm->context.global_filter != Qnil)
+                    var_result = rb_funcall(vm->context.global_filter, id_call, 1, var_result);
                 write_obj(output, var_result);
                 args->ip = NULL; // mark the end of a rescue block, used by vm_render_rescue
-                resource_limits_increment_write_score(vm->resource_limits, output);
+                resource_limits_increment_write_score(vm->context.resource_limits, output);
                 break;
             }
 
@@ -553,7 +548,7 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
     vm_t *vm = vm_from_context(context);
 
     vm_stack_reserve_for_write(vm, body->code.max_stack_size);
-    resource_limits_increment_render_score(vm->resource_limits, body->render_score);
+    resource_limits_increment_render_score(vm->context.resource_limits, body->render_score);
 
     vm_render_until_error_args_t render_args = {
         .vm = vm,

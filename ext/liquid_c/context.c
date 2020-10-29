@@ -30,6 +30,11 @@ void context_mark(context_t *context)
     rb_gc_mark(context->environments);
     rb_gc_mark(context->static_environments);
     rb_gc_mark(context->scopes);
+    rb_gc_mark(context->strainer);
+    rb_gc_mark(context->filter_methods);
+    rb_gc_mark(context->interrupts);
+    rb_gc_mark(context->resource_limits_obj);
+    rb_gc_mark(context->global_filter);
 }
 
 static context_t *context_from_obj(VALUE self)

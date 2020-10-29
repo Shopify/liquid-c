@@ -14,6 +14,7 @@ typedef struct context {
     VALUE resource_limits_obj;
     resource_limits_t *resource_limits;
     VALUE global_filter;
+    bool strict_variables;
     bool strict_filters;
 } context_t;
 

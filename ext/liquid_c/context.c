@@ -68,13 +68,14 @@ static VALUE context_evaluate(VALUE self, VALUE expression)
 
 void context_maybe_raise_undefined_variable(VALUE self, VALUE key)
 {
-    if (rb_ivar_get(self, id_ivar_strict_variables)) {
+    context_t *context = context_from_obj(self);
+    if (context->strict_variables) {
         Check_Type(key, T_STRING);
         rb_enc_raise(utf8_encoding, cLiquidUndefinedVariable, "undefined variable %s", RSTRING_PTR(key));
     }
 }
 
-static bool environments_find_variable(VALUE environments, VALUE key, VALUE strict_variables, VALUE raise_on_not_found, VALUE *scope_out, VALUE *variable_out) {
+static bool environments_find_variable(VALUE environments, VALUE key, bool strict_variables, VALUE raise_on_not_found, VALUE *scope_out, VALUE *variable_out) {
     VALUE variable = Qnil;
     Check_Type(environments, T_ARRAY);
 
@@ -90,7 +91,7 @@ static bool environments_find_variable(VALUE environments, VALUE key, VALUE stri
                 return true;
             }
 
-            if (!(RTEST(raise_on_not_found) && RTEST(strict_variables))) {
+            if (!(RTEST(raise_on_not_found) && strict_variables)) {
                 // If we aren't running strictly, we need to invoke the default
                 // value proc, rb_hash_aref does this
                 variable = rb_hash_aref(this_environ, key);
@@ -135,12 +136,12 @@ VALUE context_find_variable(context_t *context, VALUE key, VALUE raise_on_not_fo
         }
     }
 
-    VALUE strict_variables = rb_ivar_get(self, id_ivar_strict_variables);
-
-    if (environments_find_variable(context->environments, key, strict_variables, raise_on_not_found, &scope, &variable))
+    if (environments_find_variable(context->environments, key, context->strict_variables, raise_on_not_found,
+                                   &scope, &variable))
         goto variable_found;
 
-    if (environments_find_variable(context->static_environments, key, strict_variables, raise_on_not_found, &scope, &variable))
+    if (environments_find_variable(context->static_environments, key, context->strict_variables, raise_on_not_found,
+                                   &scope, &variable))
         goto variable_found;
 
     if (RTEST(raise_on_not_found)) {
@@ -158,6 +159,14 @@ variable_found:
 static VALUE context_find_variable_method(VALUE self, VALUE key, VALUE raise_on_not_found)
 {
     return context_find_variable(context_from_obj(self), key, raise_on_not_found);
+}
+
+static VALUE context_set_strict_variables(VALUE self, VALUE strict_variables)
+{
+    context_t *context = context_from_obj(self);
+    context->strict_variables = RTEST(strict_variables);
+    rb_ivar_set(self, id_ivar_strict_variables, strict_variables);
+    return Qnil;
 }
 
 // Shopify requires checking if we are filtering, so provide a
@@ -189,5 +198,6 @@ void init_liquid_context()
     VALUE cLiquidContext = rb_const_get(mLiquid, rb_intern("Context"));
     rb_define_method(cLiquidContext, "c_evaluate", context_evaluate, 1);
     rb_define_method(cLiquidContext, "c_find_variable", context_find_variable_method, 2);
+    rb_define_method(cLiquidContext, "c_strict_variables=", context_set_strict_variables, 1);
     rb_define_private_method(cLiquidContext, "c_filtering?", context_filtering_p, 0);
 }

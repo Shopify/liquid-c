@@ -12,6 +12,7 @@ ID id_ivar_resource_limits;
 ID id_vm;
 ID id_strainer;
 ID id_filter_methods_hash;
+ID id_strict_variables;
 ID id_strict_filters;
 ID id_global_filter;
 
@@ -62,6 +63,7 @@ static VALUE vm_internal_new(VALUE context)
     vm->context.resource_limits_obj = rb_ivar_get(context, id_ivar_resource_limits);;
     ResourceLimits_Get_Struct(vm->context.resource_limits_obj, vm->context.resource_limits);
 
+    vm->context.strict_variables = false;
     vm->context.strict_filters = RTEST(rb_funcall(context, id_strict_filters, 0));
     vm->context.global_filter = rb_funcall(context, id_global_filter, 0);
     vm->invoking_filter = false;
@@ -575,6 +577,7 @@ void init_liquid_vm()
     id_vm = rb_intern("vm");
     id_strainer = rb_intern("strainer");
     id_filter_methods_hash = rb_intern("filter_methods_hash");
+    id_strict_variables = rb_intern("strict_variables");
     id_strict_filters = rb_intern("strict_filters");
     id_global_filter = rb_intern("global_filter");
 

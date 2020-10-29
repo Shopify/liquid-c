@@ -7,7 +7,8 @@
 typedef struct variable_parse_args {
     const char *markup;
     const char *markup_end;
-    block_body_t *body;
+    vm_assembler_t *code;
+    VALUE code_obj;
     VALUE parse_context;
 } variable_parse_args_t;
 

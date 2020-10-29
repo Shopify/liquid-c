@@ -11,7 +11,7 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
     variable_parse_args_t *parse_args = (void *)uncast_args;
     parser_t p;
     init_parser(&p, parse_args->markup, parse_args->markup_end);
-    vm_assembler_t *code = &parse_args->body->code;
+    vm_assembler_t *code = parse_args->code;
 
     if (p.cur.type == TOKEN_EOS) {
         vm_assembler_add_push_nil(code);
@@ -86,7 +86,7 @@ static VALUE variable_strict_parse_rescue(VALUE uncast_args, VALUE exception)
 {
     variable_strict_parse_rescue_t *rescue_args = (void *)uncast_args;
     variable_parse_args_t *parse_args = rescue_args->parse_args;
-    vm_assembler_t *code = &parse_args->body->code;
+    vm_assembler_t *code = parse_args->code;
 
     // undo partial strict parse
     code->instructions.data_end = code->instructions.data + rescue_args->instructions_size;
@@ -104,7 +104,7 @@ static VALUE variable_strict_parse_rescue(VALUE uncast_args, VALUE exception)
 
     // lax parse
     code->protected_stack_size = code->stack_size;
-    rb_funcall(variable_obj, id_compile_evaluate, 1, parse_args->body->obj);
+    rb_funcall(variable_obj, id_compile_evaluate, 1, parse_args->code_obj);
     if (code->stack_size != code->protected_stack_size + 1) {
         rb_raise(rb_eRuntimeError, "Liquid::Variable#compile_evaluate didn't leave exactly 1 new element on the stack");
     }
@@ -114,7 +114,7 @@ static VALUE variable_strict_parse_rescue(VALUE uncast_args, VALUE exception)
 
 void internal_variable_compile_evaluate(variable_parse_args_t *parse_args)
 {
-    vm_assembler_t *code = &parse_args->body->code;
+    vm_assembler_t *code = parse_args->code;
     variable_strict_parse_rescue_t rescue_args = {
         .parse_args = parse_args,
         .instructions_size = c_buffer_size(&code->instructions),
@@ -126,7 +126,7 @@ void internal_variable_compile_evaluate(variable_parse_args_t *parse_args)
 
 void internal_variable_compile(variable_parse_args_t *parse_args, unsigned int line_number)
 {
-    vm_assembler_t *code = &parse_args->body->code;
+    vm_assembler_t *code = parse_args->code;
     vm_assembler_add_render_variable_rescue(code, line_number);
     internal_variable_compile_evaluate(parse_args);
     vm_assembler_add_pop_write(code);

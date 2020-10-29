@@ -142,7 +142,8 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 variable_parse_args_t parse_args = {
                     .markup = token.str_trimmed,
                     .markup_end = token.str_trimmed + token.len_trimmed,
-                    .body = body,
+                    .code = &body->code,
+                    .code_obj = body->obj,
                     .parse_context = parse_context->ruby_obj,
                 };
                 internal_variable_compile(&parse_args, token_start_line_number);

@@ -89,10 +89,18 @@ VALUE internal_expression_evaluate(expression_t *expression, VALUE context)
     return liquid_vm_evaluate(context, &expression->code);
 }
 
+static VALUE expression_disassemble(VALUE self)
+{
+    expression_t *expression;
+    Expression_Get_Struct(self, expression);
+    return vm_assembler_disassemble(&expression->code);
+}
+
 void init_liquid_expression()
 {
     cLiquidCExpression = rb_define_class_under(mLiquidC, "Expression", rb_cObject);
     rb_undef_alloc_func(cLiquidCExpression);
     rb_define_singleton_method(cLiquidCExpression, "strict_parse", expression_strict_parse, 1);
     rb_define_method(cLiquidCExpression, "evaluate", expression_evaluate, 1);
+    rb_define_method(cLiquidCExpression, "disassemble", expression_disassemble, 0);
 }

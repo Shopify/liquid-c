@@ -88,10 +88,18 @@ VALUE vm_assembler_disassemble(vm_assembler_t *code)
                 break;
             }
 
+            case OP_WRITE_RAW_W:
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)const_ptr[0];
-                size_t size = const_ptr[1];
+                const char *text;
+                size_t size;
+                if (*ip == OP_WRITE_RAW_W) {
+                    size = bytes_to_uint24(&ip[1]);
+                    text = (const char *)&ip[4];
+                } else {
+                    size = ip[1];
+                    text = (const char *)&ip[2];
+                }
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
                 rb_str_catf(output, "write_raw(%+"PRIsVALUE")\n", string);
                 break;

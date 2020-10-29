@@ -126,8 +126,7 @@ VALUE vm_assembler_disassemble(vm_assembler_t *code)
 
             case OP_PUSH_INT16:
             {
-                int num = *(int8_t *)ip++;
-                num = (num << 8) | ip[1];
+                int num = (ip[1] << 8) | ip[2];
                 rb_str_catf(output, "push_int16(%u)\n", num);
                 break;
             }

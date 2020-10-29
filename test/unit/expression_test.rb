@@ -149,6 +149,14 @@ class ExpressionTest < MiniTest::Test
     ASM
   end
 
+  def test_disassemble_int16
+    assert_equal(<<~ASM, Liquid::C::Expression.strict_parse('[12345]').disassemble)
+      0x0000: push_int16(12345)
+      0x0003: find_var
+      0x0004: leave
+    ASM
+  end
+
   private
 
   class ReturnKeyDrop < Liquid::Drop

@@ -172,7 +172,7 @@ VALUE vm_assembler_disassemble(vm_assembler_t *code)
                 break;
 
             default:
-                rb_str_catf(output, "<%d>\n", ip[0]);
+                rb_str_catf(output, "<opcode number %d disassembly not implemented>\n", ip[0]);
                 break;
         }
         liquid_vm_next_instruction(&ip, &const_ptr);

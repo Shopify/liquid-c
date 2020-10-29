@@ -138,6 +138,25 @@ class ExpressionTest < MiniTest::Test
     assert_equal((1..42), context.evaluate(expr))
   end
 
+  def test_disassemble
+    expression = Liquid::C::Expression.strict_parse('foo.bar[123]')
+    assert_equal(<<~ASM, expression.disassemble)
+      0x0000: find_static_var("foo")
+      0x0001: lookup_const_key("bar")
+      0x0002: push_int8(123)
+      0x0004: lookup_key
+      0x0005: leave
+    ASM
+  end
+
+  def test_disassemble_int16
+    assert_equal(<<~ASM, Liquid::C::Expression.strict_parse('[12345]').disassemble)
+      0x0000: push_int16(12345)
+      0x0003: find_var
+      0x0004: leave
+    ASM
+  end
+
   private
 
   class ReturnKeyDrop < Liquid::Drop

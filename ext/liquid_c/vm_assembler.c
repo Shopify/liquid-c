@@ -1,6 +1,7 @@
 #include "liquid.h"
 #include "vm_assembler.h"
 #include "expression.h"
+#include "vm.h"
 
 void vm_assembler_init(vm_assembler_t *code)
 {
@@ -71,6 +72,112 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
                 rb_bug("invalid opcode: %u", ip[-1]);
         }
     }
+}
+
+VALUE vm_assembler_disassemble(vm_assembler_t *code)
+{
+    const size_t *const_ptr = (size_t *)code->constants.data;
+    const uint8_t *start_ip = code->instructions.data;
+    const uint8_t *ip = start_ip;
+    const uint8_t *end_ip = code->instructions.data_end;
+    VALUE output = rb_str_buf_new(32);
+    while (ip < end_ip) {
+        rb_str_catf(output, "0x%04lx: ", ip - start_ip);
+        switch (*ip) {
+            case OP_LEAVE:
+                rb_str_catf(output, "leave\n");
+                break;
+
+            case OP_POP_WRITE:
+                rb_str_catf(output, "pop_write\n");
+                break;
+
+            case OP_PUSH_NIL:
+                rb_str_catf(output, "push_nil\n");
+                break;
+
+            case OP_PUSH_TRUE:
+                rb_str_catf(output, "push_true\n");
+                break;
+
+            case OP_PUSH_FALSE:
+                rb_str_catf(output, "push_false\n");
+                break;
+
+            case OP_FIND_VAR:
+                rb_str_catf(output, "find_var\n");
+                break;
+
+            case OP_LOOKUP_KEY:
+                rb_str_catf(output, "lookup_key\n");
+                break;
+
+            case OP_NEW_INT_RANGE:
+                rb_str_catf(output, "new_int_range\n");
+                break;
+
+            case OP_HASH_NEW:
+                rb_str_catf(output, "hash_new(%u)\n", ip[1]);
+                break;
+
+            case OP_PUSH_INT8:
+                rb_str_catf(output, "push_int8(%u)\n", ip[1]);
+                break;
+
+            case OP_PUSH_INT16:
+            {
+                int num = (ip[1] << 8) | ip[2];
+                rb_str_catf(output, "push_int16(%u)\n", num);
+                break;
+            }
+
+            case OP_RENDER_VARIABLE_RESCUE:
+            {
+                unsigned int line_number = decode_node_line_number(ip + 1);
+                rb_str_catf(output, "render_variable_rescue(line_number: %u)\n", line_number);
+                break;
+            }
+
+            case OP_WRITE_RAW:
+            {
+                const char *text = (const char *)const_ptr[0];
+                size_t size = const_ptr[1];
+                VALUE string = rb_enc_str_new(text, size, utf8_encoding);
+                rb_str_catf(output, "write_raw(%+"PRIsVALUE")\n", string);
+                break;
+            }
+
+            case OP_WRITE_NODE:
+                rb_str_catf(output, "write_node(%+"PRIsVALUE")\n", const_ptr[0]);
+                break;
+
+            case OP_PUSH_CONST:
+                rb_str_catf(output, "push_const(%+"PRIsVALUE")\n", const_ptr[0]);
+                break;
+
+            case OP_FIND_STATIC_VAR:
+                rb_str_catf(output, "find_static_var(%+"PRIsVALUE")\n", const_ptr[0]);
+                break;
+
+            case OP_LOOKUP_CONST_KEY:
+                rb_str_catf(output, "lookup_const_key(%+"PRIsVALUE")\n", const_ptr[0]);
+                break;
+
+            case OP_LOOKUP_COMMAND:
+                rb_str_catf(output, "lookup_command(%+"PRIsVALUE")\n", const_ptr[0]);
+                break;
+
+            case OP_FILTER:
+                rb_str_catf(output, "filter(name: %+"PRIsVALUE", num_args: %u)\n", const_ptr[0], ip[1]);
+                break;
+
+            default:
+                rb_str_catf(output, "<opcode number %d disassembly not implemented>\n", ip[0]);
+                break;
+        }
+        liquid_vm_next_instruction(&ip, &const_ptr);
+    }
+    return output;
 }
 
 void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src)

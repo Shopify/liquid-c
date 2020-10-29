@@ -343,6 +343,14 @@ loop_break:
     return nodelist;
 }
 
+static VALUE block_body_disassemble(VALUE self)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    return vm_assembler_disassemble(&body->code);
+}
+
+
 static VALUE block_body_add_evaluate_expression(VALUE self, VALUE expression)
 {
     block_body_t *body;
@@ -421,6 +429,7 @@ void init_liquid_block()
     rb_define_method(cLiquidCBlockBody, "remove_blank_strings", block_body_remove_blank_strings, 0);
     rb_define_method(cLiquidCBlockBody, "blank?", block_body_blank_p, 0);
     rb_define_method(cLiquidCBlockBody, "nodelist", block_body_nodelist, 0);
+    rb_define_method(cLiquidCBlockBody, "disassemble", block_body_disassemble, 0);
 
     rb_define_method(cLiquidCBlockBody, "add_evaluate_expression", block_body_add_evaluate_expression, 1);
     rb_define_method(cLiquidCBlockBody, "add_find_variable", block_body_add_find_variable, 1);

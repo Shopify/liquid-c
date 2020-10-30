@@ -203,8 +203,9 @@ void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count)
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size)
 {
     vm_assembler_write_opcode(code, OP_WRITE_RAW);
-    size_t slice[2] = { (size_t)string, size };
-    c_buffer_write(&code->constants, &slice, sizeof(slice));
+    VALUE *constants = c_buffer_extend_for_write(&code->constants, 2 * sizeof(VALUE));
+    constants[0] = (size_t)string;
+    constants[1] = size;
 }
 
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)

@@ -34,28 +34,6 @@ typedef struct parse_context {
     VALUE ruby_obj;
 } parse_context_t;
 
-typedef struct block_body {
-    bool compiled;
-    VALUE obj;
-
-    union {
-        struct {
-            VALUE document_body_obj;
-            c_buffer_t *buffer;
-            size_t offset;
-            VALUE constants;
-            VALUE nodelist;
-        } compiled;
-        struct {
-            VALUE parse_context;
-            bool blank;
-            bool root;
-            int render_score;
-            vm_assembler_t code;
-        } intermediate;
-    } as;
-} block_body_t;
-
 static void ensure_body_compiled(const block_body_t *body)
 {
     if (!body->compiled) {
@@ -66,7 +44,7 @@ static void ensure_body_compiled(const block_body_t *body)
 static block_body_header_t *block_body_header_ptr(const block_body_t *body)
 {
     ensure_body_compiled(body);
-    return ((block_body_header_t *)(body->as.compiled.buffer->data + body->as.compiled.offset));
+    return (block_body_header_t *)(body->as.compiled.buffer->data + body->as.compiled.offset);
 }
 
 static const VALUE *block_body_constants_ptr(const block_body_t *body)
@@ -84,7 +62,10 @@ static void block_body_mark(void *ptr)
         rb_gc_mark(body->as.compiled.nodelist);
     } else {
         rb_gc_mark(body->as.intermediate.parse_context);
-        vm_assembler_gc_mark(&body->as.intermediate.code);
+        if (body->as.intermediate.vm_assembler_pool)
+            vm_assembler_pool_gc_mark(body->as.intermediate.vm_assembler_pool);
+        if (body->as.intermediate.code)
+            vm_assembler_gc_mark(body->as.intermediate.code);
     }
 }
 
@@ -92,7 +73,8 @@ static void block_body_free(void *ptr)
 {
     block_body_t *body = ptr;
     if (!body->compiled) {
-        vm_assembler_free(&body->as.intermediate.code);
+        // Free the assembler instead of recycling it because the vm_assembler_pool may have been GC'd
+        vm_assembler_pool_free_assembler(body->as.intermediate.code);
     }
     xfree(body);
 }
@@ -104,7 +86,7 @@ static size_t block_body_memsize(const void *ptr)
     if (body->compiled) {
         return sizeof(block_body_t);
     } else {
-        return sizeof(block_body_t) + vm_assembler_alloc_memsize(&body->as.intermediate.code);
+        return sizeof(block_body_t) + vm_assembler_alloc_memsize(body->as.intermediate.code);
     }
 }
 
@@ -121,13 +103,13 @@ static VALUE block_body_allocate(VALUE klass)
     block_body_t *body;
     VALUE obj = TypedData_Make_Struct(klass, block_body_t, &block_body_data_type, body);
 
-    vm_assembler_init(&body->as.intermediate.code);
-    vm_assembler_add_leave(&body->as.intermediate.code);
     body->compiled = false;
     body->obj = obj;
     body->as.intermediate.blank = true;
     body->as.intermediate.root = false;
     body->as.intermediate.render_score = 0;
+    body->as.intermediate.vm_assembler_pool = NULL;
+    body->as.intermediate.code = NULL;
     return obj;
 }
 
@@ -137,7 +119,17 @@ static VALUE block_body_initialize(VALUE self, VALUE parse_context)
     BlockBody_Get_Struct(self, body);
 
     body->as.intermediate.parse_context = parse_context;
-    body->as.intermediate.root = parse_context_init_document_body(parse_context);
+
+    if (parse_context_document_body_initialized_p(parse_context)) {
+        body->as.intermediate.vm_assembler_pool = parse_context_get_vm_assembler_pool(parse_context);
+    } else {
+        parse_context_init_document_body(parse_context);
+        body->as.intermediate.root = true;
+        body->as.intermediate.vm_assembler_pool = parse_context_init_vm_assembler_pool(parse_context);
+    }
+
+    body->as.intermediate.code = vm_assembler_pool_alloc_assembler(body->as.intermediate.vm_assembler_pool);
+    vm_assembler_add_leave(body->as.intermediate.code);
 
     return Qnil;
 }
@@ -149,8 +141,6 @@ static int is_id(int c)
 
 static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
 {
-    vm_assembler_t *code = &body->as.intermediate.code;
-
     tokenizer_t *tokenizer = parse_context->tokenizer;
     token_t token;
     tag_markup_t unknown_tag = { Qnil, Qnil };
@@ -197,7 +187,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 if (token_start == token_end)
                     break;
 
-                vm_assembler_add_write_raw(code, token_start, token_end - token_start);
+                vm_assembler_add_write_raw(body->as.intermediate.code, token_start, token_end - token_start);
                 render_score_increment += 1;
 
                 if (body->as.intermediate.blank) {
@@ -213,7 +203,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 variable_parse_args_t parse_args = {
                     .markup = token.str_trimmed,
                     .markup_end = token.str_trimmed + token.len_trimmed,
-                    .code = &body->as.intermediate.code,
+                    .code = body->as.intermediate.code,
                     .code_obj = body->obj,
                     .parse_context = parse_context->ruby_obj,
                 };
@@ -272,7 +262,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 if (body->as.intermediate.blank && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
                     body->as.intermediate.blank = false;
 
-                vm_assembler_add_write_node(code, new_tag);
+                vm_assembler_add_write_node(body->as.intermediate.code, new_tag);
                 render_score_increment += 1;
                 break;
             }
@@ -296,7 +286,7 @@ static void ensure_intermediate_not_parsing(block_body_t *body)
 {
     ensure_intermediate(body);
 
-    if (body->as.intermediate.code.parsing) {
+    if (body->as.intermediate.code->parsing) {
         rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
     }
 }
@@ -315,10 +305,10 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     if (body->as.intermediate.parse_context != parse_context_obj) {
         rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse called with different parse context");
     }
-    vm_assembler_remove_leave(&body->as.intermediate.code); // to extend block
+    vm_assembler_remove_leave(body->as.intermediate.code); // to extend block
 
     tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
-    vm_assembler_add_leave(&body->as.intermediate.code);
+    vm_assembler_add_leave(body->as.intermediate.code);
 
     return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
 }
@@ -336,21 +326,18 @@ static VALUE block_body_freeze(VALUE self)
 
     bool root = body->as.intermediate.root;
 
-    c_buffer_t *buf;
-    size_t offset;
-    VALUE constants;
+    vm_assembler_pool_t *assembler_pool = body->as.intermediate.vm_assembler_pool;
+    vm_assembler_t *assembler = body->as.intermediate.code;
+    body->compiled = true;
     document_body_write_block_body(document_body, body->as.intermediate.blank, body->as.intermediate.render_score,
-                                   &body->as.intermediate.code, &buf, &offset, &constants);
-    vm_assembler_free(&body->as.intermediate.code);
-    body->as.compiled.buffer = buf;
-    body->as.compiled.offset = offset;
-    body->as.compiled.constants = constants;
+                                   body->as.intermediate.code, body);
+    vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
     body->as.compiled.document_body_obj = document_body;
     body->as.compiled.nodelist = Qundef;
-    body->compiled = true;
 
     if (root) {
         parse_context_remove_document_body(parse_context);
+        parse_context_remove_vm_assembler_pool(parse_context);
     }
 
     rb_call_super(0, NULL);
@@ -394,8 +381,8 @@ static VALUE block_body_remove_blank_strings(VALUE self)
         rb_raise(rb_eRuntimeError, "remove_blank_strings only support being called on a blank block body");
     }
 
-    VALUE *const_ptr = (VALUE *)body->as.intermediate.code.constants.data;
-    uint8_t *ip = body->as.intermediate.code.instructions.data;
+    VALUE *const_ptr = (VALUE *)body->as.intermediate.code->constants.data;
+    uint8_t *ip = body->as.intermediate.code->instructions.data;
 
     while (*ip != OP_LEAVE) {
         if (*ip == OP_WRITE_RAW) {
@@ -494,7 +481,7 @@ static VALUE block_body_add_evaluate_expression(VALUE self, VALUE expression)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_evaluate_expression_from_ruby(&body->as.intermediate.code, self, expression);
+    vm_assembler_add_evaluate_expression_from_ruby(body->as.intermediate.code, self, expression);
     return self;
 }
 
@@ -503,7 +490,7 @@ static VALUE block_body_add_find_variable(VALUE self, VALUE expression)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_find_variable_from_ruby(&body->as.intermediate.code, self, expression);
+    vm_assembler_add_find_variable_from_ruby(body->as.intermediate.code, self, expression);
     return self;
 }
 
@@ -512,7 +499,7 @@ static VALUE block_body_add_lookup_command(VALUE self, VALUE name)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_lookup_command_from_ruby(&body->as.intermediate.code, name);
+    vm_assembler_add_lookup_command_from_ruby(body->as.intermediate.code, name);
     return self;
 }
 
@@ -521,7 +508,7 @@ static VALUE block_body_add_lookup_key(VALUE self, VALUE expression)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_lookup_key_from_ruby(&body->as.intermediate.code, self, expression);
+    vm_assembler_add_lookup_key_from_ruby(body->as.intermediate.code, self, expression);
     return self;
 }
 
@@ -530,7 +517,7 @@ static VALUE block_body_add_new_int_range(VALUE self)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_new_int_range_from_ruby(&body->as.intermediate.code);
+    vm_assembler_add_new_int_range_from_ruby(body->as.intermediate.code);
     return self;
 }
 
@@ -539,7 +526,7 @@ static VALUE block_body_add_hash_new(VALUE self, VALUE hash_size)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_hash_new_from_ruby(&body->as.intermediate.code, hash_size);
+    vm_assembler_add_hash_new_from_ruby(body->as.intermediate.code, hash_size);
     return self;
 }
 
@@ -548,7 +535,7 @@ static VALUE block_body_add_filter(VALUE self, VALUE filter_name, VALUE num_args
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     ensure_intermediate(body);
-    vm_assembler_add_filter_from_ruby(&body->as.intermediate.code, filter_name, num_args);
+    vm_assembler_add_filter_from_ruby(body->as.intermediate.code, filter_name, num_args);
     return self;
 }
 

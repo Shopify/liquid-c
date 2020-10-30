@@ -3,14 +3,29 @@
 #include "expression.h"
 #include "vm.h"
 
-void vm_assembler_init(vm_assembler_t *code)
+static void vm_assembler_init_internal(vm_assembler_t *code, bool allocate)
 {
-    code->instructions = c_buffer_allocate(8);
-    code->constants = c_buffer_allocate(8 * sizeof(VALUE));
+    if (allocate) {
+        code->instructions = c_buffer_allocate(8);
+        code->constants = c_buffer_allocate(8 * sizeof(VALUE));
+    } else {
+        c_buffer_reset(&code->instructions);
+        c_buffer_reset(&code->constants);
+    }
     code->max_stack_size = 0;
     code->stack_size = 0;
     code->protected_stack_size = 0;
     code->parsing = true;
+}
+
+void vm_assembler_init(vm_assembler_t *code)
+{
+    vm_assembler_init_internal(code, true);
+}
+
+void vm_assembler_reset(vm_assembler_t *code)
+{
+    vm_assembler_init_internal(code, false);
 }
 
 void vm_assembler_free(vm_assembler_t *code)

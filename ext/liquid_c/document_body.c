@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <stdalign.h>
 #include "liquid.h"
 #include "vm_assembler.h"
 #include "document_body.h"
@@ -35,8 +36,6 @@ const rb_data_type_t document_body_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-#define DocumentBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, document_body_t, &document_body_data_type, sval)
-
 static VALUE document_body_allocate(VALUE klass)
 {
     document_body_t *body;
@@ -48,37 +47,40 @@ static VALUE document_body_allocate(VALUE klass)
     return obj;
 }
 
+#define DocumentBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, document_body_t, &document_body_data_type, sval)
+
 VALUE document_body_new_instance()
 {
     return rb_class_new_instance(0, NULL, cLiquidCDocumentBody);
 }
 
-void document_body_write_block_body(VALUE self, bool blank, int render_score, vm_assembler_t *code,
-                                    c_buffer_t **buf, size_t *offset, VALUE *constants)
+void document_body_write_block_body(VALUE self, bool blank, int render_score, vm_assembler_t *code, block_body_t *block_body)
 {
+    assert(block_body->compiled);
+
     document_body_t *body;
     DocumentBody_Get_Struct(self, body);
 
-    *buf = &body->buffer;
-    *offset = c_buffer_size(&body->buffer);
-    *constants = body->constants;
+    c_buffer_zero_pad_for_alignment(&body->buffer, alignof(block_body_header_t));
+
+    block_body->as.compiled.buffer = &body->buffer;
+    block_body->as.compiled.offset = c_buffer_size(&body->buffer);
+    block_body->as.compiled.constants = body->constants;
 
     assert(c_buffer_size(&code->constants) % sizeof(VALUE *) == 0);
 
-    block_body_header_t buf_block_body = {
-        .instructions_offset = (uint32_t)sizeof(block_body_header_t),
-        .instructions_bytes = (uint32_t)c_buffer_size(&code->instructions),
-        .constants_offset = (uint32_t)RARRAY_LEN(body->constants),
-        .constants_len = (uint32_t)c_buffer_size(&code->constants) / sizeof(VALUE *),
-        .blank = blank,
-        .render_score = render_score,
-        .max_stack_size = code->max_stack_size
-    };
+    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->buffer, sizeof(block_body_header_t));
+    buf_block_body->instructions_offset = (uint32_t)sizeof(block_body_header_t);
+    buf_block_body->instructions_bytes = (uint32_t)c_buffer_size(&code->instructions);
+    buf_block_body->constants_offset = (uint32_t)RARRAY_LEN(body->constants);
+    buf_block_body->constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE *));
+    buf_block_body->blank = blank;
+    buf_block_body->render_score = render_score;
+    buf_block_body->max_stack_size = code->max_stack_size;
 
-    c_buffer_write(&body->buffer, &buf_block_body, sizeof(block_body_header_t));
     c_buffer_concat(&body->buffer, &code->instructions);
 
-    rb_ary_cat(body->constants, (VALUE *)code->constants.data, buf_block_body.constants_len);
+    rb_ary_cat(body->constants, (VALUE *)code->constants.data, buf_block_body->constants_len);
 }
 
 void init_liquid_document_body()

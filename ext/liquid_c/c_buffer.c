@@ -16,6 +16,16 @@ static void c_buffer_expand_for_write(c_buffer_t *buffer, size_t write_size)
     buffer->capacity_end = buffer->data + capacity;
 }
 
+void c_buffer_zero_pad_for_alignment(c_buffer_t *buffer, size_t alignment)
+{
+    size_t unaligned_bytes = c_buffer_size(buffer) % alignment;
+    if (unaligned_bytes) {
+        size_t pad_size = alignment - unaligned_bytes;
+        uint8_t *padding = c_buffer_extend_for_write(buffer, pad_size);
+        memset(padding, 0, pad_size);
+    }
+}
+
 void c_buffer_reserve_for_write(c_buffer_t *buffer, size_t write_size)
 {
     uint8_t *write_end = buffer->data_end + write_size;

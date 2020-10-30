@@ -111,8 +111,9 @@ static inline void vm_assembler_add_hash_new(vm_assembler_t *code, size_t hash_s
         rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Hash literal has too many keys");
     code->stack_size -= hash_size * 2;
     code->stack_size++;
-    uint8_t instructions[2] = { OP_HASH_NEW, hash_size };
-    c_buffer_write(&code->instructions, &instructions, 2);
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 2);
+    instructions[0] = OP_HASH_NEW;
+    instructions[1] = hash_size;
 }
 
 
@@ -137,15 +138,18 @@ static inline void vm_assembler_add_push_false(vm_assembler_t *code)
 static inline void vm_assembler_add_push_int8(vm_assembler_t *code, int8_t value)
 {
     vm_assembler_increment_stack_size(code, 1);
-    uint8_t instructions[2] = { OP_PUSH_INT8, value };
-    c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 2);
+    instructions[0] = OP_PUSH_INT8;
+    instructions[1] = value;
 }
 
 static inline void vm_assembler_add_push_int16(vm_assembler_t *code, int16_t value)
 {
     vm_assembler_increment_stack_size(code, 1);
-    uint8_t instructions[3] = { OP_PUSH_INT16, value >> 8, (uint8_t)value };
-    c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 3);
+    instructions[0] = OP_PUSH_INT16;
+    instructions[1] = value >> 8;
+    instructions[2] = (uint8_t)value;
 }
 
 static inline void vm_assembler_add_push_const(vm_assembler_t *code, VALUE constant)
@@ -201,14 +205,18 @@ static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_na
     }
     code->stack_size -= arg_count; // pop arg_count + 1, push 1
     vm_assembler_write_ruby_constant(code, filter_name);
-    uint8_t instructions[2] = { OP_FILTER, arg_count + 1 /* include input */ };
-    c_buffer_write(&code->instructions, &instructions, 2);
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 2);
+    instructions[0] = OP_FILTER;
+    instructions[1] = arg_count + 1; // include input
 }
 
 static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)
 {
-    uint8_t instructions[4] = { OP_RENDER_VARIABLE_RESCUE, node_line_number >> 16, node_line_number >> 8, node_line_number };
-    c_buffer_write(&code->instructions, &instructions, sizeof(instructions));
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
+    instructions[0] = OP_RENDER_VARIABLE_RESCUE;
+    instructions[1] = node_line_number >> 16;
+    instructions[2] = node_line_number >> 8;
+    instructions[3] = node_line_number;
 }
 
 #endif

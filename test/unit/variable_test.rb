@@ -215,6 +215,20 @@ class VariableTest < Minitest::Test
     assert_equal('before (Liquid error: concat filter requires an array argument) after', output)
   end
 
+  def test_render_variable_object
+    variable = Liquid::Variable.new("ary | concat: ary2", Liquid::ParseContext.new)
+    assert_instance_of(Liquid::C::VariableExpression, variable.name)
+
+    context = Liquid::Context.new('ary' => [1], 'ary2' => [2])
+    assert_equal([1, 2], variable.render(context))
+
+    context['ary2'] = 2
+    exc = assert_raises(Liquid::ArgumentError) do
+      variable.render(context)
+    end
+    assert_equal('Liquid error: concat filter requires an array argument', exc.message)
+  end
+
   private
 
   def variable_strict_parse(markup)

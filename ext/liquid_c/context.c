@@ -1,6 +1,7 @@
 #include "liquid.h"
 #include "context.h"
 #include "variable_lookup.h"
+#include "variable.h"
 #include "vm.h"
 #include "expression.h"
 
@@ -17,9 +18,11 @@ static VALUE context_evaluate(VALUE self, VALUE expression)
 
     switch (RB_BUILTIN_TYPE(expression)) {
         case T_DATA:
-            if (RBASIC_CLASS(expression) == cLiquidCExpression)
+        {
+            if (RTYPEDDATA_P(expression) && RTYPEDDATA_TYPE(expression) == &expression_data_type)
                 return internal_expression_evaluate(DATA_PTR(expression), self);
             break; // e.g. BigDecimal
+        }
         case T_OBJECT: // may be Liquid::VariableLookup or Liquid::RangeLookup
         {
             VALUE result = rb_check_funcall(expression, id_evaluate, 1, &self);

@@ -68,8 +68,7 @@ Liquid::ParseContext.class_eval do
     end
   end
 
-  private
-
+  # @api private
   def disable_liquid_c_nodes
     # Liquid::Profiler exposes the internal parse tree that we don't want to build when
     # parsing with liquid-c, so consider liquid-c to be disabled when using it.
@@ -138,6 +137,16 @@ Liquid::Variable.class_eval do
 
     def set_error_mode(parse_context, mode)
       parse_context.instance_variable_set(:@error_mode, mode)
+    end
+  end
+
+  alias_method :ruby_strict_parse, :strict_parse
+
+  def strict_parse(markup)
+    if parse_context.disable_liquid_c_nodes
+      ruby_strict_parse(markup)
+    else
+      c_strict_parse(markup)
     end
   end
 end

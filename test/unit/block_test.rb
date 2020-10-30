@@ -26,9 +26,19 @@ class BlockTest < MiniTest::Test
   end
 
   def test_op_write_raw_w
-    output = "a" * 2**8
-    template = Liquid::Template.parse(output)
-    assert_equal(output, template.render!)
+    source = "a" * 2**8
+    template = Liquid::Template.parse(source)
+    assert_equal(source, template.render!)
+  end
+
+  def test_disassemble_raw_w
+    source = "a" * 2**8
+    template = Liquid::Template.parse(source)
+    block_body = template.root.body
+    assert_equal(<<~ASM, block_body.disassemble)
+      0x0000: write_raw_w("#{source}")
+      0x0104: leave
+    ASM
   end
 
   def test_disassemble

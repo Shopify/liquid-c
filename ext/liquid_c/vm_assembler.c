@@ -93,15 +93,18 @@ VALUE vm_assembler_disassemble(vm_assembler_t *code)
             {
                 const char *text;
                 size_t size;
+                const char *name;
                 if (*ip == OP_WRITE_RAW_W) {
+                    name = "write_raw_w";
                     size = bytes_to_uint24(&ip[1]);
                     text = (const char *)&ip[4];
                 } else {
+                    name = "write_raw";
                     size = ip[1];
                     text = (const char *)&ip[2];
                 }
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
-                rb_str_catf(output, "write_raw(%+"PRIsVALUE")\n", string);
+                rb_str_catf(output, "%s(%+"PRIsVALUE")\n", name, string);
                 break;
             }
 

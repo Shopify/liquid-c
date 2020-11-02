@@ -49,4 +49,21 @@ class BlockTest < MiniTest::Test
       0x000f: leave
     ASM
   end
+
+  def test_exception_renderer_exception
+    original_error = Liquid::Error.new("original")
+    handler_error = RuntimeError.new("exception handler error")
+    context = Liquid::Context.new('raise_error' => ->(_ctx) { raise(original_error) })
+    context.exception_renderer = lambda do |exc|
+      if exc == original_error
+        raise(handler_error)
+      end
+      exc
+    end
+    template = Liquid::Template.parse("{% assign x = raise_error %}")
+    exc = assert_raises(RuntimeError) do
+      template.render(context)
+    end
+    assert_equal(handler_error, exc)
+  end
 end

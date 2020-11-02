@@ -200,6 +200,7 @@ end
 Liquid::Context.class_eval do
   alias_method :ruby_evaluate, :evaluate
   alias_method :ruby_find_variable, :find_variable
+  alias_method :ruby_strict_variables=, :strict_variables=
 
   # This isn't entered often by Ruby (most calls stay in C via VariableLookup#evaluate)
   # so the wrapper method isn't costly.
@@ -232,10 +233,12 @@ module Liquid
         if value
           Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
+          Liquid::Context.send(:alias_method, :strict_variables=, :c_strict_variables=)
           Liquid::Raw.send(:alias_method, :parse, :c_parse)
         else
           Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
+          Liquid::Context.send(:alias_method, :strict_variables=, :ruby_strict_variables=)
           Liquid::Raw.send(:alias_method, :parse, :ruby_parse)
         end
       end

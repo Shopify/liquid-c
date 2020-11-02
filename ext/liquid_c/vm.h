@@ -3,10 +3,16 @@
 
 #include <ruby.h>
 #include "block.h"
+#include "context.h"
 
-typedef struct vm vm_t;
+typedef struct vm {
+    c_buffer_t stack;
+    bool invoking_filter;
+    context_t context;
+} vm_t;
 
 void init_liquid_vm();
+vm_t *vm_from_context(VALUE context);
 void liquid_vm_render(block_body_t *block, VALUE context, VALUE output);
 void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr);
 bool liquid_vm_filtering(VALUE context);

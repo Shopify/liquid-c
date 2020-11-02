@@ -7,14 +7,7 @@
 #include "intutil.h"
 
 ID id_render_node;
-ID id_ivar_interrupts;
-ID id_ivar_resource_limits;
 ID id_vm;
-ID id_strainer;
-ID id_filter_methods_hash;
-ID id_strict_variables;
-ID id_strict_filters;
-ID id_global_filter;
 
 static VALUE cLiquidCVM;
 
@@ -51,21 +44,6 @@ static VALUE vm_internal_new(VALUE context)
     VALUE obj = TypedData_Make_Struct(cLiquidCVM, vm_t, &vm_data_type, vm);
     vm->stack = c_buffer_init();
 
-    vm->context.strainer = rb_funcall(context, id_strainer, 0);
-    Check_Type(vm->context.strainer, T_OBJECT);
-
-    vm->context.filter_methods = rb_funcall(RBASIC_CLASS(vm->context.strainer), id_filter_methods_hash, 0);
-    Check_Type(vm->context.filter_methods, T_HASH);
-
-    vm->context.interrupts = rb_ivar_get(context, id_ivar_interrupts);
-    Check_Type(vm->context.interrupts, T_ARRAY);
-
-    vm->context.resource_limits_obj = rb_ivar_get(context, id_ivar_resource_limits);;
-    ResourceLimits_Get_Struct(vm->context.resource_limits_obj, vm->context.resource_limits);
-
-    vm->context.strict_variables = false;
-    vm->context.strict_filters = RTEST(rb_funcall(context, id_strict_filters, 0));
-    vm->context.global_filter = rb_funcall(context, id_global_filter, 0);
     vm->invoking_filter = false;
 
     context_internal_init(context, &vm->context);
@@ -572,14 +550,7 @@ void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
 void init_liquid_vm()
 {
     id_render_node = rb_intern("render_node");
-    id_ivar_interrupts = rb_intern("@interrupts");
-    id_ivar_resource_limits = rb_intern("@resource_limits");
     id_vm = rb_intern("vm");
-    id_strainer = rb_intern("strainer");
-    id_filter_methods_hash = rb_intern("filter_methods_hash");
-    id_strict_variables = rb_intern("strict_variables");
-    id_strict_filters = rb_intern("strict_filters");
-    id_global_filter = rb_intern("global_filter");
 
     cLiquidCVM = rb_define_class_under(mLiquidC, "VM", rb_cObject);
     rb_undef_alloc_func(cLiquidCVM);

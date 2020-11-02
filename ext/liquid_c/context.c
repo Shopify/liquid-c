@@ -7,8 +7,8 @@
 
 static VALUE cLiquidUndefinedVariable;
 ID id_aset, id_set_context;
-static ID id_has_key, id_aref;
-static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables;
+static ID id_has_key, id_aref, id_strainer, id_filter_methods_hash, id_strict_filters, id_global_filter;
+static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables, id_ivar_interrupts, id_ivar_resource_limits;
 
 void context_internal_init(VALUE context_obj, context_t *context)
 {
@@ -22,6 +22,22 @@ void context_internal_init(VALUE context_obj, context_t *context)
 
     context->scopes = rb_ivar_get(context_obj, id_ivar_scopes);
     Check_Type(context->scopes, T_ARRAY);
+
+    context->strainer = rb_funcall(context->self, id_strainer, 0);
+    Check_Type(context->strainer, T_OBJECT);
+
+    context->filter_methods = rb_funcall(RBASIC_CLASS(context->strainer), id_filter_methods_hash, 0);
+    Check_Type(context->filter_methods, T_HASH);
+
+    context->interrupts = rb_ivar_get(context->self, id_ivar_interrupts);
+    Check_Type(context->interrupts, T_ARRAY);
+
+    context->resource_limits_obj = rb_ivar_get(context->self, id_ivar_resource_limits);;
+    ResourceLimits_Get_Struct(context->resource_limits_obj, context->resource_limits);
+
+    context->strict_variables = false;
+    context->strict_filters = RTEST(rb_funcall(context->self, id_strict_filters, 0));
+    context->global_filter = rb_funcall(context->self, id_global_filter, 0);
 }
 
 void context_mark(context_t *context)
@@ -183,11 +199,17 @@ void init_liquid_context()
     id_aset = rb_intern("[]=");
     id_aref = rb_intern("[]");
     id_set_context = rb_intern("context=");
+    id_strainer = rb_intern("strainer");
+    id_filter_methods_hash = rb_intern("filter_methods_hash");
+    id_strict_filters = rb_intern("strict_filters");
+    id_global_filter = rb_intern("global_filter");
 
     id_ivar_scopes = rb_intern("@scopes");
     id_ivar_environments = rb_intern("@environments");
     id_ivar_static_environments = rb_intern("@static_environments");
     id_ivar_strict_variables = rb_intern("@strict_variables");
+    id_ivar_interrupts = rb_intern("@interrupts");
+    id_ivar_resource_limits = rb_intern("@resource_limits");
 
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
     rb_global_variable(&cLiquidVariableLookup);

@@ -35,15 +35,16 @@ class ContextTest < Minitest::Test
     called_ruby_method_count = 0
     called_c_method_count = 0
 
+    test_thread = Thread.current
     begin
       call_trace = TracePoint.trace(:call) do |t|
-        unless t.self == TracePoint || t.self.is_a?(TracePoint)
+        unless t.self == TracePoint || t.self.is_a?(TracePoint) || Thread.current != test_thread
           called_ruby_method_count += 1
         end
       end
 
       c_call_trace = TracePoint.trace(:c_call) do |t|
-        unless t.self == TracePoint || t.self.is_a?(TracePoint)
+        unless t.self == TracePoint || t.self.is_a?(TracePoint) || Thread.current != test_thread
           called_c_method_count += 1
         end
       end

@@ -37,15 +37,16 @@ class ContextTest < Minitest::Test
 
     begin
       call_trace = TracePoint.trace(:call) do |t|
-        unless t.self == TracePoint || t.self.is_a?(TracePoint)
-          called_ruby_method_count += 1
-        end
+        next if t.self == TracePoint || t.self.is_a?(TracePoint)
+
+        called_ruby_method_count += 1
       end
 
       c_call_trace = TracePoint.trace(:c_call) do |t|
-        unless t.self == TracePoint || t.self.is_a?(TracePoint)
-          called_c_method_count += 1
-        end
+        next if t.self == TracePoint || t.self.is_a?(TracePoint)
+        next unless t.defined_class.name&.start_with?('Liquid')
+
+        called_c_method_count += 1
       end
 
       context.evaluate(lookup)

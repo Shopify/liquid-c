@@ -72,4 +72,11 @@ class ContextTest < Minitest::Test
     assert_equal("false,true", template.render!(context))
     assert_equal(false, context.send(:c_filtering?))
   end
+
+  def test_strict_variables=
+    context = Liquid::Context.new
+    assert_equal(false, context.strict_variables)
+    context.strict_variables = true
+    assert_equal(true, context.strict_variables)
+  end
 end

@@ -1,5 +1,6 @@
 #include "liquid.h"
 #include "block.h"
+#include "intutil.h"
 #include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
@@ -32,7 +33,6 @@ typedef struct parse_context {
 static void block_body_mark(void *ptr)
 {
     block_body_t *body = ptr;
-    rb_gc_mark(body->source);
     vm_assembler_gc_mark(&body->code);
 }
 
@@ -66,7 +66,6 @@ static VALUE block_body_allocate(VALUE klass)
     vm_assembler_init(&body->code);
     vm_assembler_add_leave(&body->code);
     body->obj = obj;
-    body->source = Qnil;
     body->render_score = 0;
     body->blank = true;
     body->nodelist = Qundef;
@@ -230,11 +229,6 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     BlockBody_Get_Struct(self, body);
 
     ensure_not_parsing(body);
-    if (body->source == Qnil) {
-        body->source = parse_context.tokenizer->source;
-    } else if (body->source != parse_context.tokenizer->source) {
-        rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse must be passed the same tokenizer when called multiple times");
-    }
     vm_assembler_remove_leave(&body->code); // to extend block
 
     tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
@@ -272,17 +266,21 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     ensure_not_parsing(body);
 
     size_t *const_ptr = (size_t *)body->code.constants.data;
-    const uint8_t *ip = body->code.instructions.data;
+    uint8_t *ip = (uint8_t *)body->code.instructions.data;
 
     while (*ip != OP_LEAVE) {
         if (*ip == OP_WRITE_RAW) {
-            size_t *size_ptr = &const_ptr[1];
-            if (*size_ptr) {
-                *size_ptr = 0; // effectively a no-op
+            if (ip[1]) { // if (size != 0)
+                ip[0] = OP_JUMP_FWD; // effectively a no-op
+                body->render_score--;
+            }
+        } else if (*ip == OP_WRITE_RAW_W) {
+            if (ip[1] || ip[2] || ip[3]) { // if (size != 0)
+                ip[0] = OP_JUMP_FWD_W; // effectively a no-op
                 body->render_score--;
             }
         }
-        liquid_vm_next_instruction(&ip, (const size_t **)&const_ptr);
+        liquid_vm_next_instruction((const uint8_t **)&ip, (const size_t **)&const_ptr);
     }
 
     return Qnil;
@@ -316,10 +314,18 @@ static VALUE block_body_nodelist(VALUE self)
         switch (*ip) {
             case OP_LEAVE:
                 goto loop_break;
+            case OP_WRITE_RAW_W:
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)const_ptr[0];
-                size_t size = const_ptr[1];
+                const char *text;
+                size_t size;
+                if (*ip == OP_WRITE_RAW_W) {
+                    size = bytes_to_uint24(&ip[1]);
+                    text = (const char *)&ip[4];
+                } else {
+                    size = ip[1];
+                    text = (const char *)&ip[2];
+                }
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
                 rb_ary_push(nodelist, string);
                 break;

@@ -21,57 +21,7 @@ void vm_assembler_free(vm_assembler_t *code)
 
 void vm_assembler_gc_mark(vm_assembler_t *code)
 {
-    size_t *const_ptr = (size_t *)code->constants.data;
-    const uint8_t *ip = code->instructions.data;
-    // Don't rely on a terminating OP_LEAVE instruction
-    // since this could be called in the middle of parsing
-    const uint8_t *end_ip = code->instructions.data_end;
-    while (ip < end_ip) {
-        switch (*ip++) {
-            case OP_LEAVE:
-            case OP_POP_WRITE:
-            case OP_PUSH_NIL:
-            case OP_PUSH_TRUE:
-            case OP_PUSH_FALSE:
-            case OP_FIND_VAR:
-            case OP_LOOKUP_KEY:
-            case OP_NEW_INT_RANGE:
-                break;
-
-            case OP_HASH_NEW:
-            case OP_PUSH_INT8:
-                ip++;
-                break;
-
-            case OP_PUSH_INT16:
-                ip += 2;
-                break;
-
-            case OP_RENDER_VARIABLE_RESCUE:
-                ip += 3;
-                break;
-
-            case OP_WRITE_RAW:
-                const_ptr += 2;
-                break;
-
-            case OP_WRITE_NODE:
-            case OP_PUSH_CONST:
-            case OP_FIND_STATIC_VAR:
-            case OP_LOOKUP_CONST_KEY:
-            case OP_LOOKUP_COMMAND:
-                rb_gc_mark(*const_ptr++);
-                break;
-
-            case OP_FILTER:
-                ip++;
-                rb_gc_mark(*const_ptr++);
-                break;
-
-            default:
-                rb_bug("invalid opcode: %u", ip[-1]);
-        }
-    }
+    c_buffer_rb_gc_mark(&code->constants);
 }
 
 VALUE vm_assembler_disassemble(vm_assembler_t *code)
@@ -138,12 +88,23 @@ VALUE vm_assembler_disassemble(vm_assembler_t *code)
                 break;
             }
 
+            case OP_WRITE_RAW_W:
             case OP_WRITE_RAW:
             {
-                const char *text = (const char *)const_ptr[0];
-                size_t size = const_ptr[1];
+                const char *text;
+                size_t size;
+                const char *name;
+                if (*ip == OP_WRITE_RAW_W) {
+                    name = "write_raw_w";
+                    size = bytes_to_uint24(&ip[1]);
+                    text = (const char *)&ip[4];
+                } else {
+                    name = "write_raw";
+                    size = ip[1];
+                    text = (const char *)&ip[2];
+                }
                 VALUE string = rb_enc_str_new(text, size, utf8_encoding);
-                rb_str_catf(output, "write_raw(%+"PRIsVALUE")\n", string);
+                rb_str_catf(output, "%s(%+"PRIsVALUE")\n", name, string);
                 break;
             }
 
@@ -202,10 +163,17 @@ void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count)
 
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size)
 {
-    vm_assembler_write_opcode(code, OP_WRITE_RAW);
-    VALUE *constants = c_buffer_extend_for_write(&code->constants, 2 * sizeof(VALUE));
-    constants[0] = (size_t)string;
-    constants[1] = size;
+    if (size > UINT8_MAX) {
+        uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
+        instructions[0] = OP_WRITE_RAW_W;
+        uint24_to_bytes((unsigned int)size, &instructions[1]);
+    } else {
+        uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 2);
+        instructions[0] = OP_WRITE_RAW;
+        instructions[1] = size;
+    }
+
+    c_buffer_write(&code->instructions, (char *)string, size);
 }
 
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)

@@ -25,6 +25,12 @@ class BlockTest < MiniTest::Test
     assert_equal("üñ", template.render!({ 'unicode_char' => 'ñ' }, output: output))
   end
 
+  def test_op_write_raw_w
+    source = "a" * 2**8
+    template = Liquid::Template.parse(source)
+    assert_equal(source, template.render!)
+  end
+
   # Test for bug: https://github.com/Shopify/liquid-c/pull/120
   def test_bug_120_instrument
     calls = []
@@ -40,6 +46,16 @@ class BlockTest < MiniTest::Test
     assert_equal([], calls)
   end
 
+  def test_disassemble_raw_w
+    source = "a" * 2**8
+    template = Liquid::Template.parse(source)
+    block_body = template.root.body
+    assert_equal(<<~ASM, block_body.disassemble)
+      0x0000: write_raw_w("#{source}")
+      0x0104: leave
+    ASM
+  end
+
   def test_disassemble
     source = <<~LIQUID
       raw
@@ -52,16 +68,16 @@ class BlockTest < MiniTest::Test
     assert_instance_of(Liquid::Increment, increment_node)
     assert_equal(<<~ASM, block_body.disassemble)
       0x0000: write_raw("raw")
-      0x0001: render_variable_rescue(line_number: 2)
-      0x0005: find_static_var("var")
-      0x0006: push_const("none")
-      0x0007: push_const("allow_false")
-      0x0008: push_true
-      0x0009: hash_new(1)
-      0x000b: filter(name: :default, num_args: 3)
-      0x000d: pop_write
-      0x000e: write_node(#{increment_node.inspect})
-      0x000f: leave
+      0x0005: render_variable_rescue(line_number: 2)
+      0x0009: find_static_var("var")
+      0x000a: push_const("none")
+      0x000b: push_const("allow_false")
+      0x000c: push_true
+      0x000d: hash_new(1)
+      0x000f: filter(name: :default, num_args: 3)
+      0x0011: pop_write
+      0x0012: write_node(#{increment_node.inspect})
+      0x0013: leave
     ASM
   end
 

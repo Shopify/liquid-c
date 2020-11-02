@@ -4,6 +4,8 @@
 #include "vm_assembler.h"
 #include "block.h"
 
+extern VALUE cLiquidCVariableExpression;
+
 typedef struct variable_parse_args {
     const char *markup;
     const char *markup_end;

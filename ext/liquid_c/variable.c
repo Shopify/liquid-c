@@ -2,6 +2,8 @@
 #include "variable.h"
 #include "parser.h"
 #include "expression.h"
+#include "vm.h"
+
 #include <stdio.h>
 
 static ID id_rescue_strict_parse_syntax_error;
@@ -9,6 +11,8 @@ static ID id_rescue_strict_parse_syntax_error;
 static ID id_ivar_parse_context;
 static ID id_ivar_name;
 static ID id_ivar_filters;
+
+VALUE cLiquidCVariableExpression;
 
 static VALUE frozen_empty_array;
 
@@ -46,7 +50,7 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
                     if (push_keywords_obj == Qnil) {
                         expression_t *push_keywords_expr;
                         // use an object to automatically free on an exception
-                        push_keywords_obj = expression_new(&push_keywords_expr);
+                        push_keywords_obj = expression_new(cLiquidCExpression, &push_keywords_expr);
                         rb_obj_hide(push_keywords_obj);
                         push_keywords_code = &push_keywords_expr->code;
                     }
@@ -146,7 +150,7 @@ static VALUE variable_strict_parse_method(VALUE self, VALUE markup)
     VALUE parse_context = rb_ivar_get(self, id_ivar_parse_context);
 
     expression_t *expression;
-    VALUE expression_obj = expression_new(&expression);
+    VALUE expression_obj = expression_new(cLiquidCVariableExpression, &expression);
 
     variable_parse_args_t parse_args = {
         .markup = RSTRING_PTR(markup),
@@ -166,6 +170,31 @@ static VALUE variable_strict_parse_method(VALUE self, VALUE markup)
     return Qnil;
 }
 
+typedef struct {
+    VALUE self;
+    VALUE context;
+} variable_expression_evaluate_args_t;
+
+static VALUE try_variable_expression_evaluate(VALUE uncast_args)
+{
+    variable_expression_evaluate_args_t *args = (void *)uncast_args;
+    return expression_evaluate(args->self, args->context);
+}
+
+static VALUE rescue_variable_expression_evaluate(VALUE uncast_args, VALUE exception)
+{
+    variable_expression_evaluate_args_t *args = (void *)uncast_args;
+    vm_t *vm = vm_from_context(args->context);
+    exception = vm_translate_if_filter_argument_error(vm, exception);
+    rb_exc_raise(exception);
+}
+
+static VALUE variable_expression_evaluate(VALUE self, VALUE context)
+{
+    variable_expression_evaluate_args_t args = { self, context };
+    return rb_rescue(try_variable_expression_evaluate, (VALUE)&args, rescue_variable_expression_evaluate, (VALUE)&args);
+}
+
 void init_liquid_variable(void)
 {
     id_rescue_strict_parse_syntax_error = rb_intern("rescue_strict_parse_syntax_error");
@@ -179,5 +208,9 @@ void init_liquid_variable(void)
     rb_global_variable(&frozen_empty_array);
 
     rb_define_method(cLiquidVariable, "c_strict_parse", variable_strict_parse_method, 1);
+
+    cLiquidCVariableExpression = rb_define_class_under(mLiquidC, "VariableExpression", cLiquidCExpression);
+    rb_global_variable(&cLiquidCVariableExpression);
+    rb_define_method(cLiquidCVariableExpression, "evaluate", variable_expression_evaluate, 1);
 }
 

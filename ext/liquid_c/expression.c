@@ -31,10 +31,10 @@ const rb_data_type_t expression_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-VALUE expression_new(expression_t **expression_ptr)
+VALUE expression_new(VALUE klass, expression_t **expression_ptr)
 {
     expression_t *expression;
-    VALUE obj = TypedData_Make_Struct(cLiquidCExpression, expression_t, &expression_data_type, expression);
+    VALUE obj = TypedData_Make_Struct(klass, expression_t, &expression_data_type, expression);
     *expression_ptr = expression;
     vm_assembler_init(&expression->code);
     return obj;
@@ -51,7 +51,7 @@ static VALUE internal_expression_parse(parser_t *p)
         return const_obj;
 
     expression_t *expression;
-    VALUE expr_obj = expression_new(&expression);
+    VALUE expr_obj = expression_new(cLiquidCExpression, &expression);
 
     parse_and_compile_expression(p, &expression->code);
     assert(expression->code.stack_size == 1);
@@ -77,7 +77,7 @@ static VALUE expression_strict_parse(VALUE klass, VALUE markup)
 
 #define Expression_Get_Struct(obj, sval) TypedData_Get_Struct(obj, expression_t, &expression_data_type, sval)
 
-static VALUE expression_evaluate(VALUE self, VALUE context)
+VALUE expression_evaluate(VALUE self, VALUE context)
 {
     expression_t *expression;
     Expression_Get_Struct(self, expression);

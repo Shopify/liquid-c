@@ -18,7 +18,7 @@ ID id_global_filter;
 
 static VALUE cLiquidCVM;
 
-typedef struct vm {
+struct vm {
     c_buffer_t stack;
     VALUE strainer;
     VALUE filter_methods;
@@ -28,7 +28,7 @@ typedef struct vm {
     VALUE global_filter;
     bool strict_filters;
     bool invoking_filter;
-} vm_t;
+};
 
 static void vm_mark(void *ptr)
 {
@@ -85,7 +85,7 @@ static VALUE vm_internal_new(VALUE context)
     return obj;
 }
 
-static vm_t *vm_from_context(VALUE context)
+vm_t *vm_from_context(VALUE context)
 {
     VALUE vm_obj = rb_attr_get(context, id_vm);
     if (vm_obj == Qnil) {
@@ -469,6 +469,18 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr
     *ip_ptr = ip;
 }
 
+VALUE vm_translate_if_filter_argument_error(vm_t *vm, VALUE exception)
+{
+    if (vm->invoking_filter) {
+        if (rb_obj_is_kind_of(exception, rb_eArgError)) {
+            VALUE cLiquidStrainerTemplate = rb_const_get(mLiquid, rb_intern("StrainerTemplate"));
+            exception = rb_funcall(cLiquidStrainerTemplate, rb_intern("arg_exc_to_liquid_exc"), 1, exception);
+        }
+        vm->invoking_filter = false;
+    }
+    return exception;
+}
+
 typedef struct vm_render_rescue_args {
     vm_render_until_error_args_t *render_args;
     size_t old_stack_byte_size;
@@ -482,13 +494,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     vm_render_until_error_args_t *render_args = args->render_args;
     vm_t *vm = render_args->vm;
 
-    if (vm->invoking_filter) {
-        if (rb_obj_is_kind_of(exception, rb_eArgError)) {
-            VALUE cLiquidStrainerTemplate = rb_const_get(mLiquid, rb_intern("StrainerTemplate"));
-            exception = rb_funcall(cLiquidStrainerTemplate, rb_intern("arg_exc_to_liquid_exc"), 1, exception);
-        }
-        vm->invoking_filter = false;
-    }
+    exception = vm_translate_if_filter_argument_error(vm, exception);
 
     const uint8_t *ip = render_args->ip;
     if (!ip)

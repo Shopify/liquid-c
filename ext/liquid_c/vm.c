@@ -531,29 +531,26 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     vm_render_until_error_args_t *render_args = args->render_args;
     vm_t *vm = render_args->vm;
 
-    const uint8_t *ip = render_args->ip;
-    if (ip) {
-        // rescue for variable render, where ip is at the start of the render and we need to
-        // skip to the end of the variable render to resume rendering if the error is handled
-        enum opcode last_op;
-        do {
-            last_op = *ip;
-            liquid_vm_next_instruction(&ip, &render_args->const_ptr);
-        } while (last_op != OP_POP_WRITE);
-        render_args->ip = ip;
-        // remove temporary stack values from variable evaluation
-        vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;
-    }
-
     exception = vm_translate_if_filter_argument_error(vm, exception);
 
-    VALUE line_number = Qnil;
-    if (render_args->node_line_number) {
-        unsigned int node_line_number = bytes_to_uint24(render_args->node_line_number);
-        if (node_line_number != 0) {
-            line_number = UINT2NUM(node_line_number);
-        }
-    }
+    const uint8_t *ip = render_args->ip;
+    if (!ip)
+        rb_exc_raise(exception);
+
+    // rescue for variable render, where ip is at the start of the render and we need to
+    // skip to the end of the variable render to resume rendering if the error is handled
+    enum opcode last_op;
+    do {
+        last_op = *ip;
+        liquid_vm_next_instruction(&ip, &render_args->const_ptr);
+    } while (last_op != OP_POP_WRITE);
+    render_args->ip = ip;
+    // remove temporary stack values from variable evaluation
+    vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;
+
+    assert(render_args->node_line_number);
+    unsigned int node_line_number = bytes_to_uint24(render_args->node_line_number);
+    VALUE line_number = node_line_number != 0 ? UINT2NUM(node_line_number) : Qnil;
 
     rb_funcall(cLiquidBlockBody, rb_intern("c_rescue_render_node"), 5,
         render_args->context, render_args->output, line_number, exception, blank_tag);

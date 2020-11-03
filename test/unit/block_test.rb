@@ -82,4 +82,26 @@ class BlockTest < MiniTest::Test
     end
     assert_equal(handler_error, exc)
   end
+
+  def test_liquid_tag
+    template = Liquid::Template.parse(<<~LIQUID)
+      {%- liquid
+        assign x = 1
+        assign y = x | plus: 2
+        echo y
+      -%}
+    LIQUID
+    assert_equal('3', template.render)
+  end
+
+  def test_liquid_tag_with_disable_liquid_c_nodes
+    template = Liquid::Template.parse(<<~LIQUID, disable_liquid_c_nodes: true)
+      {%- liquid
+        assign x = 1
+        assign y = x | plus: 2
+        echo y
+      -%}
+    LIQUID
+    assert_equal('3', template.render)
+  end
 end

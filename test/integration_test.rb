@@ -8,7 +8,7 @@ require 'liquid/c'
 
 if ENV['LIQUID_C_DISABLE_VM']
   puts "-- Liquid-C VM Disabled"
-  Liquid::ParseContext.disable_liquid_c_nodes = true
+  Liquid::ParseContext.liquid_c_nodes_disabled = true
 end
 
 test_files = FileList[File.join(liquid_test_dir, 'integration/**/*_test.rb')]

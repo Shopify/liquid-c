@@ -86,11 +86,11 @@ class TokenizerTest < Minitest::Test
 
     # Document.parse patch parse context update
     parse_context = Liquid::ParseContext.new
-    refute(parse_context.send(:disable_liquid_c_nodes))
+    refute(parse_context.liquid_c_nodes_disabled?)
     Liquid::Document.parse(liquid_c_tokenizer, parse_context)
-    refute(parse_context.send(:disable_liquid_c_nodes))
+    refute(parse_context.liquid_c_nodes_disabled?)
     Liquid::Document.parse(fallback_tokenizer, parse_context)
-    assert_equal(true, parse_context.send(:disable_liquid_c_nodes))
+    assert_equal(true, parse_context.liquid_c_nodes_disabled?)
   end
 
   private

@@ -59,14 +59,14 @@ end
 
 Liquid::ParseContext.class_eval do
   class << self
-    attr_accessor :disable_liquid_c_nodes
+    attr_accessor :liquid_c_nodes_disabled
   end
-  self.disable_liquid_c_nodes = false
+  self.liquid_c_nodes_disabled = false
 
   alias_method :ruby_new_block_body, :new_block_body
 
   def new_block_body
-    if disable_liquid_c_nodes
+    if liquid_c_nodes_disabled?
       ruby_new_block_body
     else
       Liquid::C::BlockBody.new
@@ -74,15 +74,18 @@ Liquid::ParseContext.class_eval do
   end
 
   # @api private
-  def disable_liquid_c_nodes
+  def liquid_c_nodes_disabled?
     # Liquid::Profiler exposes the internal parse tree that we don't want to build when
     # parsing with liquid-c, so consider liquid-c to be disabled when using it.
     # Also, some templates are parsed before the profiler is running, on which case we
     # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
     # so the profiler can use it on future runs.
-    @disable_liquid_c_nodes ||= !Liquid::C.enabled || @template_options[:profile] ||
-      @template_options[:disable_liquid_c_nodes] || self.class.disable_liquid_c_nodes
+    @liquid_c_nodes_disabled ||= !Liquid::C.enabled || @template_options[:profile] ||
+      @template_options[:disable_liquid_c_nodes] || self.class.liquid_c_nodes_disabled
   end
+
+  # @api private
+  attr_writer :liquid_c_nodes_disabled
 end
 
 module Liquid
@@ -97,7 +100,7 @@ module Liquid
         else
           # Liquid::Tokenizer.new may return a Liquid::Tokenizer if the source is too large
           # to be supported, so indicate in the parse context that the liquid VM won't be used
-          parse_context.instance_variable_set(:@disable_liquid_c_nodes, true)
+          parse_context.liquid_c_nodes_disabled = true
         end
         super
       end
@@ -148,7 +151,7 @@ Liquid::Variable.class_eval do
   alias_method :ruby_strict_parse, :strict_parse
 
   def strict_parse(markup)
-    if parse_context.disable_liquid_c_nodes
+    if parse_context.liquid_c_nodes_disabled?
       ruby_strict_parse(markup)
     else
       c_strict_parse(markup)

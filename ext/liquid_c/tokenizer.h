@@ -6,7 +6,8 @@ enum token_type {
     TOKEN_INVALID,
     TOKEN_RAW,
     TOKEN_TAG,
-    TOKEN_VARIABLE
+    TOKEN_VARIABLE,
+    TOKEN_BLANK_LIQUID_TAG_LINE
 };
 
 typedef struct token {

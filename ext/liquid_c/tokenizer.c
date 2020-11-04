@@ -82,28 +82,30 @@ void tokenizer_setup_for_liquid_tag(tokenizer_t *tokenizer, const char *cursor, 
 static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token)
 {
     const char *end = tokenizer->cursor_end;
+    const char *start = tokenizer->cursor;
+    const char *start_trimmed = read_while(start, end, is_non_newline_space);
 
-    token->str_full = tokenizer->cursor;
-    token->str_trimmed = read_while(token->str_full, end, rb_isspace);
+    token->str_full = start;
+    token->str_trimmed = start_trimmed;
 
-    const char *start_next_line = read_while(token->str_trimmed, end, not_newline);
-    const char *end_trimmed = read_while_reverse(token->str_trimmed, start_next_line, rb_isspace);
-    token->len_trimmed = end_trimmed - token->str_trimmed;
+    const char *end_full = read_while(start_trimmed, end, not_newline);
+    if (end_full < end) {
+        tokenizer->cursor = end_full + 1;
+        if (tokenizer->line_number)
+            tokenizer->line_number++;
+    } else {
+        tokenizer->cursor = end_full;
+    }
 
-    const char *end_full = read_while(start_next_line, end, rb_isspace);
+    const char *end_trimmed = read_while_reverse(start_trimmed, end_full, rb_isspace);
+
+    token->len_trimmed = end_trimmed - start_trimmed;
     token->len_full = end_full - token->str_full;
 
     if (token->len_trimmed == 0) {
-        // reached end of tag without finding a token
-        token->type = TOKENIZER_TOKEN_NONE;
+        token->type = TOKEN_BLANK_LIQUID_TAG_LINE;
     } else {
         token->type = TOKEN_TAG;
-    }
-
-    tokenizer->cursor = end_full;
-
-    if (tokenizer->line_number) {
-        tokenizer->line_number += count_newlines(token->str_full, end_full);
     }
 }
 

@@ -6,6 +6,11 @@ $LOAD_PATH << liquid_test_dir
 require 'test_helper'
 require 'liquid/c'
 
+if ENV['LIQUID_C_DISABLE_VM']
+  puts "-- Liquid-C VM Disabled"
+  Liquid::ParseContext.disable_liquid_c_nodes = true
+end
+
 test_files = FileList[File.join(liquid_test_dir, 'integration/**/*_test.rb')]
 test_files << File.join(liquid_test_dir, 'unit/tokenizer_unit_test.rb')
 test_files.each do |test_file|

@@ -58,6 +58,11 @@ Liquid::Raw.class_eval do
 end
 
 Liquid::ParseContext.class_eval do
+  class << self
+    attr_accessor :disable_liquid_c_nodes
+  end
+  self.disable_liquid_c_nodes = false
+
   alias_method :ruby_new_block_body, :new_block_body
 
   def new_block_body
@@ -75,8 +80,8 @@ Liquid::ParseContext.class_eval do
     # Also, some templates are parsed before the profiler is running, on which case we
     # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
     # so the profiler can use it on future runs.
-    @disable_liquid_c_nodes ||=
-      !Liquid::C.enabled || @template_options[:profile] || @template_options[:disable_liquid_c_nodes]
+    @disable_liquid_c_nodes ||= !Liquid::C.enabled || @template_options[:profile] ||
+      @template_options[:disable_liquid_c_nodes] || self.class.disable_liquid_c_nodes
   end
 end
 

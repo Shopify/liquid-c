@@ -25,6 +25,11 @@ inline static int count_newlines(const char *start, const char *end)
     return count;
 }
 
+inline static int is_non_newline_space(int c)
+{
+    return rb_isspace(c) && c != '\n';
+}
+
 inline static int not_newline(int c)
 {
     return c != '\n';

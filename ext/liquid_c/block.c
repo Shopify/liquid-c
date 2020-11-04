@@ -205,6 +205,8 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 render_score_increment += 1;
                 break;
             }
+            case TOKEN_BLANK_LIQUID_TAG_LINE:
+                break;
         }
     }
 loop_break:

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "liquid.h"
 #include "tokenizer.h"
 #include "stringutil.h"
@@ -189,8 +190,12 @@ found:
 
     if (token->type == TOKEN_VARIABLE || token->type == TOKEN_TAG) {
         token->str_trimmed += 2 + token->lstrip;
-        token->len_trimmed -= 2 + token->lstrip + 2 + token->rstrip;
+        token->len_trimmed -= 2 + token->lstrip + 2;
+        if (token->rstrip && token->len_trimmed)
+            token->len_trimmed--;
     }
+
+    assert(token->len_trimmed >= 0);
 
     tokenizer->cursor += token->len_full;
 

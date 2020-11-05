@@ -128,11 +128,8 @@ static void parse_and_compile_variable_lookup(parser_t *p, vm_assembler_t *code)
             parser_must_consume(p, TOKEN_CLOSE_SQUARE);
             vm_assembler_add_lookup_key(code);
         } else if (p->cur.type == TOKEN_DOT) {
-            int has_space_affix = parser_consume_any(p).flags & TOKEN_SPACE_AFFIX;
+            parser_consume_any(p);
             VALUE key = token_to_rstr_leveraging_existing_symbol(parser_must_consume(p, TOKEN_IDENTIFIER));
-
-            if (has_space_affix)
-                rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected dot");
 
             if (rstring_eq(key, "size") || rstring_eq(key, "first") || rstring_eq(key, "last"))
                 vm_assembler_add_lookup_command(code, key);

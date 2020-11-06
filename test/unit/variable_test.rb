@@ -20,10 +20,6 @@ class VariableTest < Minitest::Test
     assert_raises(Liquid::SyntaxError) { variable_strict_parse('123.foo') }
     assert_raises(Liquid::SyntaxError) { variable_strict_parse(' | nothing') }
 
-    ['a .b', 'a. b', 'a . b'].each do |var|
-      assert_raises(Liquid::SyntaxError) { variable_strict_parse(var) }
-    end
-
     ['a -b', 'a- b', 'a - b'].each do |var|
       assert_raises(Liquid::SyntaxError) { variable_strict_parse(var) }
     end

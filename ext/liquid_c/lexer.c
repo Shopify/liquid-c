@@ -1,5 +1,6 @@
 #include "liquid.h"
 #include "lexer.h"
+#include "usage.h"
 #include <stdio.h>
 
 const char *symbol_names[TOKEN_END] = {
@@ -105,6 +106,11 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
             // Quote was properly terminated.
             RETURN_TOKEN(TOKEN_STRING, cur - str);
         }
+    }
+
+    // Instrument for bug: https://github.com/Shopify/liquid-c/pull/120
+    if (c == '-' && str + 1 < end && str[1] == '.') {
+        usage_increment("liquid_c_negative_float_without_integer");
     }
 
     if (ISDIGIT(c) || c == '-') {

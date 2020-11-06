@@ -10,6 +10,7 @@
 #include "context.h"
 #include "variable_lookup.h"
 #include "vm.h"
+#include "usage.h"
 
 ID id_evaluate;
 ID id_to_liquid;
@@ -82,5 +83,6 @@ void Init_liquid_c(void)
     init_liquid_context();
     init_liquid_variable_lookup();
     init_liquid_vm();
+    init_liquid_usage();
 }
 

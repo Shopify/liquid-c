@@ -25,6 +25,21 @@ class BlockTest < MiniTest::Test
     assert_equal("üñ", template.render!({ 'unicode_char' => 'ñ' }, output: output))
   end
 
+  # Test for bug: https://github.com/Shopify/liquid-c/pull/120
+  def test_bug_120_instrument
+    calls = []
+    Liquid::Usage.stub(:increment, ->(name) { calls << name }) do
+      Liquid::Template.parse("{{ -.1 }}")
+    end
+    assert_equal(["liquid_c_negative_float_without_integer"], calls)
+
+    calls = []
+    Liquid::Usage.stub(:increment, ->(name) { calls << name }) do
+      Liquid::Template.parse("{{ .1 }}")
+    end
+    assert_equal([], calls)
+  end
+
   def test_disassemble
     source = <<~LIQUID
       raw

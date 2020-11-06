@@ -107,7 +107,7 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
         }
     }
 
-    if (ISDIGIT(c) || c == '-') {
+    if (ISDIGIT(c) || (c == '-' && str + 1 < end && ISDIGIT(str[1]))) {
         int has_dot = 0;
         cur = str;
         while (++cur < end) {

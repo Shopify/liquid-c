@@ -24,9 +24,6 @@ enum lexer_token_type {
     TOKEN_END = 256
 };
 
-#define TOKEN_SPACE_PREFIX 0x1
-#define TOKEN_SPACE_SUFFIX 0x2
-#define TOKEN_SPACE_AFFIX (TOKEN_SPACE_PREFIX | TOKEN_SPACE_SUFFIX)
 #define TOKEN_FLOAT_NUMBER 0x4
 
 typedef struct lexer_token {

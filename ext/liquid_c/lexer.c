@@ -59,8 +59,6 @@ inline static const char *scan_past(const char *cur, const char *end, char targe
     const char *tok_end = str + (n); \
     token->type = (t); \
     token->val = str; \
-    if (str != start) token->flags |= TOKEN_SPACE_PREFIX; \
-    if (tok_end < end && ISSPACE(*tok_end)) token->flags |= TOKEN_SPACE_SUFFIX; \
     return (token->val_end = tok_end); \
 }
 

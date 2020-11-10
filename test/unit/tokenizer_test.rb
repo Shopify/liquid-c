@@ -43,6 +43,11 @@ class TokenizerTest < Minitest::Test
     assert_equal(["", "funk", "", "so | brother"], tokenize(source, for_liquid_tag: true, trimmed: true))
   end
 
+  def test_invalid_tags
+    assert_equal([""], tokenize("{%-%}", trimmed: true))
+    assert_equal([""], tokenize("{{-}}", trimmed: true))
+  end
+
   def test_utf8_encoded_source
     source = 'auswählen'
     assert_equal(Encoding::UTF_8, source.encoding)

@@ -226,7 +226,8 @@ void parse_and_compile_expression(parser_t *p, vm_assembler_t *code)
                 vm_assembler_add_push_literal(code, literal);
                 return;
             }
-            // fallthrough
+            
+             __attribute__ ((fallthrough));
         }
         case TOKEN_OPEN_SQUARE:
             parse_and_compile_variable_lookup(p, code);

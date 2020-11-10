@@ -23,4 +23,6 @@ jobs:
       - run: bundle install --jobs=3 --retry=3 --path=vendor/bundle
       - run: bundle exec rake
         continue-on-error: ${{ matrix.entry.allowed-failure }}
+        env:
+          LIQUID_C_PEDANTIC: 'true'
       - run: bundle exec rubocop

@@ -205,6 +205,8 @@ static VALUE range_value_to_integer(VALUE value)
 {
     if (RB_INTEGER_TYPE_P(value)) {
         return value;
+    } else if (RB_FLOAT_TYPE_P(value)) {
+        return LONG2NUM(RFLOAT_VALUE(value));
     } else if (value == Qnil) {
         return INT2FIX(0);
     } else if (RB_TYPE_P(value, T_STRING)) {

@@ -1,6 +1,7 @@
 #include "liquid.h"
 #include "parser.h"
 #include "lexer.h"
+#include "usage.h"
 
 static VALUE empty_string;
 static ID id_to_i, idEvaluate;
@@ -86,6 +87,10 @@ static VALUE try_parse_constant_range(parser_t *p)
         return Qundef;
     }
     parser_must_consume(p, TOKEN_CLOSE_ROUND);
+
+    if (RB_FLOAT_TYPE_P(begin) || RB_FLOAT_TYPE_P(end)) {
+        usage_increment("range_float");
+    }
 
     begin = rb_funcall(begin, id_to_i, 0);
     end = rb_funcall(end, id_to_i, 0);

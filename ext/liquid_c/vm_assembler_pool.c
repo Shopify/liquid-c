@@ -41,10 +41,10 @@ const rb_data_type_t vm_assembler_pool_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-static VALUE vm_assembler_pool_allocate(VALUE klass)
+VALUE vm_assembler_pool_new()
 {
     vm_assembler_pool_t *pool;
-    VALUE obj = TypedData_Make_Struct(klass, vm_assembler_pool_t, &vm_assembler_pool_data_type, pool);
+    VALUE obj = TypedData_Make_Struct(cLiquidCVMAssemblerPool, vm_assembler_pool_t, &vm_assembler_pool_data_type, pool);
 
     pool->self = obj;
     pool->freelist = NULL;
@@ -52,22 +52,18 @@ static VALUE vm_assembler_pool_allocate(VALUE klass)
     return obj;
 }
 
-VALUE vm_assembler_pool_new_instance()
-{
-    return rb_class_new_instance(0, NULL, cLiquidCVMAssemblerPool);
-}
-
 vm_assembler_t *vm_assembler_pool_alloc_assembler(vm_assembler_pool_t *pool)
 {
+    vm_assembler_element_t *element;
     if (!pool->freelist) {
-        vm_assembler_element_t *element = xmalloc(sizeof(vm_assembler_element_t));
+        element = xmalloc(sizeof(vm_assembler_element_t));
         element->next = NULL;
         vm_assembler_init(&element->vm_assembler);
-        pool->freelist = element;
+    } else {
+        element = pool->freelist;
+        pool->freelist = element->next;
     }
 
-    vm_assembler_element_t *element = pool->freelist;
-    pool->freelist = element->next;
     return &element->vm_assembler;
 }
 
@@ -95,5 +91,5 @@ void vm_assembler_pool_init()
 {
     cLiquidCVMAssemblerPool = rb_define_class_under(mLiquidC, "VMAssemblerPool", rb_cObject);
     rb_global_variable(&cLiquidCVMAssemblerPool);
-    rb_define_alloc_func(cLiquidCVMAssemblerPool, vm_assembler_pool_allocate);
+    rb_undef_alloc_func(cLiquidCVMAssemblerPool);
 }

@@ -6,11 +6,6 @@
 
 static VALUE cLiquidCDocumentBody;
 
-typedef struct document_body {
-    VALUE constants;
-    c_buffer_t buffer;
-} document_body_t;
-
 static void document_body_mark(void *ptr)
 {
     document_body_t *body = ptr;
@@ -41,6 +36,7 @@ static VALUE document_body_allocate(VALUE klass)
     document_body_t *body;
 
     VALUE obj = TypedData_Make_Struct(klass, document_body_t, &document_body_data_type, body);
+    body->self = obj;
     body->constants = rb_ary_new();
     body->buffer = c_buffer_init();
 
@@ -54,33 +50,32 @@ VALUE document_body_new_instance()
     return rb_class_new_instance(0, NULL, cLiquidCDocumentBody);
 }
 
-void document_body_write_block_body(VALUE self, bool blank, int render_score, vm_assembler_t *code, block_body_t *block_body)
+void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry)
 {
-    assert(block_body->compiled);
-
     document_body_t *body;
     DocumentBody_Get_Struct(self, body);
 
     c_buffer_zero_pad_for_alignment(&body->buffer, alignof(block_body_header_t));
 
-    block_body->as.compiled.buffer = &body->buffer;
-    block_body->as.compiled.offset = c_buffer_size(&body->buffer);
-    block_body->as.compiled.constants = body->constants;
+    entry->body = body;
+    entry->buffer_offset = c_buffer_size(&body->buffer);
 
-    assert(c_buffer_size(&code->constants) % sizeof(VALUE *) == 0);
+    assert(c_buffer_size(&code->constants) % sizeof(VALUE) == 0);
+    uint32_t constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE));
 
     block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->buffer, sizeof(block_body_header_t));
     buf_block_body->instructions_offset = (uint32_t)sizeof(block_body_header_t);
     buf_block_body->instructions_bytes = (uint32_t)c_buffer_size(&code->instructions);
     buf_block_body->constants_offset = (uint32_t)RARRAY_LEN(body->constants);
-    buf_block_body->constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE *));
-    buf_block_body->blank = blank;
+    buf_block_body->constants_len = constants_len;
+    buf_block_body->flags = 0;
+    if (blank) buf_block_body->flags |= BLOCK_BODY_HEADER_FLAG_BLANK;
     buf_block_body->render_score = render_score;
     buf_block_body->max_stack_size = code->max_stack_size;
 
     c_buffer_concat(&body->buffer, &code->instructions);
 
-    rb_ary_cat(body->constants, (VALUE *)code->constants.data, buf_block_body->constants_len);
+    rb_ary_cat(body->constants, (VALUE *)code->constants.data, constants_len);
 }
 
 void init_liquid_document_body()

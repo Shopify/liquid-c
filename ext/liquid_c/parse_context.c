@@ -35,7 +35,7 @@ vm_assembler_pool_t *parse_context_init_vm_assembler_pool(VALUE self)
 {
     assert(!RTEST(rb_attr_get(self, id_vm_assembler_pool)));
 
-    VALUE vm_assembler_pool_obj = vm_assembler_pool_new_instance();
+    VALUE vm_assembler_pool_obj = vm_assembler_pool_new();
     rb_ivar_set(self, id_vm_assembler_pool, vm_assembler_pool_obj);
 
     vm_assembler_pool_t *vm_assembler_pool;

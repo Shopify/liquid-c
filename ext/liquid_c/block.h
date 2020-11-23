@@ -1,17 +1,8 @@
 #if !defined(LIQUID_BLOCK_H)
 #define LIQUID_BLOCK_H
 
+#include "document_body.h"
 #include "vm_assembler_pool.h"
-
-typedef struct block_body_header {
-    uint32_t instructions_offset;
-    uint32_t instructions_bytes;
-    uint32_t constants_offset;
-    uint32_t constants_len;
-    bool blank;
-    int render_score;
-    size_t max_stack_size;
-} block_body_header_t;
 
 typedef struct block_body {
     bool compiled;
@@ -19,10 +10,7 @@ typedef struct block_body {
 
     union {
         struct {
-            VALUE document_body_obj;
-            c_buffer_t *buffer;
-            size_t offset;
-            VALUE constants;
+            document_body_entry_t document_body_entry;
             VALUE nodelist;
         } compiled;
         struct {
@@ -30,7 +18,7 @@ typedef struct block_body {
             vm_assembler_pool_t *vm_assembler_pool;
             bool blank;
             bool root;
-            int render_score;
+            unsigned int render_score;
             vm_assembler_t *code;
         } intermediate;
     } as;

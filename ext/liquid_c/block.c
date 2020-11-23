@@ -6,7 +6,6 @@
 #include "vm.h"
 #include "variable.h"
 #include "context.h"
-#include "document_body.h"
 #include "parse_context.h"
 #include "vm_assembler.h"
 #include <stdio.h>
@@ -41,24 +40,11 @@ static void ensure_body_compiled(const block_body_t *body)
     }
 }
 
-static block_body_header_t *block_body_header_ptr(const block_body_t *body)
-{
-    ensure_body_compiled(body);
-    return (block_body_header_t *)(body->as.compiled.buffer->data + body->as.compiled.offset);
-}
-
-static const VALUE *block_body_constants_ptr(const block_body_t *body)
-{
-    block_body_header_t *header = block_body_header_ptr(body);
-    return RARRAY_PTR(body->as.compiled.constants) + header->constants_offset;
-}
-
 static void block_body_mark(void *ptr)
 {
     block_body_t *body = ptr;
     if (body->compiled) {
-        rb_gc_mark(body->as.compiled.document_body_obj);
-        rb_gc_mark(body->as.compiled.constants);
+        document_body_entry_mark(&body->as.compiled.document_body_entry);
         rb_gc_mark(body->as.compiled.nodelist);
     } else {
         rb_gc_mark(body->as.intermediate.parse_context);
@@ -328,12 +314,13 @@ static VALUE block_body_freeze(VALUE self)
 
     vm_assembler_pool_t *assembler_pool = body->as.intermediate.vm_assembler_pool;
     vm_assembler_t *assembler = body->as.intermediate.code;
+    bool blank = body->as.intermediate.blank;
+    uint32_t render_score = body->as.intermediate.render_score;
+    vm_assembler_t *code = body->as.intermediate.code;
     body->compiled = true;
-    document_body_write_block_body(document_body, body->as.intermediate.blank, body->as.intermediate.render_score,
-                                   body->as.intermediate.code, body);
-    vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
-    body->as.compiled.document_body_obj = document_body;
     body->as.compiled.nodelist = Qundef;
+    document_body_write_block_body(document_body, blank, render_score, code, &body->as.compiled.document_body_entry);
+    vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
 
     if (root) {
         parse_context_remove_document_body(parse_context);
@@ -352,9 +339,10 @@ static VALUE block_body_render_to_output_buffer(VALUE self, VALUE context, VALUE
 
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
-    block_body_header_t *body_header = block_body_header_ptr(body);
+    ensure_body_compiled(body);
+    document_body_entry_t *entry = &body->as.compiled.document_body_entry;
 
-    liquid_vm_render(body_header, block_body_constants_ptr(body), context, output);
+    liquid_vm_render(document_body_get_block_body_header_ptr(entry), document_body_get_constants_ptr(entry), context, output);
     return output;
 }
 
@@ -363,8 +351,8 @@ static VALUE block_body_blank_p(VALUE self)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
     if (body->compiled) {
-        block_body_header_t *body_header = block_body_header_ptr(body);
-        return body_header->blank ? Qtrue : Qfalse;
+        block_body_header_t *body_header = document_body_get_block_body_header_ptr(&body->as.compiled.document_body_entry);
+        return BLOCK_BODY_HEADER_BLANK_P(body_header) ? Qtrue : Qfalse;
     } else {
         return body->as.intermediate.blank ? Qtrue : Qfalse;
     }
@@ -415,7 +403,9 @@ static VALUE block_body_nodelist(VALUE self)
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
-    block_body_header_t *body_header = block_body_header_ptr(body);
+    ensure_body_compiled(body);
+    document_body_entry_t *entry = &body->as.compiled.document_body_entry;
+    block_body_header_t *body_header = document_body_get_block_body_header_ptr(entry);
 
     memoize_variable_placeholder();
 
@@ -424,7 +414,7 @@ static VALUE block_body_nodelist(VALUE self)
 
     VALUE nodelist = rb_ary_new_capa(body_header->render_score);
 
-    const VALUE *const_ptr = block_body_constants_ptr(body);
+    const VALUE *const_ptr = document_body_get_constants_ptr(entry);
     const uint8_t *ip = block_body_instructions_ptr(body_header);
     while (true) {
         switch (*ip) {
@@ -469,10 +459,11 @@ static VALUE block_body_disassemble(VALUE self)
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
-    block_body_header_t *header = block_body_header_ptr(body);
+    document_body_entry_t *entry = &body->as.compiled.document_body_entry;
+    block_body_header_t *header = document_body_get_block_body_header_ptr(entry);
     const uint8_t *start_ip = block_body_instructions_ptr(header);
     return vm_assembler_disassemble(start_ip, start_ip + header->instructions_bytes,
-                                    block_body_constants_ptr(body));
+                                    document_body_get_constants_ptr(entry));
 }
 
 

@@ -5,6 +5,7 @@
 #include "vm.h"
 #include "variable_lookup.h"
 #include "intutil.h"
+#include "document_body.h"
 
 ID id_render_node;
 ID id_vm;
@@ -230,7 +231,7 @@ static void hash_bulk_insert(long argc, const VALUE *argv, VALUE hash)
 static VALUE vm_render_until_error(VALUE uncast_args)
 {
     vm_render_until_error_args_t *args = (void *)uncast_args;
-    const size_t *const_ptr = args->const_ptr;
+    const VALUE *const_ptr = args->const_ptr;
     const uint8_t *ip = args->ip;
     vm_t *vm = args->vm;
     VALUE output = args->output;
@@ -242,7 +243,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 return false;
 
             case OP_PUSH_CONST:
-                vm_stack_push(vm, (VALUE)*const_ptr++);
+                vm_stack_push(vm, *const_ptr++);
                 break;
             case OP_PUSH_NIL:
                 vm_stack_push(vm, Qnil);
@@ -267,7 +268,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             }
             case OP_FIND_STATIC_VAR:
-                vm_stack_push(vm, (VALUE)*const_ptr++);
+                vm_stack_push(vm, *const_ptr++);
                 /* fallthrough */
             case OP_FIND_VAR:
             {
@@ -278,7 +279,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_LOOKUP_CONST_KEY:
             case OP_LOOKUP_COMMAND:
-                vm_stack_push(vm, (VALUE)*const_ptr++);
+                vm_stack_push(vm, *const_ptr++);
                 /* fallthrough */
             case OP_LOOKUP_KEY:
             {
@@ -310,7 +311,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_FILTER:
             {
-                VALUE filter_name = (VALUE)*const_ptr++;
+                VALUE filter_name = *const_ptr++;
                 uint8_t num_args = *ip++; // includes input argument
                 VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, num_args);
                 VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
@@ -406,7 +407,7 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
     return ret;
 }
 
-void liquid_vm_next_instruction(const uint8_t **ip_ptr, const size_t **const_ptr_ptr)
+void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_ptr)
 {
     const uint8_t *ip = *ip_ptr;
 
@@ -520,17 +521,17 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     return true;
 }
 
-void liquid_vm_render(block_body_t *body, VALUE context, VALUE output)
+void liquid_vm_render(block_body_header_t *body, const VALUE *const_ptr, VALUE context, VALUE output)
 {
     vm_t *vm = vm_from_context(context);
 
-    vm_stack_reserve_for_write(vm, body->code.max_stack_size);
+    vm_stack_reserve_for_write(vm, body->max_stack_size);
     resource_limits_increment_render_score(vm->context.resource_limits, body->render_score);
 
     vm_render_until_error_args_t render_args = {
         .vm = vm,
-        .const_ptr = (const size_t *)body->code.constants.data,
-        .ip = body->code.instructions.data,
+        .const_ptr = const_ptr,
+        .ip = block_body_instructions_ptr(body),
         .output = output,
     };
     vm_render_rescue_args_t rescue_args = {

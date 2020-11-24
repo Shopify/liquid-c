@@ -3,14 +3,26 @@
 #include "expression.h"
 #include "vm.h"
 
-void vm_assembler_init(vm_assembler_t *code)
+static void vm_assembler_common_init(vm_assembler_t *code)
 {
-    code->instructions = c_buffer_allocate(8);
-    code->constants = c_buffer_allocate(8 * sizeof(VALUE));
     code->max_stack_size = 0;
     code->stack_size = 0;
     code->protected_stack_size = 0;
     code->parsing = true;
+}
+
+void vm_assembler_init(vm_assembler_t *code)
+{
+    code->instructions = c_buffer_allocate(8);
+    code->constants = c_buffer_allocate(8 * sizeof(VALUE));
+    vm_assembler_common_init(code);
+}
+
+void vm_assembler_reset(vm_assembler_t *code)
+{
+    c_buffer_reset(&code->instructions);
+    c_buffer_reset(&code->constants);
+    vm_assembler_common_init(code);
 }
 
 void vm_assembler_free(vm_assembler_t *code)
@@ -24,12 +36,9 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
     c_buffer_rb_gc_mark(&code->constants);
 }
 
-VALUE vm_assembler_disassemble(vm_assembler_t *code)
+VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr)
 {
-    const size_t *const_ptr = (size_t *)code->constants.data;
-    const uint8_t *start_ip = code->instructions.data;
     const uint8_t *ip = start_ip;
-    const uint8_t *end_ip = code->instructions.data_end;
     VALUE output = rb_str_buf_new(32);
     while (ip < end_ip) {
         rb_str_catf(output, "0x%04lx: ", ip - start_ip);

@@ -69,7 +69,7 @@ Liquid::ParseContext.class_eval do
     if liquid_c_nodes_disabled?
       ruby_new_block_body
     else
-      Liquid::C::BlockBody.new
+      Liquid::C::BlockBody.new(self)
     end
   end
 

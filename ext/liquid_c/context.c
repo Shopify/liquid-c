@@ -4,11 +4,12 @@
 #include "variable.h"
 #include "vm.h"
 #include "expression.h"
+#include "document_body.h"
 
 static VALUE cLiquidUndefinedVariable;
 ID id_aset, id_set_context;
 static ID id_has_key, id_aref, id_strainer, id_filter_methods_hash, id_strict_filters, id_global_filter;
-static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables, id_ivar_interrupts, id_ivar_resource_limits;
+static ID id_ivar_scopes, id_ivar_environments, id_ivar_static_environments, id_ivar_strict_variables, id_ivar_interrupts, id_ivar_resource_limits, id_ivar_document_body;
 
 void context_internal_init(VALUE context_obj, context_t *context)
 {
@@ -216,6 +217,7 @@ void init_liquid_context()
     id_ivar_strict_variables = rb_intern("@strict_variables");
     id_ivar_interrupts = rb_intern("@interrupts");
     id_ivar_resource_limits = rb_intern("@resource_limits");
+    id_ivar_document_body = rb_intern("@document_body");
 
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
     rb_global_variable(&cLiquidVariableLookup);

@@ -25,6 +25,11 @@ static inline void c_buffer_free(c_buffer_t *buffer)
     xfree(buffer->data);
 }
 
+static inline void c_buffer_reset(c_buffer_t *buffer)
+{
+    buffer->data_end = buffer->data;
+}
+
 static inline size_t c_buffer_size(const c_buffer_t *buffer)
 {
     return buffer->data_end - buffer->data;
@@ -34,6 +39,8 @@ static inline size_t c_buffer_capacity(const c_buffer_t *buffer)
 {
     return buffer->capacity_end - buffer->data;
 }
+
+void c_buffer_zero_pad_for_alignment(c_buffer_t *buffer, size_t alignment);
 
 void c_buffer_reserve_for_write(c_buffer_t *buffer, size_t write_size);
 void c_buffer_write(c_buffer_t *buffer, void *data, size_t size);

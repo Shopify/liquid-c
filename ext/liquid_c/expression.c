@@ -93,7 +93,8 @@ static VALUE expression_disassemble(VALUE self)
 {
     expression_t *expression;
     Expression_Get_Struct(self, expression);
-    return vm_assembler_disassemble(&expression->code);
+    return vm_assembler_disassemble(expression->code.instructions.data, expression->code.instructions.data_end,
+                                    (const VALUE *)expression->code.constants.data);
 }
 
 void init_liquid_expression()

@@ -34,7 +34,7 @@ __attribute__((noreturn)) void raise_non_utf8_encoding_error(VALUE string, const
     rb_raise(rb_eEncCompatError, "non-UTF8 encoded %s (%"PRIsVALUE") not supported", value_name, rb_obj_encoding(string));
 }
 
-void Init_liquid_c(void)
+RUBY_FUNC_EXPORTED void Init_liquid_c(void)
 {
     id_evaluate = rb_intern("evaluate");
     id_to_liquid = rb_intern("to_liquid");

@@ -260,7 +260,7 @@ void parse_and_compile_expression(parser_t *p, vm_assembler_t *code)
     }
 }
 
-void init_liquid_parser(void)
+void liquid_define_parser(void)
 {
     id_to_i = rb_intern("to_i");
     idEvaluate = rb_intern("evaluate");

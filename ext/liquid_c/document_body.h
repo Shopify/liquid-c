@@ -28,7 +28,7 @@ typedef struct document_body_entry {
     size_t buffer_offset;
 } document_body_entry_t;
 
-void init_liquid_document_body();
+void liquid_define_document_body();
 VALUE document_body_new_instance();
 void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry);
 

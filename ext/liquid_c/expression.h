@@ -14,7 +14,7 @@ typedef struct expression {
 extern const rb_data_type_t expression_data_type;
 #define Expression_Get_Struct(obj, sval) TypedData_Get_Struct(obj, expression_t, &expression_data_type, sval)
 
-void init_liquid_expression();
+void liquid_define_expression();
 
 VALUE expression_new(VALUE klass, expression_t **expression_ptr);
 VALUE expression_evaluate(VALUE self, VALUE context);

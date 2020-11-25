@@ -3,7 +3,7 @@
 
 #include "liquid.h"
 
-void init_liquid_usage();
+void liquid_define_usage();
 void usage_increment(const char *name);
 
 #endif

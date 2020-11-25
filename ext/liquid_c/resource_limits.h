@@ -15,7 +15,7 @@ extern VALUE cLiquidResourceLimits;
 extern const rb_data_type_t resource_limits_data_type;
 #define ResourceLimits_Get_Struct(obj, sval) TypedData_Get_Struct(obj, resource_limits_t, &resource_limits_data_type, sval)
 
-void init_liquid_resource_limits();
+void liquid_define_resource_limits();
 void resource_limits_raise_limits_reached(resource_limits_t *resource_limit);
 void resource_limits_increment_render_score(resource_limits_t *resource_limits, long amount);
 void resource_limits_increment_write_score(resource_limits_t *resource_limits, VALUE output);

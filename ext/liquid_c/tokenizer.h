@@ -35,7 +35,7 @@ extern VALUE cLiquidTokenizer;
 extern const rb_data_type_t tokenizer_data_type;
 #define Tokenizer_Get_Struct(obj, sval) TypedData_Get_Struct(obj, tokenizer_t, &tokenizer_data_type, sval)
 
-void init_liquid_tokenizer();
+void liquid_define_tokenizer();
 void tokenizer_next(tokenizer_t *tokenizer, token_t *token);
 
 void tokenizer_setup_for_liquid_tag(tokenizer_t *tokenizer, const char *cursor, const char *cursor_end, int line_number);

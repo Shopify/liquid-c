@@ -531,7 +531,7 @@ static VALUE block_body_add_filter(VALUE self, VALUE filter_name, VALUE num_args
 }
 
 
-void init_liquid_block()
+void liquid_define_block_body()
 {
     intern_raise_missing_variable_terminator = rb_intern("raise_missing_variable_terminator");
     intern_raise_missing_tag_terminator = rb_intern("raise_missing_tag_terminator");

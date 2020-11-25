@@ -62,7 +62,7 @@ void parse_context_remove_vm_assembler_pool(VALUE self)
 }
 
 
-void init_liquid_parse_context()
+void liquid_define_parse_context()
 {
     id_document_body = rb_intern("document_body");
     id_vm_assembler_pool = rb_intern("vm_assembler_pool");

@@ -78,7 +78,7 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     rb_ary_cat(body->constants, (VALUE *)code->constants.data, constants_len);
 }
 
-void init_liquid_document_body()
+void liquid_define_document_body()
 {
     cLiquidCDocumentBody = rb_define_class_under(mLiquidC, "DocumentBody", rb_cObject);
     rb_global_variable(&cLiquidCDocumentBody);

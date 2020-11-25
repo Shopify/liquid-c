@@ -195,7 +195,7 @@ static VALUE variable_expression_evaluate(VALUE self, VALUE context)
     return rb_rescue(try_variable_expression_evaluate, (VALUE)&args, rescue_variable_expression_evaluate, (VALUE)&args);
 }
 
-void init_liquid_variable(void)
+void liquid_define_variable(void)
 {
     id_rescue_strict_parse_syntax_error = rb_intern("rescue_strict_parse_syntax_error");
 

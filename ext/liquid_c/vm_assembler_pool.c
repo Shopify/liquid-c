@@ -87,7 +87,7 @@ void vm_assembler_pool_recycle_assembler(vm_assembler_pool_t *pool, vm_assembler
     pool->freelist = element;
 }
 
-void vm_assembler_pool_init()
+void liquid_define_vm_assembler_pool()
 {
     cLiquidCVMAssemblerPool = rb_define_class_under(mLiquidC, "VMAssemblerPool", rb_cObject);
     rb_global_variable(&cLiquidCVMAssemblerPool);

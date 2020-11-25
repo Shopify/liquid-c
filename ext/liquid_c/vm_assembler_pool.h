@@ -17,7 +17,7 @@ typedef struct vm_assembler_pool {
 extern const rb_data_type_t vm_assembler_pool_data_type;
 #define VMAssemblerPool_Get_Struct(obj, sval) TypedData_Get_Struct(obj, vm_assembler_pool_t, &vm_assembler_pool_data_type, sval)
 
-void vm_assembler_pool_init();
+void liquid_define_vm_assembler_pool();
 void vm_assembler_pool_gc_mark(vm_assembler_pool_t *pool);
 VALUE vm_assembler_pool_new();
 vm_assembler_t *vm_assembler_pool_alloc_assembler(vm_assembler_pool_t *pool);

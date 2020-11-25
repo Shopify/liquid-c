@@ -76,19 +76,19 @@ void Init_liquid_c(void)
     cLiquidRangeLookup = rb_const_get(mLiquid, rb_intern("RangeLookup"));
     rb_global_variable(&cLiquidRangeLookup);
 
-    init_liquid_tokenizer();
-    init_liquid_parser();
-    init_liquid_raw();
-    init_liquid_resource_limits();
-    init_liquid_expression();
-    init_liquid_variable();
-    init_liquid_document_body();
-    init_liquid_block();
-    init_liquid_context();
-    init_liquid_parse_context();
-    init_liquid_variable_lookup();
-    vm_assembler_pool_init();
-    init_liquid_vm();
-    init_liquid_usage();
+    liquid_define_tokenizer();
+    liquid_define_parser();
+    liquid_define_raw();
+    liquid_define_resource_limits();
+    liquid_define_expression();
+    liquid_define_variable();
+    liquid_define_document_body();
+    liquid_define_block_body();
+    liquid_define_context();
+    liquid_define_parse_context();
+    liquid_define_variable_lookup();
+    liquid_define_vm_assembler_pool();
+    liquid_define_vm();
+    liquid_define_usage();
 }
 

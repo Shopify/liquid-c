@@ -1,6 +1,6 @@
 #ifndef LIQUID_RAW_H
 #define LIQUID_RAW_H
 
-void init_liquid_raw();
+void liquid_define_raw();
 
 #endif

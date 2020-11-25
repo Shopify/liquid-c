@@ -18,7 +18,7 @@ lexer_token_t parser_consume_any(parser_t *parser);
 void parse_and_compile_expression(parser_t *p, vm_assembler_t *code);
 VALUE try_parse_constant_expression(parser_t *p);
 
-void init_liquid_parser(void);
+void liquid_define_parser(void);
 
 #endif
 

@@ -24,7 +24,7 @@ typedef struct block_body {
     } as;
 } block_body_t;
 
-void init_liquid_block();
+void liquid_define_block_body();
 
 static inline uint8_t *block_body_instructions_ptr(block_body_header_t *body)
 {

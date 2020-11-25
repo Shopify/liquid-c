@@ -9,7 +9,7 @@ void usage_increment(const char *name)
     rb_funcall(cLiquidUsage, id_increment, 1, name_str);
 }
 
-void init_liquid_usage()
+void liquid_define_usage()
 {
     cLiquidUsage = rb_const_get(mLiquid, rb_intern("Usage"));
     rb_global_variable(&cLiquidUsage);

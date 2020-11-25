@@ -254,7 +254,7 @@ static VALUE resource_limits_reset_method(VALUE self)
     return Qnil;
 }
 
-void init_liquid_resource_limits()
+void liquid_define_resource_limits()
 {
     cLiquidResourceLimits = rb_define_class_under(mLiquidC, "ResourceLimits", rb_cObject);
     rb_global_variable(&cLiquidResourceLimits);

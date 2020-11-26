@@ -88,6 +88,7 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
     liquid_define_parse_context();
     liquid_define_variable_lookup();
     liquid_define_vm_assembler_pool();
+    liquid_define_vm_assembler();
     liquid_define_vm();
     liquid_define_usage();
 }

@@ -26,11 +26,19 @@ enum opcode {
     OP_NEW_INT_RANGE,
     OP_HASH_NEW, // rb_hash_new & rb_hash_bulk_insert
     OP_FILTER,
+    OP_BUILTIN_FILTER,
     OP_RENDER_VARIABLE_RESCUE, // setup state to rescue variable rendering
     OP_WRITE_RAW,
     OP_JUMP_FWD_W,
     OP_JUMP_FWD,
 };
+
+typedef struct {
+    const char *name;
+    VALUE sym;
+} filter_desc_t;
+
+extern filter_desc_t builtin_filters[];
 
 typedef struct vm_assembler {
     c_buffer_t instructions;
@@ -41,6 +49,7 @@ typedef struct vm_assembler {
     bool parsing; // prevent executing when incomplete or extending when complete
 } vm_assembler_t;
 
+void liquid_define_vm_assembler();
 void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_reset(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);
@@ -53,6 +62,7 @@ void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node);
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num);
 void vm_assembler_add_push_literal(vm_assembler_t *code, VALUE literal);
+void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg_count);
 
 void vm_assembler_add_evaluate_expression_from_ruby(vm_assembler_t *code, VALUE code_obj, VALUE expression);
 void vm_assembler_add_find_variable_from_ruby(vm_assembler_t *code, VALUE code_obj, VALUE expression);
@@ -201,18 +211,6 @@ static inline void vm_assembler_add_new_int_range(vm_assembler_t *code)
 {
     code->stack_size--; // pop 2, push 1
     vm_assembler_write_opcode(code, OP_NEW_INT_RANGE);
-}
-
-static inline void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg_count)
-{
-    if (arg_count > 254) {
-        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter arguments");
-    }
-    code->stack_size -= arg_count; // pop arg_count + 1, push 1
-    vm_assembler_write_ruby_constant(code, filter_name);
-    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 2);
-    instructions[0] = OP_FILTER;
-    instructions[1] = arg_count + 1; // include input
 }
 
 static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code, size_t node_line_number)

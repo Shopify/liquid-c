@@ -310,8 +310,15 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             }
             case OP_FILTER:
+            case OP_BUILTIN_FILTER:
             {
-                VALUE filter_name = *const_ptr++;
+                VALUE filter_name;
+                if (ip[-1] == OP_FILTER) {
+                    filter_name = *const_ptr++;
+                } else {
+                    assert(ip[-1] == OP_BUILTIN_FILTER);
+                    filter_name = builtin_filters[*ip++].sym;
+                }
                 uint8_t num_args = *ip++; // includes input argument
                 VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, num_args);
                 VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
@@ -427,6 +434,7 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_
             ip++;
             break;
 
+        case OP_BUILTIN_FILTER:
         case OP_PUSH_INT16:
             ip += 2;
             break;

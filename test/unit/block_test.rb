@@ -74,10 +74,10 @@ class BlockTest < MiniTest::Test
       0x000b: push_const("allow_false")
       0x000c: push_true
       0x000d: hash_new(1)
-      0x000f: filter(name: :default, num_args: 3)
-      0x0011: pop_write
-      0x0012: write_node(#{increment_node.inspect})
-      0x0013: leave
+      0x000f: builtin_filter(name: :default, num_args: 3)
+      0x0012: pop_write
+      0x0013: write_node(#{increment_node.inspect})
+      0x0014: leave
     ASM
   end
 

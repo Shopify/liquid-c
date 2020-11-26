@@ -3,6 +3,65 @@
 #include "expression.h"
 #include "vm.h"
 
+#define ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
+
+static st_table *builtin_filter_table;
+
+// methods from Liquid::StandardFilters
+filter_desc_t builtin_filters[] = {
+    { .name = "size" },
+    { .name = "downcase" },
+    { .name = "upcase" },
+    { .name = "capitalize" },
+    { .name = "h" },
+    { .name = "escape" },
+    { .name = "escape_once" },
+    { .name = "url_encode" },
+    { .name = "url_decode" },
+    { .name = "slice" },
+    { .name = "truncate" },
+    { .name = "truncatewords" },
+    { .name = "split" },
+    { .name = "strip" },
+    { .name = "lstrip" },
+    { .name = "rstrip" },
+    { .name = "strip_html" },
+    { .name = "strip_newlines" },
+    { .name = "join" },
+    { .name = "sort" },
+    { .name = "sort_natural" },
+    { .name = "where" },
+    { .name = "uniq" },
+    { .name = "reverse" },
+    { .name = "map" },
+    { .name = "compact" },
+    { .name = "replace" },
+    { .name = "replace_first" },
+    { .name = "remove" },
+    { .name = "remove_first" },
+    { .name = "append" },
+    { .name = "concat" },
+    { .name = "prepend" },
+    { .name = "newline_to_br" },
+    { .name = "date" },
+    { .name = "first" },
+    { .name = "last" },
+    { .name = "abs" },
+    { .name = "plus" },
+    { .name = "minus" },
+    { .name = "times" },
+    { .name = "divided_by" },
+    { .name = "modulo" },
+    { .name = "round" },
+    { .name = "ceil" },
+    { .name = "floor" },
+    { .name = "at_least" },
+    { .name = "at_most" },
+    { .name = "default" },
+};
+static_assert(ARRAY_LENGTH(builtin_filters) < 256,
+        "support for larger than byte sized indexing of filters has not yet been implemented");
+
 static void vm_assembler_common_init(vm_assembler_t *code)
 {
     code->max_stack_size = 0;
@@ -141,6 +200,10 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
                 rb_str_catf(output, "filter(name: %+"PRIsVALUE", num_args: %u)\n", const_ptr[0], ip[1]);
                 break;
 
+            case OP_BUILTIN_FILTER:
+                rb_str_catf(output, "builtin_filter(name: :%s, num_args: %u)\n", builtin_filters[ip[1]].name, ip[2]);
+                break;
+
             default:
                 rb_str_catf(output, "<opcode number %d disassembly not implemented>\n", ip[0]);
                 break;
@@ -223,6 +286,27 @@ void vm_assembler_add_push_literal(vm_assembler_t *code, VALUE literal)
         }
         break;
     }
+}
+
+void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg_count)
+{
+    if (arg_count > 254) {
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Too many filter arguments");
+    }
+    code->stack_size -= arg_count; // pop arg_count + 1, push 1
+
+    st_data_t builtin_index;
+    bool is_builtin = st_lookup(builtin_filter_table, filter_name, &builtin_index);
+
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, is_builtin ? 3 : 2);
+    if (is_builtin) {
+        *instructions++ = OP_BUILTIN_FILTER;
+        *instructions++ = builtin_index;
+    } else {
+        vm_assembler_write_ruby_constant(code, filter_name);
+        *instructions++ = OP_FILTER;
+    }
+    *instructions++ = arg_count + 1; // include input
 }
 
 static void ensure_parsing(vm_assembler_t *code)
@@ -321,4 +405,14 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     filter_name = rb_str_intern(filter_name);
 
     vm_assembler_add_filter(code, filter_name, arg_count);
+}
+
+void liquid_define_vm_assembler()
+{
+    builtin_filter_table = st_init_numtable_with_size(ARRAY_LENGTH(builtin_filters));
+    for (unsigned int i = 0; i < ARRAY_LENGTH(builtin_filters); i++) {
+        filter_desc_t *filter = &builtin_filters[i];
+        filter->sym = ID2SYM(rb_intern(filter->name));
+        st_insert(builtin_filter_table, filter->sym, i);
+    }
 }

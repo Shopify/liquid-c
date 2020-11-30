@@ -1,6 +1,7 @@
 #include "parse_context.h"
 #include "document_body.h"
 
+VALUE cLiquidParseContext;
 static ID id_document_body, id_vm_assembler_pool, id_parent_tag;
 
 bool parse_context_document_body_initialized_p(VALUE self)
@@ -12,7 +13,7 @@ void parse_context_init_document_body(VALUE self)
 {
     assert(!parse_context_document_body_initialized_p(self));
 
-    VALUE document_body = document_body_new_instance();
+    VALUE document_body = document_body_new_mutable_instance();
     rb_ivar_set(self, id_document_body, document_body);
 }
 
@@ -72,9 +73,13 @@ void parse_context_set_parent_tag(VALUE self, VALUE tag_header)
     rb_ivar_set(self, id_parent_tag, tag_header);
 }
 
+
 void liquid_define_parse_context()
 {
     id_document_body = rb_intern("document_body");
     id_vm_assembler_pool = rb_intern("vm_assembler_pool");
     id_parent_tag = rb_intern("parent_tag");
+
+    cLiquidParseContext = rb_const_get(mLiquid, rb_intern("ParseContext"));
+    rb_global_variable(&cLiquidParseContext);
 }

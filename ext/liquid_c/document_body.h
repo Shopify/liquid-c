@@ -25,7 +25,16 @@ typedef struct block_body_header {
 typedef struct document_body {
     VALUE self;
     VALUE constants;
-    c_buffer_t buffer;
+    bool mutable;
+    union {
+        struct {
+            c_buffer_t buffer;
+        } mutable;
+        struct {
+            VALUE serialize_str;
+            const char *data;
+        } immutable;
+    } as;
 } document_body_t;
 
 typedef struct document_body_header {
@@ -42,19 +51,35 @@ typedef struct document_body_entry {
 } document_body_entry_t;
 
 void liquid_define_document_body();
-VALUE document_body_new_instance();
+VALUE document_body_new_mutable_instance();
+VALUE document_body_new_immutable_instance(VALUE constants, VALUE serialize_str, const char *data);
 void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry);
 VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_index);
+void document_body_setup_entry_for_header(VALUE self, uint32_t offset, document_body_entry_t *entry);
+
+static inline document_body_entry_t document_body_entry_init()
+{
+    return (document_body_entry_t) { NULL, 0 };
+}
 
 static inline void document_body_entry_mark(document_body_entry_t *entry)
 {
+    if (!entry->body) return;
+
     rb_gc_mark(entry->body->self);
-    rb_gc_mark(entry->body->constants);
+
+    if (!entry->body->mutable) {
+        rb_gc_mark(entry->body->as.immutable.serialize_str);
+    }
 }
 
 static inline block_body_header_t *document_body_get_block_body_header_ptr(const document_body_entry_t *entry)
 {
-    return (block_body_header_t *)(entry->body->buffer.data + entry->buffer_offset);
+    if (entry->body->mutable) {
+        return (block_body_header_t *)(entry->body->as.mutable.buffer.data + entry->buffer_offset);
+    } else {
+        return (block_body_header_t *)(entry->body->as.immutable.data + entry->buffer_offset);
+    }
 }
 
 static inline const VALUE *document_body_get_constants_ptr(const document_body_entry_t *entry)

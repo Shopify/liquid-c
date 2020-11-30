@@ -33,5 +33,16 @@ VALUE tag_markup_new(VALUE tag_name, VALUE markup, bool unknown);
 VALUE tag_markup_get_tag_name(VALUE self);
 VALUE tag_markup_get_markup(VALUE self);
 void tag_markup_set_block_body(VALUE self, VALUE block_body_obj, block_body_t *block_body);
+tag_markup_header_t *tag_markup_get_next_tag(document_body_entry_t *entry, tag_markup_header_t *current_tag);
+
+static inline char *tag_markup_header_name(tag_markup_header_t *header)
+{
+    return ((char *)header) + header->tag_name_offset;
+}
+
+static inline char *tag_markup_header_markup(tag_markup_header_t *header)
+{
+    return ((char *)header) + header->markup_offset;
+}
 
 #endif

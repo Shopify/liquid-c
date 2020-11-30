@@ -513,6 +513,16 @@ static VALUE block_body_disassemble(VALUE self)
                                     document_body_get_constants_ptr(entry), (const VALUE *)body->tags.data);
 }
 
+static VALUE block_body_dump(VALUE self)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+    ensure_body_compiled(body);
+
+    return document_body_dump(body->as.compiled.document_body_entry.body,
+                              (uint32_t)body->as.compiled.document_body_entry.buffer_offset);
+}
+
 
 static VALUE block_body_add_evaluate_expression(VALUE self, VALUE expression)
 {
@@ -602,6 +612,7 @@ void liquid_define_block_body()
     rb_define_method(cLiquidCBlockBody, "blank?", block_body_blank_p, 0);
     rb_define_method(cLiquidCBlockBody, "nodelist", block_body_nodelist, 0);
     rb_define_method(cLiquidCBlockBody, "disassemble", block_body_disassemble, 0);
+    rb_define_method(cLiquidCBlockBody, "dump", block_body_dump, 0);
 
     rb_define_method(cLiquidCBlockBody, "add_evaluate_expression", block_body_add_evaluate_expression, 1);
     rb_define_method(cLiquidCBlockBody, "add_find_variable", block_body_add_find_variable, 1);

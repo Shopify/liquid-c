@@ -109,6 +109,18 @@ module Liquid
   end
 end
 
+Liquid::Template.class_eval do
+  def dump
+    @root.dump
+  end
+end
+
+Liquid::Document.class_eval do
+  def dump
+    @body.dump
+  end
+end
+
 Liquid::Variable.class_eval do
   class << self
     # @api private

@@ -129,6 +129,34 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     memcpy(body->buffer.data + buf_block_body_offset, &buf_block_body, sizeof(block_body_header_t));
 }
 
+
+VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_index)
+{
+    assert(BUILTIN_TYPE(body->constants) == T_ARRAY);
+
+    uint32_t buffer_len = (uint32_t)c_buffer_size(&body->buffer);
+
+    VALUE constants = rb_marshal_dump(body->constants, Qnil);
+    uint32_t constants_len = (uint32_t)RSTRING_LEN(constants);
+
+    VALUE str = rb_str_buf_new(sizeof(document_body_header_t) + buffer_len + constants_len);
+
+    document_body_header_t header = {
+        .entrypoint_block_index = entrypoint_block_index,
+        .buffer_offset = sizeof(document_body_header_t),
+        .buffer_len = buffer_len,
+        .constants_offset = sizeof(document_body_header_t) + buffer_len,
+        .constants_len = constants_len
+    };
+
+    rb_str_cat(str, (const char *)&header, sizeof(document_body_header_t));
+    rb_str_cat(str, (const char *)body->buffer.data, buffer_len);
+    rb_str_append(str, constants);
+
+    return str;
+}
+
+
 void liquid_define_document_body()
 {
     cLiquidCDocumentBody = rb_define_class_under(mLiquidC, "DocumentBody", rb_cObject);

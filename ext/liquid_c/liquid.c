@@ -6,11 +6,14 @@
 #include "raw.h"
 #include "resource_limits.h"
 #include "expression.h"
+#include "template.h"
+#include "document.h"
 #include "document_body.h"
 #include "block.h"
 #include "tag_markup.h"
 #include "context.h"
 #include "parse_context.h"
+#include "serialize_parse_context.h"
 #include "variable_lookup.h"
 #include "vm_assembler_pool.h"
 #include "vm.h"
@@ -83,11 +86,14 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
     liquid_define_resource_limits();
     liquid_define_expression();
     liquid_define_variable();
+    liquid_define_template();
+    liquid_define_document();
     liquid_define_document_body();
     liquid_define_block_body();
     liquid_define_tag_markup();
     liquid_define_context();
     liquid_define_parse_context();
+    liquid_define_serialize_parse_context();
     liquid_define_variable_lookup();
     liquid_define_vm_assembler_pool();
     liquid_define_vm_assembler();

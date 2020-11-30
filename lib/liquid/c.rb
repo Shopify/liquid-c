@@ -92,7 +92,7 @@ module Liquid
   module C
     module DocumentClassPatch
       def parse(tokenizer, parse_context)
-        if tokenizer.is_a?(Liquid::C::Tokenizer)
+        if tokenizer.is_a?(Liquid::C::Tokenizer) || tokenizer.nil?
           # Temporary to test rollout of the fix for this bug
           if parse_context[:bug_compatible_whitespace_trimming]
             tokenizer.bug_compatible_whitespace_trimming!
@@ -110,6 +110,12 @@ module Liquid
 end
 
 Liquid::Template.class_eval do
+  class << self
+    def load(source, options = {})
+      new.load(source, options)
+    end
+  end
+
   def dump
     @root.dump
   end

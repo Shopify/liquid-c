@@ -151,7 +151,7 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
 
             case OP_RENDER_VARIABLE_RESCUE:
             {
-                unsigned int line_number = decode_node_line_number(ip + 1);
+                unsigned int line_number = bytes_to_uint24(ip + 1);
                 rb_str_catf(output, "render_variable_rescue(line_number: %u)\n", line_number);
                 break;
             }

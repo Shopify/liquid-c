@@ -22,9 +22,4 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code);
 vm_t *vm_from_context(VALUE context);
 VALUE vm_translate_if_filter_argument_error(vm_t *vm, VALUE exception);
 
-static inline unsigned int decode_node_line_number(const uint8_t *node_line_number)
-{
-    return (node_line_number[0] << 16) | (node_line_number[1] << 8) | node_line_number[2];
-}
-
 #endif

@@ -125,6 +125,90 @@ static int is_id(int c)
     return rb_isalnum(c) || c == '_';
 }
 
+typedef struct full_token_possibly_invalid {
+    long body_len;
+    const char *delimiter_start;
+    long delimiter_len;
+} full_token_possibly_invalid_t;
+
+static bool match_full_token_possibly_invalid(token_t *token, full_token_possibly_invalid_t *match)
+{
+    const char *str = token->str_full;
+    long len = token->len_full;
+
+    match->body_len = 0;
+    match->delimiter_start = NULL;
+    match->delimiter_len = 0;
+
+    if (len < 5) return false; // Must be at least 5 characters: \{%\w%\}
+    if (str[len - 1] != '}' || str[len - 2] != '%') return false;
+
+    const char *curr_delimiter_start;
+    long curr_delimiter_len = 0;
+
+    for (long i = len - 3; i >= 0; i--) {
+        char c = str[i];
+
+        if (is_word_char(c)) {
+            curr_delimiter_start = str + i;
+            curr_delimiter_len++;
+        } else {
+            if (curr_delimiter_len > 0) {
+                match->delimiter_start = curr_delimiter_start;
+                match->delimiter_len = curr_delimiter_len;
+            }
+            curr_delimiter_start = NULL;
+            curr_delimiter_len = 0;
+        }
+
+        if (c == '%' && match->delimiter_len > 0 &&
+                i - 1 >= 0 && str[i - 1] == '{') {
+            match->body_len = i - 1;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static tag_markup_t internal_block_body_parse_raw(block_body_t *body, parse_context_t *parse_context)
+{
+    tokenizer_t *tokenizer = parse_context->tokenizer;
+    token_t token;
+    full_token_possibly_invalid_t match;
+
+    const char *str = NULL;
+    long str_len = 0;
+
+    while (true) {
+        tokenizer_next(tokenizer, &token);
+
+        if (!token.type) break;
+
+        if (str == NULL) {
+            str = token.str_full;
+        }
+
+        if (match_full_token_possibly_invalid(&token, &match)) {
+            str_len += match.body_len;
+            vm_assembler_add_write_raw(body->as.intermediate.code, str, str_len);
+            if (str_len > 0) body->as.intermediate.blank = false;
+            str_len = 0;
+
+            VALUE tag_name = rb_str_new(match.delimiter_start, match.delimiter_len);
+            rb_yield_values(2, tag_name, Qnil);
+
+            assert(token.len_full > match.body_len);
+            str = token.str_full + match.body_len;
+            str_len += token.len_full - match.body_len;
+        } else {
+            str_len += token.len_full;
+        }
+    }
+
+    return (tag_markup_t) { Qnil, Qnil };
+}
+
 static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
 {
     tokenizer_t *tokenizer = parse_context->tokenizer;
@@ -293,7 +377,13 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     }
     vm_assembler_remove_leave(body->as.intermediate.code); // to extend block
 
-    tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
+    tag_markup_t unknown_tag;
+    if (parse_context.tokenizer->for_raw_tag) {
+        unknown_tag = internal_block_body_parse_raw(body, &parse_context);
+    } else {
+        unknown_tag = internal_block_body_parse(body, &parse_context);
+    }
+
     vm_assembler_add_leave(body->as.intermediate.code);
 
     return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);

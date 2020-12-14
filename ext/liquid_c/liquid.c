@@ -3,7 +3,6 @@
 #include "variable.h"
 #include "lexer.h"
 #include "parser.h"
-#include "raw.h"
 #include "resource_limits.h"
 #include "expression.h"
 #include "document_body.h"
@@ -78,7 +77,6 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
 
     liquid_define_tokenizer();
     liquid_define_parser();
-    liquid_define_raw();
     liquid_define_resource_limits();
     liquid_define_expression();
     liquid_define_variable();

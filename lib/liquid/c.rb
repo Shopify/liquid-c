@@ -53,10 +53,6 @@ Liquid::Tokenizer.class_eval do
   end
 end
 
-Liquid::Raw.class_eval do
-  alias_method :ruby_parse, :parse
-end
-
 Liquid::ParseContext.class_eval do
   class << self
     attr_accessor :liquid_c_nodes_disabled
@@ -237,12 +233,10 @@ module Liquid
           Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
           Liquid::Context.send(:alias_method, :strict_variables=, :c_strict_variables=)
-          Liquid::Raw.send(:alias_method, :parse, :c_parse)
         else
           Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
           Liquid::Context.send(:alias_method, :strict_variables=, :ruby_strict_variables=)
-          Liquid::Raw.send(:alias_method, :parse, :ruby_parse)
         end
       end
     end

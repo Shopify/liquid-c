@@ -38,6 +38,8 @@ static VALUE tokenizer_allocate(VALUE klass)
     obj = TypedData_Make_Struct(klass, tokenizer_t, &tokenizer_data_type, tokenizer);
     tokenizer->source = Qnil;
     tokenizer->bug_compatible_whitespace_trimming = false;
+    tokenizer->raw_tag_body = NULL;
+    tokenizer->raw_tag_body_len = 0;
     return obj;
 }
 

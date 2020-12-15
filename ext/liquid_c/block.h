@@ -7,6 +7,7 @@
 typedef struct block_body {
     bool compiled;
     VALUE obj;
+    c_buffer_t tags;
 
     union {
         struct {

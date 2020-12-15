@@ -8,6 +8,7 @@
 #include "expression.h"
 #include "document_body.h"
 #include "block.h"
+#include "tag_markup.h"
 #include "context.h"
 #include "parse_context.h"
 #include "variable_lookup.h"
@@ -84,6 +85,7 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
     liquid_define_variable();
     liquid_define_document_body();
     liquid_define_block_body();
+    liquid_define_tag_markup();
     liquid_define_context();
     liquid_define_parse_context();
     liquid_define_variable_lookup();

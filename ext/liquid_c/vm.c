@@ -185,6 +185,7 @@ typedef struct vm_render_until_error_args {
     vm_t *vm;
     const uint8_t *ip; // use for initial address and to save an address for rescuing
     const size_t *const_ptr;
+    const VALUE *tags_ptr;
 
     /* rendering fields */
     VALUE output;
@@ -232,6 +233,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
 {
     vm_render_until_error_args_t *args = (void *)uncast_args;
     const VALUE *const_ptr = args->const_ptr;
+    const VALUE *tags_ptr = args->tags_ptr;
     const uint8_t *ip = args->ip;
     vm_t *vm = args->vm;
     VALUE output = args->output;
@@ -361,7 +363,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
 
             case OP_WRITE_NODE:
-                rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, (VALUE)*const_ptr++);
+                rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, *tags_ptr++);
                 if (RARRAY_LEN(vm->context.interrupts)) {
                     return false;
                 }
@@ -414,7 +416,7 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
     return ret;
 }
 
-void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_ptr)
+void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_ptr, const VALUE **tags_ptr_ptr)
 {
     const uint8_t *ip = *ip_ptr;
 
@@ -440,6 +442,9 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_
             break;
 
         case OP_WRITE_NODE:
+            (*tags_ptr_ptr)++;
+            break;
+
         case OP_PUSH_CONST:
         case OP_FIND_STATIC_VAR:
         case OP_LOOKUP_CONST_KEY:
@@ -514,7 +519,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     enum opcode last_op;
     do {
         last_op = *ip;
-        liquid_vm_next_instruction(&ip, &render_args->const_ptr);
+        liquid_vm_next_instruction(&ip, &render_args->const_ptr, &render_args->tags_ptr);
     } while (last_op != OP_POP_WRITE);
     render_args->ip = ip;
     // remove temporary stack values from variable evaluation
@@ -529,7 +534,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     return true;
 }
 
-void liquid_vm_render(block_body_header_t *body, const VALUE *const_ptr, VALUE context, VALUE output)
+void liquid_vm_render(block_body_header_t *body, const VALUE *const_ptr, const VALUE *tags_ptr, VALUE context, VALUE output)
 {
     vm_t *vm = vm_from_context(context);
 
@@ -539,6 +544,7 @@ void liquid_vm_render(block_body_header_t *body, const VALUE *const_ptr, VALUE c
     vm_render_until_error_args_t render_args = {
         .vm = vm,
         .const_ptr = const_ptr,
+        .tags_ptr = tags_ptr,
         .ip = block_body_instructions_ptr(body),
         .output = output,
     };

@@ -8,6 +8,7 @@
 #include "context.h"
 #include "parse_context.h"
 #include "vm_assembler.h"
+#include "tag_markup.h"
 #include <stdio.h>
 
 static ID
@@ -22,15 +23,11 @@ static ID
 static VALUE tag_registry;
 static VALUE variable_placeholder = Qnil;
 
-typedef struct tag_markup {
-    VALUE name;
-    VALUE markup;
-} tag_markup_t;
-
 typedef struct parse_context {
     tokenizer_t *tokenizer;
     VALUE tokenizer_obj;
     VALUE ruby_obj;
+    VALUE parent_tag;
 } parse_context_t;
 
 static void ensure_body_compiled(const block_body_t *body)
@@ -43,6 +40,7 @@ static void ensure_body_compiled(const block_body_t *body)
 static void block_body_mark(void *ptr)
 {
     block_body_t *body = ptr;
+    c_buffer_rb_gc_mark(&body->tags);
     if (body->compiled) {
         document_body_entry_mark(&body->as.compiled.document_body_entry);
         rb_gc_mark(body->as.compiled.nodelist);
@@ -91,6 +89,7 @@ static VALUE block_body_allocate(VALUE klass)
 
     body->compiled = false;
     body->obj = obj;
+    body->tags = c_buffer_init();
     body->as.intermediate.blank = true;
     body->as.intermediate.root = false;
     body->as.intermediate.render_score = 0;
@@ -125,11 +124,25 @@ static int is_id(int c)
     return rb_isalnum(c) || c == '_';
 }
 
-static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
+static void block_body_add_node(block_body_t *body, VALUE node)
+{
+    assert(!body->compiled);
+    c_buffer_write_ruby_value(&body->tags, node);
+    vm_assembler_add_write_node(body->as.intermediate.code);
+}
+
+static void block_body_push_tag_markup(block_body_t *body, VALUE parse_context, VALUE tag_markup)
+{
+    assert(!body->compiled);
+    vm_assembler_write_tag(body->as.intermediate.code, tag_markup);
+    parse_context_set_parent_tag(parse_context, tag_markup);
+}
+
+static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
 {
     tokenizer_t *tokenizer = parse_context->tokenizer;
     token_t token;
-    tag_markup_t unknown_tag = { Qnil, Qnil };
+    VALUE unknown_tag = Qnil;
     int render_score_increment = 0;
 
     while (true) {
@@ -209,7 +222,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
 
                 if (name_len == 0) {
                     VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
-                    unknown_tag = (tag_markup_t) { str, str };
+                    unknown_tag = tag_markup_new(str, str, true);
                     goto loop_break;
                 }
 
@@ -224,8 +237,9 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     tokenizer_setup_for_liquid_tag(tokenizer, markup_start, end, line_number);
                     unknown_tag = internal_block_body_parse(body, parse_context);
                     *tokenizer = saved_tokenizer;
-                    if (unknown_tag.name != Qnil) {
-                        rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2, unknown_tag.name, parse_context->ruby_obj);
+                    if (RTEST(unknown_tag)) {
+                        rb_funcall(cLiquidBlockBody, intern_unknown_tag_in_liquid_tag, 2,
+                                   tag_markup_get_tag_name(unknown_tag), parse_context->ruby_obj);
                         goto loop_break;
                     }
                     break;
@@ -238,12 +252,17 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
 
                 if (tag_class == Qnil) {
-                    unknown_tag = (tag_markup_t) { tag_name, markup };
+                    unknown_tag = tag_markup_new(tag_name, markup, true);
                     goto loop_break;
                 }
 
+                VALUE tag_markup = tag_markup_new(tag_name, markup, false);
+                block_body_push_tag_markup(body, parse_context->ruby_obj, tag_markup);
+
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4,
                         tag_name, markup, parse_context->tokenizer_obj, parse_context->ruby_obj);
+
+                parse_context_set_parent_tag(parse_context->ruby_obj, parse_context->parent_tag);
 
                 if (body->as.intermediate.blank && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
                     body->as.intermediate.blank = false;
@@ -256,7 +275,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     tokenizer->raw_tag_body = NULL;
                     tokenizer->raw_tag_body_len = 0;
                 } else {
-                    vm_assembler_add_write_node(body->as.intermediate.code, new_tag);
+                    block_body_add_node(body, new_tag);
                 }
 
                 render_score_increment += 1;
@@ -290,6 +309,7 @@ static void ensure_intermediate_not_parsing(block_body_t *body)
 static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
     parse_context_t parse_context = {
+        .parent_tag = parse_context_get_parent_tag(parse_context_obj),
         .tokenizer_obj = tokenizer_obj,
         .ruby_obj = parse_context_obj,
     };
@@ -303,10 +323,24 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     }
     vm_assembler_remove_leave(body->as.intermediate.code); // to extend block
 
-    tag_markup_t unknown_tag = internal_block_body_parse(body, &parse_context);
+    VALUE unknown_tag = internal_block_body_parse(body, &parse_context);
     vm_assembler_add_leave(body->as.intermediate.code);
 
-    return rb_yield_values(2, unknown_tag.name, unknown_tag.markup);
+    VALUE tag_name = Qnil;
+    VALUE markup = Qnil;
+    if (RTEST(unknown_tag)) {
+        tag_name = tag_markup_get_tag_name(unknown_tag);
+        markup = tag_markup_get_markup(unknown_tag);
+        block_body_push_tag_markup(body, parse_context_obj, unknown_tag);
+    }
+
+    VALUE block_ret = rb_yield_values(2, tag_name, markup);
+
+    if (RTEST(parse_context.parent_tag)) {
+        tag_markup_set_block_body(parse_context.parent_tag, self, body);
+    }
+
+    return block_ret;
 }
 
 
@@ -352,7 +386,8 @@ static VALUE block_body_render_to_output_buffer(VALUE self, VALUE context, VALUE
     ensure_body_compiled(body);
     document_body_entry_t *entry = &body->as.compiled.document_body_entry;
 
-    liquid_vm_render(document_body_get_block_body_header_ptr(entry), document_body_get_constants_ptr(entry), context, output);
+    liquid_vm_render(document_body_get_block_body_header_ptr(entry), document_body_get_constants_ptr(entry),
+                     (const VALUE *)body->tags.data, context, output);
     return output;
 }
 
@@ -379,6 +414,7 @@ static VALUE block_body_remove_blank_strings(VALUE self)
         rb_raise(rb_eRuntimeError, "remove_blank_strings only support being called on a blank block body");
     }
 
+    VALUE *tags_ptr = (VALUE *)body->tags.data;
     VALUE *const_ptr = (VALUE *)body->as.intermediate.code->constants.data;
     uint8_t *ip = body->as.intermediate.code->instructions.data;
 
@@ -394,7 +430,7 @@ static VALUE block_body_remove_blank_strings(VALUE self)
                 body->as.intermediate.render_score--;
             }
         }
-        liquid_vm_next_instruction((const uint8_t **)&ip, (const VALUE **)&const_ptr);
+        liquid_vm_next_instruction((const uint8_t **)&ip, (const VALUE **)&const_ptr, (const VALUE **)&tags_ptr);
     }
 
     return Qnil;
@@ -425,6 +461,7 @@ static VALUE block_body_nodelist(VALUE self)
     VALUE nodelist = rb_ary_new_capa(body_header->render_score);
 
     const VALUE *const_ptr = document_body_get_constants_ptr(entry);
+    const VALUE *tags_ptr = (VALUE *)body->tags.data;
     const uint8_t *ip = block_body_instructions_ptr(body_header);
     while (true) {
         switch (*ip) {
@@ -448,7 +485,7 @@ static VALUE block_body_nodelist(VALUE self)
             }
             case OP_WRITE_NODE:
             {
-                rb_ary_push(nodelist, const_ptr[0]);
+                rb_ary_push(nodelist, tags_ptr[0]);
                 break;
             }
 
@@ -456,7 +493,7 @@ static VALUE block_body_nodelist(VALUE self)
                 rb_ary_push(nodelist, variable_placeholder);
                 break;
         }
-        liquid_vm_next_instruction(&ip, &const_ptr);
+        liquid_vm_next_instruction(&ip, &const_ptr, &tags_ptr);
     }
 loop_break:
 
@@ -473,7 +510,7 @@ static VALUE block_body_disassemble(VALUE self)
     block_body_header_t *header = document_body_get_block_body_header_ptr(entry);
     const uint8_t *start_ip = block_body_instructions_ptr(header);
     return vm_assembler_disassemble(start_ip, start_ip + header->instructions_bytes,
-                                    document_body_get_constants_ptr(entry));
+                                    document_body_get_constants_ptr(entry), (const VALUE *)body->tags.data);
 }
 
 

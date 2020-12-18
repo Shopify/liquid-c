@@ -157,7 +157,7 @@ static VALUE resource_limits_increment_render_score_method(VALUE self, VALUE amo
     return Qnil;
 }
 
-static void resource_limits_increment_assign_score(resource_limits_t *resource_limits, long amount)
+void resource_limits_increment_assign_score(resource_limits_t *resource_limits, long amount)
 {
     resource_limits->assign_score = resource_limits->assign_score + amount;
 

@@ -227,6 +227,43 @@ static void hash_bulk_insert(long argc, const VALUE *argv, VALUE hash)
 }
 #endif
 
+static long assign_score_of(VALUE value);
+
+static int assign_score_of_each_hash_value(VALUE key, VALUE value, VALUE func_arg)
+{
+    long *sum = (long *)func_arg;
+    *sum += assign_score_of(key);
+    *sum += assign_score_of(value);
+    return ST_CONTINUE;
+}
+
+static long assign_score_of(VALUE value)
+{
+    if (RB_SPECIAL_CONST_P(value))
+        return 1;
+
+    switch (RB_BUILTIN_TYPE(value)) {
+        case T_STRING:
+            return RSTRING_LEN(value);
+        case T_HASH:
+        {
+            long sum = 1;
+            rb_hash_foreach(value, assign_score_of_each_hash_value, (VALUE)&sum);
+            return sum;
+        }
+        case T_ARRAY:
+        {
+            long sum = 1;
+            for (long i = 0; i < RARRAY_LEN(value); i++) {
+                sum += assign_score_of(RARRAY_AREF(value, i));
+            }
+            return sum;
+        }
+        default:
+            return 1;
+    }
+}
+
 // Actually returns a bool resume_rendering value
 static VALUE vm_render_until_error(VALUE uncast_args)
 {
@@ -386,6 +423,14 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 resource_limits_increment_write_score(vm->context.resource_limits, output);
                 break;
             }
+            case OP_ASSIGN:
+            {
+                VALUE var_name = (VALUE)*const_ptr++;
+                VALUE value = vm_stack_pop(vm);
+                context_assign(&vm->context, var_name, value);
+                resource_limits_increment_assign_score(vm->context.resource_limits, assign_score_of(value));
+                break;
+            }
 
             default:
                 rb_bug("invalid opcode: %u", ip[-1]);
@@ -444,6 +489,7 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_
         case OP_FIND_STATIC_VAR:
         case OP_LOOKUP_CONST_KEY:
         case OP_LOOKUP_COMMAND:
+        case OP_ASSIGN:
             (*const_ptr_ptr)++;
             break;
 

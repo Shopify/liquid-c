@@ -196,6 +196,10 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
                 rb_str_catf(output, "lookup_command(%+"PRIsVALUE")\n", const_ptr[0]);
                 break;
 
+            case OP_ASSIGN:
+                rb_str_catf(output, "assign(%+"PRIsVALUE")\n", const_ptr[0]);
+                break;
+
             case OP_FILTER:
                 rb_str_catf(output, "filter(name: %+"PRIsVALUE", num_args: %u)\n", const_ptr[0], ip[1]);
                 break;

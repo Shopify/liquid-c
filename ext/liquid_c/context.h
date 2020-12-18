@@ -23,6 +23,7 @@ void context_internal_init(VALUE context_obj, context_t *context);
 void context_mark(context_t *context);
 VALUE context_find_variable(context_t *context, VALUE key, VALUE raise_on_not_found);
 void context_maybe_raise_undefined_variable(VALUE self, VALUE key);
+void context_assign(context_t *context, VALUE name, VALUE value);
 
 extern ID id_aset, id_set_context;
 

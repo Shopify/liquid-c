@@ -5,10 +5,12 @@
 #include <ruby/encoding.h>
 #include <stdbool.h>
 
+extern ID id_blank_p;
 extern ID id_evaluate;
 extern ID id_to_liquid;
 extern ID id_to_s;
 extern ID id_call;
+extern ID id_compile;
 extern ID id_compile_evaluate;
 extern ID id_ivar_line_number;
 

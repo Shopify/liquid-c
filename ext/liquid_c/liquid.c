@@ -14,12 +14,15 @@
 #include "vm_assembler_pool.h"
 #include "vm.h"
 #include "usage.h"
+#include "tag.h"
 
 ID id_evaluate;
 ID id_to_liquid;
 ID id_to_s;
 ID id_call;
+ID id_compile;
 ID id_compile_evaluate;
+ID id_blank_p;
 ID id_ivar_line_number;
 
 VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
@@ -40,7 +43,9 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
     id_to_liquid = rb_intern("to_liquid");
     id_to_s = rb_intern("to_s");
     id_call = rb_intern("call");
+    id_compile = rb_intern("compile");
     id_compile_evaluate = rb_intern("compile_evaluate");
+    id_blank_p = rb_intern("blank?");
     id_ivar_line_number = rb_intern("@line_number");
 
     utf8_encoding = rb_utf8_encoding();
@@ -91,5 +96,6 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
     liquid_define_vm_assembler();
     liquid_define_vm();
     liquid_define_usage();
+    liquid_define_tag();
 }
 

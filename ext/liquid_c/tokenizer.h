@@ -29,6 +29,9 @@ typedef struct tokenizer {
 
     // Temporary to test rollout of the fix for this bug
     bool bug_compatible_whitespace_trimming;
+
+    char *raw_tag_body;
+    unsigned int raw_tag_body_len;
 } tokenizer_t;
 
 extern VALUE cLiquidTokenizer;

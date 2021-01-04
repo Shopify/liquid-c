@@ -248,7 +248,17 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 if (body->as.intermediate.blank && !RTEST(rb_funcall(new_tag, intern_is_blank, 0)))
                     body->as.intermediate.blank = false;
 
-                vm_assembler_add_write_node(body->as.intermediate.code, new_tag);
+                if (tokenizer->raw_tag_body) {
+                    if (tokenizer->raw_tag_body_len) {
+                        vm_assembler_add_write_raw(body->as.intermediate.code, tokenizer->raw_tag_body,
+                                                tokenizer->raw_tag_body_len);
+                    }
+                    tokenizer->raw_tag_body = NULL;
+                    tokenizer->raw_tag_body_len = 0;
+                } else {
+                    vm_assembler_add_write_node(body->as.intermediate.code, new_tag);
+                }
+
                 render_score_increment += 1;
                 break;
             }

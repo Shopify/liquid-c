@@ -377,6 +377,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 ip += 3;
                 args->ip = ip;
                 args->const_ptr = const_ptr;
+                args->tags_ptr = tags_ptr;
                 break;
             case OP_POP_WRITE:
             {
@@ -408,7 +409,8 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
     vm_render_until_error_args_t args = {
         .vm = vm,
         .const_ptr = (const size_t *)code->constants.data,
-        .ip = code->instructions.data
+        .ip = code->instructions.data,
+        .tags_ptr = (const VALUE *)code->tags.data
     };
     vm_render_until_error((VALUE)&args);
     VALUE ret = vm_stack_pop(vm);

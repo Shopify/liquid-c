@@ -318,32 +318,6 @@ loop_break:
     return unknown_tag;
 }
 
-typedef struct block_body_yield_tag_args {
-    block_body_t *body;
-    serialize_parse_context_t *serialize_context;
-    tag_markup_header_t *current_tag;
-} block_body_yield_tag_args_t;
-
-static VALUE block_body_try_yield_tag(VALUE uncast_args)
-{
-    block_body_yield_tag_args_t *args = (block_body_yield_tag_args_t *)uncast_args;
-    tag_markup_header_t *current_tag = args->current_tag;
-
-    serialize_parse_context_enter_tag(args->serialize_context, current_tag);
-    VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
-    VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);
-    return rb_yield_values(2, tag_name, markup);
-}
-
-static VALUE block_body_rescue_yield_tag(VALUE uncast_args, VALUE exception)
-{
-    block_body_yield_tag_args_t *args = (block_body_yield_tag_args_t *)uncast_args;
-
-    serialize_parse_context_exit_tag(args->serialize_context, &args->body->as.serialize.document_body_entry,
-                                     args->current_tag);
-    rb_exc_raise(exception);
-}
-
 static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
     assert(body->from_serialize);
@@ -364,12 +338,12 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
         bool tag_unknown = TAG_UNKNOWN_P(current_tag);
 
         if (tag_unknown) {
-            block_body_yield_tag_args_t yield_args = {
-                .body = body,
-                .serialize_context = serialize_context,
-                .current_tag = current_tag
-            };
-            return rb_rescue(block_body_try_yield_tag, (VALUE)&yield_args, block_body_rescue_yield_tag, (VALUE)&yield_args);
+            serialize_parse_context_enter_tag(serialize_context, current_tag);
+
+            VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
+            VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);
+
+            return rb_yield_values(2, tag_name, markup);
         } else {
             VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
             VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);

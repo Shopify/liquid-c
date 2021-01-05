@@ -73,7 +73,10 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     c_buffer_write(&body->buffer, RSTRING_PTR(tag_markup->markup), markup_len);
 
     if (tag_markup->block_body) {
-        assert(tag_markup->block_body->compiled);
+        if (!tag_markup->block_body->compiled) {
+            rb_raise(rb_eRuntimeError, "child %"PRIsVALUE" has not been frozen before the parent", tag_markup->block_body_obj);
+        }
+
         header.block_body_offset = (uint32_t)tag_markup->block_body->as.compiled.document_body_entry.buffer_offset;
     } else {
         header.block_body_offset = BUFFER_OFFSET_UNDEF;

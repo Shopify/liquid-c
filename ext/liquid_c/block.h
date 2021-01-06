@@ -32,9 +32,9 @@ typedef struct block_body {
 
 void liquid_define_block_body();
 
-static inline uint8_t *block_body_instructions_ptr(block_body_header_t *body)
+static inline uint8_t *block_body_instructions_ptr(block_body_header_t *body_header)
 {
-    return ((uint8_t *)body) + body->instructions_offset;
+    return (uint8_t *)&body_header[1];
 }
 
 #endif

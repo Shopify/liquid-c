@@ -113,35 +113,35 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     entry->buffer_offset = c_buffer_size(&body->as.mutable.buffer);
 
     size_t buf_block_body_offset = c_buffer_size(&body->as.mutable.buffer);
-    c_buffer_extend_for_write(&body->as.mutable.buffer, sizeof(block_body_header_t));
+    size_t instructions_byte_size = c_buffer_size(&code->instructions);
+    size_t header_and_instructions_size = sizeof(block_body_header_t) + instructions_byte_size;
+    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->as.mutable.buffer, header_and_instructions_size);
+    uint8_t *instructions = (uint8_t *)&buf_block_body[1];
 
-    block_body_header_t buf_block_body;
+    buf_block_body->flags = 0;
+    if (blank) buf_block_body->flags |= BLOCK_BODY_HEADER_FLAG_BLANK;
+    buf_block_body->render_score = render_score;
+    buf_block_body->max_stack_size = code->max_stack_size;
+    buf_block_body->instructions_bytes = (uint32_t)instructions_byte_size;
+    buf_block_body->tags_offset = (uint32_t)header_and_instructions_size;
 
-    buf_block_body.flags = 0;
-    if (blank) buf_block_body.flags |= BLOCK_BODY_HEADER_FLAG_BLANK;
-    buf_block_body.render_score = render_score;
-    buf_block_body.max_stack_size = code->max_stack_size;
+    assert(c_buffer_size(&code->constants) % sizeof(VALUE) == 0);
+    uint32_t constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE));
+    buf_block_body->constants_offset = (uint32_t)RARRAY_LEN(body->constants);
+    buf_block_body->constants_len = constants_len;
 
-    buf_block_body.instructions_bytes = (uint32_t)c_buffer_size(&code->instructions);
-    c_buffer_concat(&body->as.mutable.buffer, &code->instructions);
+    rb_ary_cat(body->constants, (VALUE *)code->constants.data, constants_len);
+
+    memcpy(instructions, code->instructions.data, instructions_byte_size);
 
     assert(c_buffer_size(&code->tags) % sizeof(VALUE) == 0);
     uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tags) / sizeof(VALUE));
-    buf_block_body.tags_offset = (uint32_t)(c_buffer_size(&body->as.mutable.buffer) - buf_block_body_offset);
     size_t tags_start_offset = c_buffer_size(&body->as.mutable.buffer);
     for (uint32_t i = 0; i < tags_len; i++) {
         document_body_write_tag_markup(body, ((VALUE *)code->tags.data)[i]);
     }
-    buf_block_body.tags_bytes = (uint32_t)(c_buffer_size(&body->as.mutable.buffer) - tags_start_offset);
-
-    assert(c_buffer_size(&code->constants) % sizeof(VALUE) == 0);
-    uint32_t constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE));
-    buf_block_body.constants_offset = (uint32_t)RARRAY_LEN(body->constants);
-    buf_block_body.constants_len = constants_len;
-
-    rb_ary_cat(body->constants, (VALUE *)code->constants.data, constants_len);
-
-    memcpy(body->as.mutable.buffer.data + buf_block_body_offset, &buf_block_body, sizeof(block_body_header_t));
+    buf_block_body = (block_body_header_t *)(body->as.mutable.buffer.data + buf_block_body_offset);
+    buf_block_body->tags_bytes = (uint32_t)(c_buffer_size(&body->as.mutable.buffer) - tags_start_offset);
 }
 
 

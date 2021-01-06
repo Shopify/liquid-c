@@ -84,12 +84,10 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
 
     uint32_t tag_name_len = (uint32_t)RSTRING_LEN(tag_markup->tag_name);
     header.tag_name_len = tag_name_len;
-    header.tag_name_offset = (uint32_t)(c_buffer_size(&body->as.mutable.buffer) - tag_markup_offset);
     c_buffer_write(&body->as.mutable.buffer, RSTRING_PTR(tag_markup->tag_name), tag_name_len);
 
     uint32_t markup_len = (uint32_t)RSTRING_LEN(tag_markup->markup);
     header.markup_len = markup_len;
-    header.markup_offset = (uint32_t)(c_buffer_size(&body->as.mutable.buffer) - tag_markup_offset);
     c_buffer_write(&body->as.mutable.buffer, RSTRING_PTR(tag_markup->markup), markup_len);
 
     if (tag_markup->block_body) {

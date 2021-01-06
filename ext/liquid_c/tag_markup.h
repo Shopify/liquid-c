@@ -15,9 +15,7 @@ typedef struct tag_markup {
 typedef struct tag_markup_header {
     uint32_t flags;
     uint32_t total_len;
-    uint32_t tag_name_offset;
     uint32_t tag_name_len;
-    uint32_t markup_offset;
     uint32_t markup_len;
     uint32_t block_body_offset;
 } tag_markup_header_t;
@@ -37,12 +35,12 @@ tag_markup_header_t *tag_markup_get_next_tag(document_body_entry_t *entry, tag_m
 
 static inline char *tag_markup_header_name(tag_markup_header_t *header)
 {
-    return ((char *)header) + header->tag_name_offset;
+    return (char *)&header[1];
 }
 
 static inline char *tag_markup_header_markup(tag_markup_header_t *header)
 {
-    return ((char *)header) + header->markup_offset;
+    return tag_markup_header_name(header) + header->tag_name_len;
 }
 
 #endif

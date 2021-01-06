@@ -6,8 +6,7 @@
 
 typedef struct block_body_header {
     uint32_t instructions_bytes;
-    uint32_t tags_offset;
-    uint32_t tags_bytes;
+    uint32_t first_tag_offset;
     uint32_t constants_offset;
     uint32_t constants_len;
     uint32_t flags;

@@ -65,7 +65,7 @@ void tag_markup_set_block_body(VALUE self, VALUE block_body_obj, block_body_t *b
     tag->block_body = block_body;
 }
 
-tag_markup_header_t *tag_markup_get_next_tag(document_body_entry_t *entry, tag_markup_header_t *current_tag)
+tag_markup_header_t *tag_markup_get_first_tag(document_body_entry_t *entry)
 {
     // Should only be used for (deserialized) immutable document body
     assert(!entry->body->mutable);
@@ -76,23 +76,18 @@ tag_markup_header_t *tag_markup_get_next_tag(document_body_entry_t *entry, tag_m
 
     block_body_header_t *header = document_body_get_block_body_header_ptr(entry);
 
-    tag_markup_header_t *next_tag;
-    if (current_tag) {
-        assert(current_tag >= (tag_markup_header_t *)((char *)header + header->tags_offset));
-        next_tag = (tag_markup_header_t *)((char *)current_tag + current_tag->total_len);
-    } else {
-        next_tag = (tag_markup_header_t *)((char *)header + header->tags_offset);
-    }
-
-    tag_markup_header_t *tags_end = (tag_markup_header_t *)((char *)header + header->tags_offset + header->tags_bytes);
-
-    if (next_tag < tags_end) {
-        assert((unsigned long)tags_end - (unsigned long)next_tag > sizeof(tag_markup_header_t));
-        return next_tag;
-    } else { // End of tags have been reached
-        assert(next_tag == tags_end);
+    if (!header->first_tag_offset)
         return NULL;
-    }
+
+    return (tag_markup_header_t *)((char *)header + header->first_tag_offset);
+}
+
+tag_markup_header_t *tag_markup_get_next_tag(tag_markup_header_t *current_tag)
+{
+    if (!current_tag->next_tag_offset)
+        return NULL;
+
+    return (tag_markup_header_t *)((char *)current_tag + current_tag->next_tag_offset);
 }
 
 void liquid_define_tag_markup()

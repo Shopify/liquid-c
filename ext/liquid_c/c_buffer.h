@@ -40,6 +40,12 @@ static inline size_t c_buffer_capacity(const c_buffer_t *buffer)
     return buffer->capacity_end - buffer->data;
 }
 
+static inline size_t c_buffer_pad_size_for_alignment(uintptr_t offset, size_t alignment)
+{
+    size_t unaligned_bytes = offset % alignment;
+    return unaligned_bytes == 0 ? 0 : alignment - unaligned_bytes;
+}
+
 void c_buffer_zero_pad_for_alignment(c_buffer_t *buffer, size_t alignment);
 
 void c_buffer_reserve_for_write(c_buffer_t *buffer, size_t write_size);

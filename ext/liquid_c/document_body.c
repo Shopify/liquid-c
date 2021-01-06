@@ -79,6 +79,8 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     uint32_t tag_name_len = (uint32_t)RSTRING_LEN(tag_markup->tag_name);
     uint32_t markup_len = (uint32_t)RSTRING_LEN(tag_markup->markup);
     uint32_t total_len = sizeof(tag_markup_header_t) + tag_name_len + markup_len;
+    uint32_t pad_size = (uint32_t)c_buffer_pad_size_for_alignment(c_buffer_size(&body->as.mutable.buffer) + total_len, alignof(tag_markup_header_t));
+    total_len += pad_size;
     tag_markup_header_t *header = c_buffer_extend_for_write(&body->as.mutable.buffer, total_len);
     char *name = (char *)&header[1];
 
@@ -99,6 +101,8 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     memcpy(name, RSTRING_PTR(tag_markup->tag_name), tag_name_len);
     char *markup = name + tag_name_len;
     memcpy(markup, RSTRING_PTR(tag_markup->markup), markup_len);
+    char *pad = markup + markup_len;
+    memset(pad, 0, pad_size);
 }
 
 void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry)
@@ -113,9 +117,12 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     entry->buffer_offset = c_buffer_size(&body->as.mutable.buffer);
 
     size_t instructions_byte_size = c_buffer_size(&code->instructions);
-    size_t header_and_instructions_size = sizeof(block_body_header_t) + instructions_byte_size;
-    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->as.mutable.buffer, header_and_instructions_size);
+    size_t tags_offset = sizeof(block_body_header_t) + instructions_byte_size;
+    size_t pad_size = c_buffer_pad_size_for_alignment(entry->buffer_offset + tags_offset, alignof(tag_markup_header_t));
+    tags_offset += pad_size;
+    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->as.mutable.buffer, tags_offset);
     uint8_t *instructions = (uint8_t *)&buf_block_body[1];
+    uint8_t *pad = instructions + instructions_byte_size;
 
     buf_block_body->flags = 0;
     if (blank) buf_block_body->flags |= BLOCK_BODY_HEADER_FLAG_BLANK;
@@ -130,11 +137,12 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     rb_ary_cat(body->constants, (VALUE *)code->constants.data, constants_len);
 
     memcpy(instructions, code->instructions.data, instructions_byte_size);
+    memset(pad, 0, pad_size);
 
     assert(c_buffer_size(&code->tags) % sizeof(VALUE) == 0);
     uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tags) / sizeof(VALUE));
     if (tags_len > 0) {
-        buf_block_body->first_tag_offset = (uint32_t)header_and_instructions_size;
+        buf_block_body->first_tag_offset = (uint32_t)tags_offset;
 
         uint32_t i;
         for (i = 0; i < tags_len - 1; i++) {

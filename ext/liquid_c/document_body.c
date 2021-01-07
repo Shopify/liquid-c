@@ -56,33 +56,29 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     tag_markup_t *tag_markup;
     TagMarkup_Get_Struct(tag_markup_obj, tag_markup);
 
-    size_t tag_markup_offset = c_buffer_size(&body->buffer);
-    c_buffer_extend_for_write(&body->buffer, sizeof(tag_markup_header_t));
-
-    tag_markup_header_t header;
-    header.flags = tag_markup->flags;
-
     uint32_t tag_name_len = (uint32_t)RSTRING_LEN(tag_markup->tag_name);
-    header.tag_name_len = tag_name_len;
-    c_buffer_write(&body->buffer, RSTRING_PTR(tag_markup->tag_name), tag_name_len);
-
     uint32_t markup_len = (uint32_t)RSTRING_LEN(tag_markup->markup);
-    header.markup_len = markup_len;
-    c_buffer_write(&body->buffer, RSTRING_PTR(tag_markup->markup), markup_len);
+    uint32_t total_len = sizeof(tag_markup_header_t) + tag_name_len + markup_len;
+    tag_markup_header_t *header = c_buffer_extend_for_write(&body->buffer, total_len);
+    char *name = (char *)&header[1];
 
+    header->flags = tag_markup->flags;
+    header->tag_name_len = tag_name_len;
+    header->markup_len = markup_len;
+    header->total_len = total_len;
     if (tag_markup->block_body) {
         if (!tag_markup->block_body->compiled) {
             rb_raise(rb_eRuntimeError, "child %"PRIsVALUE" has not been frozen before the parent", tag_markup->block_body_obj);
         }
 
-        header.block_body_offset = (uint32_t)tag_markup->block_body->as.compiled.document_body_entry.buffer_offset;
+        header->block_body_offset = (uint32_t)tag_markup->block_body->as.compiled.document_body_entry.buffer_offset;
     } else {
-        header.block_body_offset = BUFFER_OFFSET_UNDEF;
+        header->block_body_offset = BUFFER_OFFSET_UNDEF;
     }
 
-    header.total_len = (uint32_t)(c_buffer_size(&body->buffer) - tag_markup_offset);
-
-    memcpy(body->buffer.data + tag_markup_offset, &header, sizeof(tag_markup_header_t));
+    memcpy(name, RSTRING_PTR(tag_markup->tag_name), tag_name_len);
+    char *markup = name + tag_name_len;
+    memcpy(markup, RSTRING_PTR(tag_markup->markup), markup_len);
 }
 
 void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry)

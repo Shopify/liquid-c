@@ -15,9 +15,7 @@ typedef struct tag_markup {
 typedef struct tag_markup_header {
     uint32_t flags;
     uint32_t total_len;
-    uint32_t tag_name_offset;
     uint32_t tag_name_len;
-    uint32_t markup_offset;
     uint32_t markup_len;
     uint32_t block_body_offset;
 } tag_markup_header_t;

@@ -375,7 +375,9 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
             VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);
 
             VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
-            assert(RTEST(tag_class));
+            if (!RTEST(tag_class)) {
+                rb_raise(cLiquidCDeserializationError, "known tag name (%"PRIsVALUE") cannot be found", tag_name);
+            }
 
             serialize_parse_context_enter_tag(serialize_context, current_tag);
             VALUE new_tag = rb_funcall(tag_class, intern_parse, 4,

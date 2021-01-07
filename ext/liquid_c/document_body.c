@@ -101,7 +101,6 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     buf_block_body.render_score = render_score;
     buf_block_body.max_stack_size = code->max_stack_size;
 
-    buf_block_body.instructions_offset = (uint32_t)(c_buffer_size(&body->buffer) - buf_block_body_offset);
     buf_block_body.instructions_bytes = (uint32_t)c_buffer_size(&code->instructions);
     c_buffer_concat(&body->buffer, &code->instructions);
 

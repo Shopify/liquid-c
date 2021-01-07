@@ -4,8 +4,8 @@ require 'test_helper'
 
 class TokenizerTest < Minitest::Test
   def test_tokenizer_nil
-    tokenizer = Liquid::Tokenizer.new(nil)
-    assert_nil(tokenizer.shift)
+    tokenizer = new_tokenizer(nil)
+    assert_nil(tokenizer.send(:shift))
   end
 
   def test_tokenize_strings
@@ -58,11 +58,11 @@ class TokenizerTest < Minitest::Test
 
   def test_utf8_compatible_source
     source = String.new('ascii', encoding: Encoding::ASCII)
-    tokenizer = Liquid::Tokenizer.new(source)
-    output = tokenizer.shift
+    tokenizer = new_tokenizer(source)
+    output = tokenizer.send(:shift)
     assert_equal(Encoding::UTF_8, output.encoding)
     assert_equal(source, output)
-    assert_nil(tokenizer.shift)
+    assert_nil(tokenizer.send(:shift))
   end
 
   def test_non_utf8_compatible_source
@@ -84,26 +84,27 @@ class TokenizerTest < Minitest::Test
     assert_match(/Source too large, max \d+ bytes/, err.message)
 
     # ruby patch fallback
-    liquid_c_tokenizer = Liquid::Tokenizer.new(max_length_source)
-    assert_instance_of(Liquid::C::Tokenizer, liquid_c_tokenizer)
-    fallback_tokenizer = Liquid::Tokenizer.new(too_large_source)
-    assert_instance_of(Liquid::Tokenizer, fallback_tokenizer)
-
-    # Document.parse patch parse context update
     parse_context = Liquid::ParseContext.new
+    liquid_c_tokenizer = parse_context.new_tokenizer(max_length_source)
+    assert_instance_of(Liquid::C::Tokenizer, liquid_c_tokenizer)
     refute(parse_context.liquid_c_nodes_disabled?)
-    Liquid::Document.parse(liquid_c_tokenizer, parse_context)
-    refute(parse_context.liquid_c_nodes_disabled?)
-    Liquid::Document.parse(fallback_tokenizer, parse_context)
+
+    parse_context = Liquid::ParseContext.new
+    fallback_tokenizer = parse_context.new_tokenizer(too_large_source)
+    assert_instance_of(Liquid::Tokenizer, fallback_tokenizer)
     assert_equal(true, parse_context.liquid_c_nodes_disabled?)
   end
 
   private
 
+  def new_tokenizer(source, parse_context: Liquid::ParseContext.new)
+    parse_context.new_tokenizer(source)
+  end
+
   def tokenize(source, for_liquid_tag: false, trimmed: false)
     tokenizer = Liquid::C::Tokenizer.new(source, 1, for_liquid_tag)
     tokens = []
-    while (t = trimmed ? tokenizer.send(:shift_trimmed) : tokenizer.shift)
+    while (t = trimmed ? tokenizer.send(:shift_trimmed) : tokenizer.send(:shift))
       tokens << t
     end
     tokens

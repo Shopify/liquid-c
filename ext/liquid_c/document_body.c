@@ -139,16 +139,16 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     memcpy(instructions, code->instructions.data, instructions_byte_size);
     memset(pad, 0, pad_size);
 
-    assert(c_buffer_size(&code->tags) % sizeof(VALUE) == 0);
-    uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tags) / sizeof(VALUE));
+    assert(c_buffer_size(&code->tag_markups) % sizeof(VALUE) == 0);
+    uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tag_markups) / sizeof(VALUE));
     if (tags_len > 0) {
         buf_block_body->first_tag_offset = (uint32_t)tags_offset;
 
         uint32_t i;
         for (i = 0; i < tags_len - 1; i++) {
-            document_body_write_tag_markup(body, ((VALUE *)code->tags.data)[i], false);
+            document_body_write_tag_markup(body, ((VALUE *)code->tag_markups.data)[i], false);
         }
-        document_body_write_tag_markup(body, ((VALUE *)code->tags.data)[i], true);
+        document_body_write_tag_markup(body, ((VALUE *)code->tag_markups.data)[i], true);
     } else {
         buf_block_body->first_tag_offset = 0;
     }

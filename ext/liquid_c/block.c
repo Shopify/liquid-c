@@ -145,7 +145,7 @@ static void block_body_add_node(block_body_t *body, VALUE node)
 static void block_body_push_tag_markup(block_body_t *body, VALUE parse_context, VALUE tag_markup)
 {
     assert(!body->compiled);
-    vm_assembler_write_tag(body->as.intermediate.code, tag_markup);
+    vm_assembler_write_tag_markup(body->as.intermediate.code, tag_markup);
     parse_context_set_parent_tag(parse_context, tag_markup);
 }
 
@@ -302,7 +302,7 @@ static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *pars
                     tokenizer->raw_tag_body = NULL;
                     tokenizer->raw_tag_body_len = 0;
                 } else {
-                    vm_assembler_write_tag(body->as.intermediate.code, tag_markup);
+                    vm_assembler_write_tag_markup(body->as.intermediate.code, tag_markup);
                     block_body_add_node(body, new_tag);
                 }
 

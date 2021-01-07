@@ -41,20 +41,16 @@ module Liquid
   end
 end
 
-Liquid::Tokenizer.class_eval do
-  def self.new(source, line_numbers = false, line_number: nil, for_liquid_tag: false)
-    source = source.to_s
-    if Liquid::C.enabled && source.bytesize <= Liquid::C::Tokenizer::MAX_SOURCE_BYTE_SIZE
-      source = source.encode(Encoding::UTF_8)
-      Liquid::C::Tokenizer.new(source, line_number || (line_numbers ? 1 : 0), for_liquid_tag)
-    else
-      super
-    end
-  end
-end
-
 Liquid::Raw.class_eval do
   alias_method :ruby_parse, :parse
+
+  def parse(tokenizer)
+    if parse_context.liquid_c_nodes_disabled?
+      ruby_parse(tokenizer)
+    else
+      c_parse(tokenizer)
+    end
+  end
 end
 
 Liquid::ParseContext.class_eval do
@@ -73,6 +69,22 @@ Liquid::ParseContext.class_eval do
     end
   end
 
+  alias_method :ruby_new_tokenizer, :new_tokenizer
+
+  def new_tokenizer(source, start_line_number: nil, for_liquid_tag: false)
+    unless liquid_c_nodes_disabled?
+      source = source.to_s
+      if source.bytesize <= Liquid::C::Tokenizer::MAX_SOURCE_BYTE_SIZE
+        source = source.encode(Encoding::UTF_8)
+        return Liquid::C::Tokenizer.new(source, start_line_number || 0, for_liquid_tag)
+      else
+        @liquid_c_nodes_disabled = true
+      end
+    end
+
+    ruby_new_tokenizer(source, start_line_number: start_line_number, for_liquid_tag: for_liquid_tag)
+  end
+
   # @api private
   def liquid_c_nodes_disabled?
     # Liquid::Profiler exposes the internal parse tree that we don't want to build when
@@ -80,12 +92,10 @@ Liquid::ParseContext.class_eval do
     # Also, some templates are parsed before the profiler is running, on which case we
     # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
     # so the profiler can use it on future runs.
-    @liquid_c_nodes_disabled ||= !Liquid::C.enabled || @template_options[:profile] ||
+    return @liquid_c_nodes_disabled if defined?(@liquid_c_nodes_disabled)
+    @liquid_c_nodes_disabled = !Liquid::C.enabled || @template_options[:profile] ||
       @template_options[:disable_liquid_c_nodes] || self.class.liquid_c_nodes_disabled
   end
-
-  # @api private
-  attr_writer :liquid_c_nodes_disabled
 end
 
 module Liquid
@@ -93,8 +103,8 @@ module Liquid
     module DocumentClassPatch
       def parse(tokenizer, parse_context)
         if tokenizer.is_a?(Liquid::C::Tokenizer)
-          # Temporary to test rollout of the fix for this bug
           if parse_context[:bug_compatible_whitespace_trimming]
+            # Temporary to test rollout of the fix for this bug
             tokenizer.bug_compatible_whitespace_trimming!
           end
 
@@ -105,9 +115,6 @@ module Liquid
             parse_context.cleanup_liquid_c_parsing
           end
         else
-          # Liquid::Tokenizer.new may return a Liquid::Tokenizer if the source is too large
-          # to be supported, so indicate in the parse context that the liquid VM won't be used
-          parse_context.liquid_c_nodes_disabled = true
           super
         end
       end
@@ -244,12 +251,10 @@ module Liquid
           Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
           Liquid::Context.send(:alias_method, :strict_variables=, :c_strict_variables=)
-          Liquid::Raw.send(:alias_method, :parse, :c_parse)
         else
           Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
           Liquid::Context.send(:alias_method, :strict_variables=, :ruby_strict_variables=)
-          Liquid::Raw.send(:alias_method, :parse, :ruby_parse)
         end
       end
     end

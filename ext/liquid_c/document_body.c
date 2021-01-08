@@ -51,7 +51,7 @@ VALUE document_body_new_instance()
     return rb_class_new_instance(0, NULL, cLiquidCDocumentBody);
 }
 
-static void document_body_write_tag_markup(document_body_t *body, VALUE tag_markup_obj)
+static void document_body_write_tag_markup(document_body_t *body, VALUE tag_markup_obj, bool last)
 {
     tag_markup_t *tag_markup;
     TagMarkup_Get_Struct(tag_markup_obj, tag_markup);
@@ -65,7 +65,7 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     header->flags = tag_markup->flags;
     header->tag_name_len = tag_name_len;
     header->markup_len = markup_len;
-    header->total_len = total_len;
+    header->next_tag_offset = last ? 0 : total_len;
     if (tag_markup->block_body) {
         if (!tag_markup->block_body->compiled) {
             rb_raise(rb_eRuntimeError, "child %"PRIsVALUE" has not been frozen before the parent", tag_markup->block_body_obj);
@@ -91,7 +91,6 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     entry->body = body;
     entry->buffer_offset = c_buffer_size(&body->buffer);
 
-    size_t buf_block_body_offset = c_buffer_size(&body->buffer);
     size_t instructions_byte_size = c_buffer_size(&code->instructions);
     size_t header_and_instructions_size = sizeof(block_body_header_t) + instructions_byte_size;
     block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->buffer, header_and_instructions_size);
@@ -102,7 +101,6 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     buf_block_body->render_score = render_score;
     buf_block_body->max_stack_size = code->max_stack_size;
     buf_block_body->instructions_bytes = (uint32_t)instructions_byte_size;
-    buf_block_body->tags_offset = (uint32_t)header_and_instructions_size;
 
     assert(c_buffer_size(&code->constants) % sizeof(VALUE) == 0);
     uint32_t constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE));
@@ -115,12 +113,17 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
 
     assert(c_buffer_size(&code->tags) % sizeof(VALUE) == 0);
     uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tags) / sizeof(VALUE));
-    size_t tags_start_offset = c_buffer_size(&body->buffer);
-    for (uint32_t i = 0; i < tags_len; i++) {
-        document_body_write_tag_markup(body, ((VALUE *)code->tags.data)[i]);
+    if (tags_len > 0) {
+        buf_block_body->first_tag_offset = (uint32_t)header_and_instructions_size;
+
+        uint32_t i;
+        for (i = 0; i < tags_len - 1; i++) {
+            document_body_write_tag_markup(body, ((VALUE *)code->tags.data)[i], false);
+        }
+        document_body_write_tag_markup(body, ((VALUE *)code->tags.data)[i], true);
+    } else {
+        buf_block_body->first_tag_offset = 0;
     }
-    buf_block_body = (block_body_header_t *)(body->buffer.data + buf_block_body_offset);
-    buf_block_body->tags_bytes = (uint32_t)(c_buffer_size(&body->buffer) - tags_start_offset);
 }
 
 void liquid_define_document_body()

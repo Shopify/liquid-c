@@ -37,12 +37,12 @@ tag_markup_header_t *tag_markup_get_next_tag(document_body_entry_t *entry, tag_m
 
 static inline char *tag_markup_header_name(tag_markup_header_t *header)
 {
-    return ((char *)header) + header->tag_name_offset;
+    return (char *)&header[1];
 }
 
 static inline char *tag_markup_header_markup(tag_markup_header_t *header)
 {
-    return ((char *)header) + header->markup_offset;
+    return tag_markup_header_name(header) + header->tag_name_len;
 }
 
 #endif

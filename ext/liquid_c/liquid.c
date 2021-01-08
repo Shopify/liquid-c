@@ -28,7 +28,7 @@ ID id_ivar_line_number;
 
 VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 VALUE cLiquidVariableLookup, cLiquidRangeLookup;
-VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
+VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError, cLiquidCDeserializationError;
 
 rb_encoding *utf8_encoding;
 int utf8_encoding_index;
@@ -64,6 +64,9 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
 
     cMemoryError = rb_const_get(mLiquid, rb_intern("MemoryError"));
     rb_global_variable(&cMemoryError);
+
+    cLiquidCDeserializationError = rb_const_get(mLiquidC, rb_intern("DeserializationError"));
+    rb_global_variable(&cLiquidCDeserializationError);
 
     cLiquidVariable = rb_const_get(mLiquid, rb_intern("Variable"));
     rb_global_variable(&cLiquidVariable);

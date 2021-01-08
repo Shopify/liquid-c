@@ -19,12 +19,10 @@ static ID
     intern_parse,
     intern_square_brackets,
     intern_unknown_tag_in_liquid_tag,
-    intern_ivar_nodelist,
-    intern_raise_unknown_tag;
+    intern_ivar_nodelist;
 
 static VALUE tag_registry;
 static VALUE variable_placeholder = Qnil;
-static VALUE cLiquidBlock;
 
 typedef struct parse_context {
     tokenizer_t *tokenizer;
@@ -353,7 +351,7 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
 
             VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
             if (!RTEST(tag_class)) {
-                return rb_funcall(cLiquidBlock, intern_raise_unknown_tag, 4, tag_name, Qnil, Qnil, parse_context_obj);
+                rb_raise(cLiquidCDeserializationError, "cannot find known tag `%"PRIsVALUE"`", tag_name);
             }
 
             serialize_parse_context_enter_tag(serialize_context, current_tag);
@@ -684,16 +682,12 @@ void liquid_define_block_body()
     intern_square_brackets = rb_intern("[]");
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
     intern_ivar_nodelist = rb_intern("@nodelist");
-    intern_raise_unknown_tag = rb_intern("raise_unknown_tag"); 
 
     tag_registry = rb_funcall(cLiquidTemplate, rb_intern("tags"), 0);
     rb_global_variable(&tag_registry);
 
     VALUE cLiquidCBlockBody = rb_define_class_under(mLiquidC, "BlockBody", rb_cObject);
     rb_define_alloc_func(cLiquidCBlockBody, block_body_allocate);
-
-    cLiquidBlock = rb_const_get(mLiquid, rb_intern("Block"));
-    rb_global_variable(&cLiquidBlock);
 
     rb_define_method(cLiquidCBlockBody, "initialize", block_body_initialize, 1);
     rb_define_method(cLiquidCBlockBody, "parse", block_body_parse, 2);

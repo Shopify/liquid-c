@@ -27,6 +27,10 @@ static VALUE template_load(VALUE self, VALUE source, VALUE options)
 
     document_body_header_t *header = (document_body_header_t *)data;
 
+    if (header->version != DOCUMENT_BODY_CURRENT_VERSION) {
+        rb_raise(cLiquidCDeserializationError, "Incompatible serialization versions, expected %u but got %u\n", DOCUMENT_BODY_CURRENT_VERSION, header->version);
+    }
+
     assert(RSTRING_LEN(source) >= header->buffer_offset + header->buffer_offset);
     const char *body_data = data + header->buffer_offset;
 

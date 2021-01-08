@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-require 'liquid/c/version'
 require 'liquid'
+require 'liquid/c/version'
+require 'liquid/c/errors'
 require 'liquid_c'
 require 'liquid/c/compile_ext'
 

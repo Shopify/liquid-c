@@ -42,7 +42,7 @@ extern filter_desc_t builtin_filters[];
 
 typedef struct vm_assembler {
     c_buffer_t instructions;
-    c_buffer_t tags;
+    c_buffer_t tag_markups;
     c_buffer_t constants;
     size_t max_stack_size;
     size_t stack_size;
@@ -75,7 +75,7 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
 
 static inline size_t vm_assembler_alloc_memsize(const vm_assembler_t *code)
 {
-    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants) + c_buffer_capacity(&code->tags);
+    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants) + c_buffer_capacity(&code->tag_markups);
 }
 
 static inline void vm_assembler_write_opcode(vm_assembler_t *code, enum opcode op)
@@ -221,9 +221,9 @@ static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code,
     uint24_to_bytes((unsigned int)node_line_number, &instructions[1]);
 }
 
-static inline void vm_assembler_write_tag(vm_assembler_t *code, VALUE tag)
+static inline void vm_assembler_write_tag_markup(vm_assembler_t *code, VALUE tag_markup)
 {
-    c_buffer_write_ruby_value(&code->tags, tag);
+    c_buffer_write_ruby_value(&code->tag_markups, tag_markup);
 }
 
 #endif

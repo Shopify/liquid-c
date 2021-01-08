@@ -74,7 +74,7 @@ void vm_assembler_init(vm_assembler_t *code)
 {
     code->instructions = c_buffer_allocate(8);
     code->constants = c_buffer_allocate(8 * sizeof(VALUE));
-    code->tags = c_buffer_init();
+    code->tag_markups = c_buffer_init();
     vm_assembler_common_init(code);
 }
 
@@ -82,7 +82,7 @@ void vm_assembler_reset(vm_assembler_t *code)
 {
     c_buffer_reset(&code->instructions);
     c_buffer_reset(&code->constants);
-    c_buffer_reset(&code->tags);
+    c_buffer_reset(&code->tag_markups);
     vm_assembler_common_init(code);
 }
 
@@ -90,13 +90,13 @@ void vm_assembler_free(vm_assembler_t *code)
 {
     c_buffer_free(&code->instructions);
     c_buffer_free(&code->constants);
-    c_buffer_free(&code->tags);
+    c_buffer_free(&code->tag_markups);
 }
 
 void vm_assembler_gc_mark(vm_assembler_t *code)
 {
     c_buffer_rb_gc_mark(&code->constants);
-    c_buffer_rb_gc_mark(&code->tags);
+    c_buffer_rb_gc_mark(&code->tag_markups);
 }
 
 VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr, const VALUE *tags_ptr)

@@ -7,7 +7,6 @@
 typedef struct serialize_parse_context {
     VALUE document_body;
     document_body_entry_t current_entry;
-    tag_markup_header_t *current_tag;
 } serialize_parse_context_t;
 
 extern const rb_data_type_t serialize_parse_context_data_type;

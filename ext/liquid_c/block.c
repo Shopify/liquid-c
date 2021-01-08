@@ -362,7 +362,7 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
 
     body->as.serialize.document_body_entry = serialize_context->current_entry;
 
-    tag_markup_header_t *current_tag = serialize_context->current_tag;
+    tag_markup_header_t *current_tag = tag_markup_get_first_tag(&serialize_context->current_entry);
     while (current_tag) {
         bool tag_unknown = TAG_UNKNOWN_P(current_tag);
 
@@ -390,7 +390,7 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
             c_buffer_write_ruby_value(&body->tags, new_tag);
         }
 
-        current_tag = tag_markup_get_next_tag(&body->as.serialize.document_body_entry, current_tag);
+        current_tag = tag_markup_get_next_tag(current_tag);
     }
 
     return rb_yield_values(2, Qnil, Qnil);

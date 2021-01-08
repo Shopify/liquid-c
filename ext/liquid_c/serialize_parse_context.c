@@ -28,7 +28,7 @@ const rb_data_type_t serialize_parse_context_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-VALUE serialize_parse_context_new(VALUE document_body, document_body_header_t *header)
+VALUE serialize_parse_context_new(VALUE document_body, document_body_header_t *header, VALUE options)
 {
     VALUE obj;
     serialize_parse_context_t *serialize_context;
@@ -41,7 +41,7 @@ VALUE serialize_parse_context_new(VALUE document_body, document_body_header_t *h
                                          &serialize_context->current_entry);
 
     // Call initialize method of parent class
-    rb_funcall(obj, id_initialize, 0);
+    rb_funcall(obj, id_initialize, 1, options);
 
     return obj;
 }

@@ -19,9 +19,9 @@ static VALUE marshal_load_constants(const char *str, size_t len)
 
 static VALUE template_load(VALUE self, VALUE source, VALUE options)
 {
-    rb_funcall(self, id_configure_options, 1, options);
-
     Check_Type(source, T_STRING);
+    Check_Type(options, T_HASH);
+
     source = rb_str_dup_frozen(source);
     const char *data = RSTRING_PTR(source);
 
@@ -39,7 +39,8 @@ static VALUE template_load(VALUE self, VALUE source, VALUE options)
 
     VALUE document_body = document_body_new_immutable_instance(constants, source, body_data);
 
-    VALUE parse_context = serialize_parse_context_new(document_body, header);
+    VALUE parse_context = serialize_parse_context_new(document_body, header, options);
+    rb_funcall(self, id_configure_options, 1, parse_context);
 
     rb_ivar_set(self, id_ivar_root, document_parse(Qnil, parse_context));
 

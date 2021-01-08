@@ -26,7 +26,12 @@ typedef struct document_body {
     c_buffer_t buffer;
 } document_body_t;
 
+/* Bump this version every time a backwards incompatible change has been made in the serialization headers.
+ */
+#define DOCUMENT_BODY_CURRENT_VERSION 0
+
 typedef struct document_body_header {
+    uint32_t version;
     uint32_t entrypoint_block_offset;
     uint32_t buffer_offset;
     uint32_t buffer_len;

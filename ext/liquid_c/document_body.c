@@ -145,6 +145,7 @@ VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_offset
     VALUE str = rb_str_buf_new(sizeof(document_body_header_t) + buffer_len + constants_len);
 
     document_body_header_t header = {
+        .version = DOCUMENT_BODY_CURRENT_VERSION,
         .entrypoint_block_offset = entrypoint_block_offset,
         .buffer_offset = sizeof(document_body_header_t),
         .buffer_len = buffer_len,

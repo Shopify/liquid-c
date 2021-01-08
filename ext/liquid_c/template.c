@@ -31,6 +31,7 @@ static VALUE template_load(VALUE self, VALUE serialized_data, VALUE options)
         rb_raise(cLiquidCDeserializationError, "Incompatible serialization versions, expected %u but got %u\n", DOCUMENT_BODY_CURRENT_VERSION, header->version);
     }
 
+    assert(RSTRING_LEN(serialized_data) >= (long)sizeof(*header));
     assert(RSTRING_LEN(serialized_data) >= header->buffer_offset + header->buffer_offset);
     const char *body_data = data + header->buffer_offset;
 

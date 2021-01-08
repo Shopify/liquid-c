@@ -79,10 +79,10 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     uint32_t tag_name_len = (uint32_t)RSTRING_LEN(tag_markup->tag_name);
     uint32_t markup_len = (uint32_t)RSTRING_LEN(tag_markup->markup);
     uint32_t total_len = sizeof(tag_markup_header_t) + tag_name_len + markup_len;
-    assert(c_buffer_size(&body->buffer) % alignof(tag_markup_header_t) == 0);
-    tag_markup_header_t *header = c_buffer_extend_for_write(&body->buffer, total_len);
+    assert(c_buffer_size(&body->as.mutable.buffer) % alignof(tag_markup_header_t) == 0);
+    tag_markup_header_t *header = c_buffer_extend_for_write(&body->as.mutable.buffer, total_len);
     if (!last) {
-        total_len += (uint32_t)c_buffer_zero_pad_for_alignment(&body->buffer, alignof(tag_markup_header_t));
+        total_len += (uint32_t)c_buffer_zero_pad_for_alignment(&body->as.mutable.buffer, alignof(tag_markup_header_t));
     }
     char *name = (char *)&header[1];
 
@@ -119,7 +119,7 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
 
     size_t instructions_byte_size = c_buffer_size(&code->instructions);
     size_t header_and_instructions_size = sizeof(block_body_header_t) + instructions_byte_size;
-    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->buffer, header_and_instructions_size);
+    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->as.mutable.buffer, header_and_instructions_size);
     uint8_t *instructions = (uint8_t *)&buf_block_body[1];
 
     buf_block_body->flags = 0;
@@ -141,7 +141,7 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tag_markups) / sizeof(VALUE));
     if (tags_len > 0) {
         buf_block_body->first_tag_offset = (uint32_t)header_and_instructions_size;
-        buf_block_body->first_tag_offset += (uint32_t)c_buffer_zero_pad_for_alignment(&body->buffer, alignof(tag_markup_header_t));
+        buf_block_body->first_tag_offset += (uint32_t)c_buffer_zero_pad_for_alignment(&body->as.mutable.buffer, alignof(tag_markup_header_t));
 
         uint32_t i;
         for (i = 0; i < tags_len - 1; i++) {

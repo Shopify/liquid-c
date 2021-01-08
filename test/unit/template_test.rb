@@ -13,10 +13,32 @@ class TemplateTest < MiniTest::Test
     assert_equal('123', dump_load_eval('{% for i in (1..10) %}{{i}}{% if i == 3 %}{% break %}{% endif %}{% endfor %}'))
   end
 
+  def test_serialize_with_line_numbers
+    template = <<-LIQUID
+      Hello,
+
+      {{ errors.standard_error }} will raise a standard error.
+    LIQUID
+
+    expected = <<-TEXT
+      Hello,
+
+      Liquid error (line 3): standard error will raise a standard error.
+    TEXT
+
+    error_drop_klass = Class.new(Liquid::Drop) do
+      def standard_error
+        raise Liquid::StandardError, 'standard error'
+      end
+    end
+
+    assert_equal(expected, dump_load_eval(template, { 'errors' => error_drop_klass.new }, { line_numbers: true }))
+  end
+
   private
 
-  def dump_load_eval(source, assigns = {})
-    serialize = Liquid::Template.parse(source).dump
-    Liquid::Template.load(serialize).render!(assigns)
+  def dump_load_eval(source, assigns = {}, options = {})
+    serialize = Liquid::Template.parse(source, options).dump
+    Liquid::Template.load(serialize).render(assigns)
   end
 end

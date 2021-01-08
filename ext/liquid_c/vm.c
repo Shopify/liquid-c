@@ -410,7 +410,7 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
         .vm = vm,
         .const_ptr = (const size_t *)code->constants.data,
         .ip = code->instructions.data,
-        .tags_ptr = (const VALUE *)code->tags.data
+        .tags_ptr = (const VALUE *)code->tag_markups.data
     };
     vm_render_until_error((VALUE)&args);
     VALUE ret = vm_stack_pop(vm);

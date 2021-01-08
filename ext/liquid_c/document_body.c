@@ -133,7 +133,7 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
 }
 
 
-VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_index)
+VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_offset)
 {
     assert(BUILTIN_TYPE(body->constants) == T_ARRAY);
 
@@ -145,7 +145,7 @@ VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_index)
     VALUE str = rb_str_buf_new(sizeof(document_body_header_t) + buffer_len + constants_len);
 
     document_body_header_t header = {
-        .entrypoint_block_index = entrypoint_block_index,
+        .entrypoint_block_offset = entrypoint_block_offset,
         .buffer_offset = sizeof(document_body_header_t),
         .buffer_len = buffer_len,
         .constants_offset = sizeof(document_body_header_t) + buffer_len,

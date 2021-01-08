@@ -27,7 +27,7 @@ typedef struct document_body {
 } document_body_t;
 
 typedef struct document_body_header {
-    uint32_t entrypoint_block_index;
+    uint32_t entrypoint_block_offset;
     uint32_t buffer_offset;
     uint32_t buffer_len;
     uint32_t constants_offset;
@@ -42,7 +42,7 @@ typedef struct document_body_entry {
 void liquid_define_document_body();
 VALUE document_body_new_instance();
 void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry);
-VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_index);
+VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_offset);
 
 static inline void document_body_entry_mark(document_body_entry_t *entry)
 {

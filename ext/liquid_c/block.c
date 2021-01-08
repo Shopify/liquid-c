@@ -305,7 +305,7 @@ static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *pars
                     tokenizer->raw_tag_body = NULL;
                     tokenizer->raw_tag_body_len = 0;
                 } else {
-                    vm_assembler_write_tag(body->as.intermediate.code, tag_markup);
+                    vm_assembler_write_tag_markup(body->as.intermediate.code, tag_markup);
                     block_body_add_node(body, new_tag);
                 }
 

@@ -67,6 +67,7 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     char *name = (char *)&header[1];
 
     header->flags = tag_markup->flags;
+    header->line_number = tag_markup->line_number;
     header->tag_name_len = tag_name_len;
     header->markup_len = markup_len;
     header->next_tag_offset = last ? 0 : total_len;

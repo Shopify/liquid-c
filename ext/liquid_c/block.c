@@ -222,7 +222,7 @@ static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *pars
 
                 if (name_len == 0) {
                     VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
-                    unknown_tag = tag_markup_new(str, str, true);
+                    unknown_tag = tag_markup_new(token_start_line_number, str, str, true);
                     goto loop_break;
                 }
 
@@ -252,11 +252,11 @@ static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *pars
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
 
                 if (tag_class == Qnil) {
-                    unknown_tag = tag_markup_new(tag_name, markup, true);
+                    unknown_tag = tag_markup_new(token_start_line_number, tag_name, markup, true);
                     goto loop_break;
                 }
 
-                VALUE tag_markup = tag_markup_new(tag_name, markup, false);
+                VALUE tag_markup = tag_markup_new(token_start_line_number, tag_name, markup, false);
                 block_body_push_tag_markup(body, parse_context->ruby_obj, tag_markup);
 
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4,

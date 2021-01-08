@@ -28,13 +28,14 @@ const rb_data_type_t tag_markup_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-VALUE tag_markup_new(VALUE tag_name, VALUE markup, bool unknown)
+VALUE tag_markup_new(uint32_t line_number, VALUE tag_name, VALUE markup, bool unknown)
 {
     tag_markup_t *tag;
     VALUE obj = TypedData_Make_Struct(cLiquidCTagMarkup, tag_markup_t, &tag_markup_data_type, tag);
 
     tag->flags = 0;
     if (unknown) tag->flags |= TAG_FLAG_UNKNOWN;
+    tag->line_number = line_number;
     tag->tag_name = tag_name;
     tag->markup = markup;
     tag->block_body = NULL;

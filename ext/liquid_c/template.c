@@ -17,13 +17,13 @@ static VALUE marshal_load_constants(const char *str, size_t len)
     return constants;
 }
 
-static VALUE template_load(VALUE self, VALUE source, VALUE options)
+static VALUE template_load(VALUE self, VALUE serialized_data, VALUE options)
 {
-    Check_Type(source, T_STRING);
+    Check_Type(serialized_data, T_STRING);
     Check_Type(options, T_HASH);
 
-    source = rb_str_dup_frozen(source);
-    const char *data = RSTRING_PTR(source);
+    serialized_data = rb_str_dup_frozen(serialized_data);
+    const char *data = RSTRING_PTR(serialized_data);
 
     document_body_header_t *header = (document_body_header_t *)data;
 
@@ -31,13 +31,13 @@ static VALUE template_load(VALUE self, VALUE source, VALUE options)
         rb_raise(cLiquidCDeserializationError, "Incompatible serialization versions, expected %u but got %u\n", DOCUMENT_BODY_CURRENT_VERSION, header->version);
     }
 
-    assert(RSTRING_LEN(source) >= header->buffer_offset + header->buffer_offset);
+    assert(RSTRING_LEN(serialized_data) >= header->buffer_offset + header->buffer_offset);
     const char *body_data = data + header->buffer_offset;
 
-    assert(RSTRING_LEN(source) >= header->constants_offset + header->constants_len);
+    assert(RSTRING_LEN(serialized_data) >= header->constants_offset + header->constants_len);
     VALUE constants = marshal_load_constants(data + header->constants_offset, header->constants_len);
 
-    VALUE document_body = document_body_new_immutable_instance(constants, source, body_data);
+    VALUE document_body = document_body_new_immutable_instance(constants, serialized_data, body_data);
 
     VALUE parse_context = serialize_parse_context_new(document_body, header, options);
     rb_funcall(self, id_configure_options, 1, parse_context);

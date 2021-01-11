@@ -109,7 +109,7 @@ static VALUE block_body_initialize(VALUE self, VALUE parse_context)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
 
-    if (is_serialize_parse_context_p(parse_context)) {
+    if (is_parse_context_for_serialize(parse_context)) {
         body->from_serialize = true;
         body->as.serialize.document_body_entry = document_body_entry_init();
         body->as.serialize.parse_context = parse_context;
@@ -322,7 +322,7 @@ loop_break:
 static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
     assert(body->from_serialize);
-    assert(is_serialize_parse_context_p(parse_context_obj));
+    assert(is_parse_context_for_serialize(parse_context_obj));
 
     ensure_intermediate(body);
     if (body->as.serialize.parse_context != parse_context_obj) {

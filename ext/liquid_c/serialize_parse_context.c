@@ -28,14 +28,16 @@ const rb_data_type_t serialize_parse_context_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-VALUE serialize_parse_context_new(VALUE document_body, document_body_header_t *header, VALUE options)
+VALUE serialize_parse_context_new(VALUE document_body, document_body_header_t *header, VALUE options,
+                                  serialize_parse_context_t **serialize_context_ptr_ptr)
 {
     VALUE obj;
-    serialize_parse_context_t *serialize_context;
 
     obj = TypedData_Make_Struct(cLiquidCSerializeParseContext, serialize_parse_context_t,
-                                &serialize_parse_context_data_type, serialize_context);
+                                &serialize_parse_context_data_type, *serialize_context_ptr_ptr);
+    serialize_parse_context_t *serialize_context = *serialize_context_ptr_ptr;
     assert(header->entrypoint_block_offset < header->buffer_len);
+    serialize_context->deserialize_complete = false;
     serialize_context->document_body = document_body;
     document_body_setup_entry_for_header(document_body, header->entrypoint_block_offset,
                                          &serialize_context->current_entry);
@@ -46,19 +48,30 @@ VALUE serialize_parse_context_new(VALUE document_body, document_body_header_t *h
     return obj;
 }
 
-bool is_serialize_parse_context_p(VALUE self)
+bool is_parse_context_for_serialize(VALUE self)
 {
-    return CLASS_OF(self) == cLiquidCSerializeParseContext;
+    if (CLASS_OF(self) == cLiquidCSerializeParseContext) {
+        serialize_parse_context_t *serialize_context;
+        SerializeParseContext_Get_Struct(self, serialize_context);
+
+        return !serialize_context->deserialize_complete;
+    }
+
+    return false;
 }
 
 void serialize_parse_context_enter_tag(serialize_parse_context_t *serialize_context, tag_markup_header_t *tag)
 {
+    assert(!serialize_context->deserialize_complete);
+
     serialize_context->current_entry.buffer_offset = tag->block_body_offset;
 }
 
 void serialize_parse_context_exit_tag(serialize_parse_context_t *serialize_context, document_body_entry_t *entry,
                                       tag_markup_header_t *tag)
 {
+    assert(!serialize_context->deserialize_complete);
+
     assert(serialize_context->current_entry.body == entry->body);
     serialize_context->current_entry = *entry;
 }

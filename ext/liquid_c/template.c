@@ -40,10 +40,13 @@ static VALUE template_load(VALUE self, VALUE serialized_data, VALUE options)
 
     VALUE document_body = document_body_new_immutable_instance(constants, serialized_data, body_data);
 
-    VALUE parse_context = serialize_parse_context_new(document_body, header, options);
+    serialize_parse_context_t *serialize_context;
+    VALUE parse_context = serialize_parse_context_new(document_body, header, options, &serialize_context);
     rb_funcall(self, id_configure_options, 1, parse_context);
 
     rb_ivar_set(self, id_ivar_root, document_parse(Qnil, parse_context));
+
+    serialize_context->deserialize_complete = true;
 
     return self;
 }

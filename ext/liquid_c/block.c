@@ -92,6 +92,7 @@ static VALUE block_body_allocate(VALUE klass)
     body->tags = c_buffer_init();
     body->as.intermediate.blank = true;
     body->as.intermediate.root = false;
+    body->as.intermediate.bound_to_tag = false;
     body->as.intermediate.render_score = 0;
     body->as.intermediate.vm_assembler_pool = NULL;
     body->as.intermediate.code = NULL;
@@ -336,7 +337,8 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
 
     VALUE block_ret = rb_yield_values(2, tag_name, markup);
 
-    if (RTEST(parse_context.parent_tag)) {
+    if (RTEST(parse_context.parent_tag) && !body->as.intermediate.bound_to_tag) {
+        body->as.intermediate.bound_to_tag = true;
         tag_markup_set_block_body(parse_context.parent_tag, self, body);
     }
 

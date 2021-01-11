@@ -19,6 +19,7 @@ typedef struct block_body {
             vm_assembler_pool_t *vm_assembler_pool;
             bool blank;
             bool root;
+            bool bound_to_tag;
             unsigned int render_score;
             vm_assembler_t *code;
         } intermediate;

@@ -334,7 +334,7 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
 
     body->as.serialize.document_body_entry = serialize_context->current_entry;
 
-    tag_markup_header_t *current_tag = tag_markup_get_first_tag(&serialize_context->current_entry);
+    tag_markup_header_t *current_tag = serialize_context->current_tag;
     while (current_tag) {
         bool tag_unknown = TAG_UNKNOWN_P(current_tag);
 
@@ -344,7 +344,11 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
             VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
             VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);
 
-            return rb_yield_values(2, tag_name, markup);
+            VALUE ret = rb_yield_values(2, tag_name, markup);
+            if (BUFFER_OFFSET_UNDEF_P(current_tag->block_body_offset)) {
+                serialize_parse_context_exit_tag(serialize_context, &body->as.serialize.document_body_entry, current_tag);
+            }
+            return ret;
         } else {
             VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
             VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);

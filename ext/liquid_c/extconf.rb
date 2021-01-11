@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 require 'mkmf'
+
+# if system endianness == network endianness (big endian)
+if [1].pack('I') == [1].pack('N')
+  raise 'System incompatible with liquid-c, only little endian systems supported'
+end
+
 $CFLAGS << ' -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers'
 append_cflags('-fvisibility=hidden')
 # In Ruby 2.6 and earlier, the Ruby headers did not have struct timespec defined

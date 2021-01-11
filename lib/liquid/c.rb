@@ -95,7 +95,7 @@ module Liquid
       def parse(tokenizer, parse_context)
         if tokenizer.is_a?(Liquid::C::Tokenizer) || tokenizer.nil?
           # Temporary to test rollout of the fix for this bug
-          if parse_context[:bug_compatible_whitespace_trimming]
+          if tokenizer && parse_context[:bug_compatible_whitespace_trimming]
             tokenizer.bug_compatible_whitespace_trimming!
           end
         else

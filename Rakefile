@@ -45,6 +45,7 @@ namespace :test do
           env_vars.each { |key, value| ENV[key] = value }
           task.invoke
         ensure
+          env_vars.each { |key, _| ENV[key] = nil }
           old_env_values.each { |key, value| ENV[key] = value }
           task.reenable
         end
@@ -55,9 +56,11 @@ namespace :test do
 
     task :strict, &integration_test_with_env.call('LIQUID_PARSER_MODE' => 'strict')
 
+    task :serialization, &integration_test_with_env.call('LIQUID_C_TEST_SERIALIZE' => '1')
+
     task :without_vm, &integration_test_with_env.call('LIQUID_C_DISABLE_VM' => 'true')
 
-    task all: [:lax, :strict, :without_vm]
+    task all: [:lax, :strict, :serialization, :without_vm]
   end
 end
 

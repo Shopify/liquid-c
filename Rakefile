@@ -73,11 +73,13 @@ namespace :benchmark do
   desc "Run the liquid benchmark with lax parsing"
   task :run do
     ruby "./performance.rb c benchmark lax"
+    ruby "./performance/serialization.rb lax"
   end
 
   desc "Run the liquid benchmark with strict parsing"
   task :strict do
     ruby "./performance.rb c benchmark strict"
+    ruby "./performance/serialization.rb strict"
   end
 end
 

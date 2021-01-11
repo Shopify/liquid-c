@@ -486,7 +486,10 @@ static VALUE block_body_blank_p(VALUE self)
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
-    if (body->compiled) {
+    if (body->from_serialize) {
+        block_body_header_t *body_header = document_body_get_block_body_header_ptr(&body->as.serialize.document_body_entry);
+        return BLOCK_BODY_HEADER_BLANK_P(body_header) ? Qtrue : Qfalse;
+    } else if (body->compiled) {
         block_body_header_t *body_header = document_body_get_block_body_header_ptr(&body->as.compiled.document_body_entry);
         return BLOCK_BODY_HEADER_BLANK_P(body_header) ? Qtrue : Qfalse;
     } else {

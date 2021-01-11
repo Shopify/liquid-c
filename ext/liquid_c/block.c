@@ -338,6 +338,10 @@ static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer
     while (current_tag) {
         bool tag_unknown = TAG_UNKNOWN_P(current_tag);
 
+        if (current_tag->line_number != 0) {
+            rb_ivar_set(parse_context_obj, id_ivar_line_number, UINT2NUM(current_tag->line_number));
+        }
+
         if (tag_unknown) {
             serialize_parse_context_enter_tag(serialize_context, current_tag);
 

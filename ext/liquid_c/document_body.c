@@ -11,19 +11,28 @@ static void document_body_mark(void *ptr)
 {
     document_body_t *body = ptr;
     rb_gc_mark(body->constants);
+    if (!body->mutable) {
+        rb_gc_mark(body->as.immutable.serialize_str);
+    }
 }
 
 static void document_body_free(void *ptr)
 {
     document_body_t *body = ptr;
-    c_buffer_free(&body->buffer);
+    if (body->mutable) {
+        c_buffer_free(&body->as.mutable.buffer);
+    }
     xfree(body);
 }
 
 static size_t document_body_memsize(const void *ptr)
 {
     const document_body_t *body = ptr;
-    return sizeof(document_body_t) + c_buffer_size(&body->buffer);
+    size_t size = sizeof(document_body_t);
+    if (body->mutable) {
+        size += c_buffer_size(&body->as.mutable.buffer);
+    }
+    return size;
 }
 
 const rb_data_type_t document_body_data_type = {
@@ -32,23 +41,34 @@ const rb_data_type_t document_body_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-static VALUE document_body_allocate(VALUE klass)
+#define DocumentBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, document_body_t, &document_body_data_type, sval)
+
+VALUE document_body_new_mutable_instance()
 {
     document_body_t *body;
-
-    VALUE obj = TypedData_Make_Struct(klass, document_body_t, &document_body_data_type, body);
+    VALUE obj = TypedData_Make_Struct(cLiquidCDocumentBody, document_body_t, &document_body_data_type, body);
     body->self = obj;
     body->constants = rb_ary_new();
-    body->buffer = c_buffer_init();
+    body->mutable = true;
+    body->as.mutable.buffer = c_buffer_init();
 
     return obj;
 }
 
-#define DocumentBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, document_body_t, &document_body_data_type, sval)
-
-VALUE document_body_new_instance()
+VALUE document_body_new_immutable_instance(VALUE constants, VALUE serialize_str, const char *data)
 {
-    return rb_class_new_instance(0, NULL, cLiquidCDocumentBody);
+    assert(BUILTIN_TYPE(constants) == T_ARRAY);
+    assert(BUILTIN_TYPE(serialize_str) == T_STRING);
+
+    document_body_t *body;
+    VALUE obj = TypedData_Make_Struct(cLiquidCDocumentBody, document_body_t, &document_body_data_type, body);
+    body->self = obj;
+    body->constants = constants;
+    body->mutable = false;
+    body->as.immutable.serialize_str = serialize_str;
+    body->as.immutable.data = data;
+
+    return obj;
 }
 
 static void document_body_write_tag_markup(document_body_t *body, VALUE tag_markup_obj, bool last)
@@ -59,10 +79,10 @@ static void document_body_write_tag_markup(document_body_t *body, VALUE tag_mark
     uint32_t tag_name_len = (uint32_t)RSTRING_LEN(tag_markup->tag_name);
     uint32_t markup_len = (uint32_t)RSTRING_LEN(tag_markup->markup);
     uint32_t total_len = sizeof(tag_markup_header_t) + tag_name_len + markup_len;
-    assert(c_buffer_size(&body->buffer) % alignof(tag_markup_header_t) == 0);
-    tag_markup_header_t *header = c_buffer_extend_for_write(&body->buffer, total_len);
+    assert(c_buffer_size(&body->as.mutable.buffer) % alignof(tag_markup_header_t) == 0);
+    tag_markup_header_t *header = c_buffer_extend_for_write(&body->as.mutable.buffer, total_len);
     if (!last) {
-        total_len += (uint32_t)c_buffer_zero_pad_for_alignment(&body->buffer, alignof(tag_markup_header_t));
+        total_len += (uint32_t)c_buffer_zero_pad_for_alignment(&body->as.mutable.buffer, alignof(tag_markup_header_t));
     }
     char *name = (char *)&header[1];
 
@@ -90,15 +110,16 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
 {
     document_body_t *body;
     DocumentBody_Get_Struct(self, body);
+    assert(body->mutable);
 
-    c_buffer_zero_pad_for_alignment(&body->buffer, alignof(block_body_header_t));
+    c_buffer_zero_pad_for_alignment(&body->as.mutable.buffer, alignof(block_body_header_t));
 
     entry->body = body;
-    entry->buffer_offset = c_buffer_size(&body->buffer);
+    entry->buffer_offset = c_buffer_size(&body->as.mutable.buffer);
 
     size_t instructions_byte_size = c_buffer_size(&code->instructions);
     size_t header_and_instructions_size = sizeof(block_body_header_t) + instructions_byte_size;
-    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->buffer, header_and_instructions_size);
+    block_body_header_t *buf_block_body = c_buffer_extend_for_write(&body->as.mutable.buffer, header_and_instructions_size);
     uint8_t *instructions = (uint8_t *)&buf_block_body[1];
 
     buf_block_body->flags = 0;
@@ -120,7 +141,7 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     uint32_t tags_len = (uint32_t)(c_buffer_size(&code->tag_markups) / sizeof(VALUE));
     if (tags_len > 0) {
         buf_block_body->first_tag_offset = (uint32_t)header_and_instructions_size;
-        buf_block_body->first_tag_offset += (uint32_t)c_buffer_zero_pad_for_alignment(&body->buffer, alignof(tag_markup_header_t));
+        buf_block_body->first_tag_offset += (uint32_t)c_buffer_zero_pad_for_alignment(&body->as.mutable.buffer, alignof(tag_markup_header_t));
 
         uint32_t i;
         for (i = 0; i < tags_len - 1; i++) {
@@ -137,7 +158,7 @@ VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_offset
 {
     assert(BUILTIN_TYPE(body->constants) == T_ARRAY);
 
-    uint32_t buffer_len = (uint32_t)c_buffer_size(&body->buffer);
+    uint32_t buffer_len = (uint32_t)c_buffer_size(&body->as.mutable.buffer);
 
     VALUE constants = rb_marshal_dump(body->constants, Qnil);
     uint32_t constants_len = (uint32_t)RSTRING_LEN(constants);
@@ -154,10 +175,20 @@ VALUE document_body_dump(document_body_t *body, uint32_t entrypoint_block_offset
     };
 
     rb_str_cat(str, (const char *)&header, sizeof(document_body_header_t));
-    rb_str_cat(str, (const char *)body->buffer.data, buffer_len);
+    rb_str_cat(str, (const char *)body->as.mutable.buffer.data, buffer_len);
     rb_str_append(str, constants);
 
     return str;
+}
+
+
+void document_body_setup_entry_for_header(VALUE self, uint32_t offset, document_body_entry_t *entry)
+{
+    document_body_t *body;
+    DocumentBody_Get_Struct(self, body);
+
+    entry->body = body;
+    entry->buffer_offset = offset;
 }
 
 
@@ -165,5 +196,5 @@ void liquid_define_document_body()
 {
     cLiquidCDocumentBody = rb_define_class_under(mLiquidC, "DocumentBody", rb_cObject);
     rb_global_variable(&cLiquidCDocumentBody);
-    rb_define_alloc_func(cLiquidCDocumentBody, document_body_allocate);
+    rb_undef_alloc_func(cLiquidCDocumentBody);
 }

@@ -7,6 +7,7 @@
 #include "variable.h"
 #include "context.h"
 #include "parse_context.h"
+#include "serialize_parse_context.h"
 #include "vm_assembler.h"
 #include "tag_markup.h"
 #include <stdio.h>
@@ -44,6 +45,9 @@ static void block_body_mark(void *ptr)
     if (body->compiled) {
         document_body_entry_mark(&body->as.compiled.document_body_entry);
         rb_gc_mark(body->as.compiled.nodelist);
+    } else if (body->from_serialize) {
+        document_body_entry_mark(&body->as.serialize.document_body_entry);
+        rb_gc_mark(body->as.serialize.parse_context);
     } else {
         rb_gc_mark(body->as.intermediate.parse_context);
         if (body->as.intermediate.vm_assembler_pool)
@@ -56,7 +60,7 @@ static void block_body_mark(void *ptr)
 static void block_body_free(void *ptr)
 {
     block_body_t *body = ptr;
-    if (!body->compiled) {
+    if (!body->compiled && !body->from_serialize) {
         // Free the assembler instead of recycling it because the vm_assembler_pool may have been GC'd
         vm_assembler_pool_free_assembler(body->as.intermediate.code);
     }
@@ -67,7 +71,7 @@ static size_t block_body_memsize(const void *ptr)
 {
     const block_body_t *body = ptr;
     if (!ptr) return 0;
-    if (body->compiled) {
+    if (body->compiled || body->from_serialize) {
         return sizeof(block_body_t);
     } else {
         return sizeof(block_body_t) + vm_assembler_alloc_memsize(body->as.intermediate.code);
@@ -88,6 +92,7 @@ static VALUE block_body_allocate(VALUE klass)
     VALUE obj = TypedData_Make_Struct(klass, block_body_t, &block_body_data_type, body);
 
     body->compiled = false;
+    body->from_serialize = false;
     body->obj = obj;
     body->tags = c_buffer_init();
     body->as.intermediate.blank = true;
@@ -104,18 +109,24 @@ static VALUE block_body_initialize(VALUE self, VALUE parse_context)
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
 
-    body->as.intermediate.parse_context = parse_context;
-
-    if (parse_context_document_body_initialized_p(parse_context)) {
-        body->as.intermediate.vm_assembler_pool = parse_context_get_vm_assembler_pool(parse_context);
+    if (is_parse_context_for_serialize(parse_context)) {
+        body->from_serialize = true;
+        body->as.serialize.document_body_entry = document_body_entry_init();
+        body->as.serialize.parse_context = parse_context;
     } else {
-        parse_context_init_document_body(parse_context);
-        body->as.intermediate.root = true;
-        body->as.intermediate.vm_assembler_pool = parse_context_init_vm_assembler_pool(parse_context);
-    }
+        body->as.intermediate.parse_context = parse_context;
 
-    body->as.intermediate.code = vm_assembler_pool_alloc_assembler(body->as.intermediate.vm_assembler_pool);
-    vm_assembler_add_leave(body->as.intermediate.code);
+        if (parse_context_document_body_initialized_p(parse_context)) {
+            body->as.intermediate.vm_assembler_pool = parse_context_get_vm_assembler_pool(parse_context);
+        } else {
+            parse_context_init_document_body(parse_context);
+            body->as.intermediate.root = true;
+            body->as.intermediate.vm_assembler_pool = parse_context_init_vm_assembler_pool(parse_context);
+        }
+
+        body->as.intermediate.code = vm_assembler_pool_alloc_assembler(body->as.intermediate.vm_assembler_pool);
+        vm_assembler_add_leave(body->as.intermediate.code);
+    }
 
     return Qnil;
 }
@@ -137,6 +148,22 @@ static void block_body_push_tag_markup(block_body_t *body, VALUE parse_context, 
     assert(!body->compiled);
     vm_assembler_write_tag_markup(body->as.intermediate.code, tag_markup);
     parse_context_set_parent_tag(parse_context, tag_markup);
+}
+
+static void ensure_intermediate(block_body_t *body)
+{
+    if (body->compiled) {
+        rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is already compiled");
+    }
+}
+
+static void ensure_intermediate_not_parsing(block_body_t *body)
+{
+    ensure_intermediate(body);
+
+    if (body->as.intermediate.code->parsing) {
+        rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
+    }
 }
 
 static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
@@ -258,7 +285,7 @@ static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *pars
                 }
 
                 VALUE tag_markup = tag_markup_new(token_start_line_number, tag_name, markup, false);
-                block_body_push_tag_markup(body, parse_context->ruby_obj, tag_markup);
+                parse_context_set_parent_tag(parse_context->ruby_obj, tag_markup);
 
                 VALUE new_tag = rb_funcall(tag_class, intern_parse, 4,
                         tag_name, markup, parse_context->tokenizer_obj, parse_context->ruby_obj);
@@ -271,11 +298,12 @@ static VALUE internal_block_body_parse(block_body_t *body, parse_context_t *pars
                 if (tokenizer->raw_tag_body) {
                     if (tokenizer->raw_tag_body_len) {
                         vm_assembler_add_write_raw(body->as.intermediate.code, tokenizer->raw_tag_body,
-                                                tokenizer->raw_tag_body_len);
+                                                   tokenizer->raw_tag_body_len);
                     }
                     tokenizer->raw_tag_body = NULL;
                     tokenizer->raw_tag_body_len = 0;
                 } else {
+                    vm_assembler_write_tag_markup(body->as.intermediate.code, tag_markup);
                     block_body_add_node(body, new_tag);
                 }
 
@@ -291,23 +319,64 @@ loop_break:
     return unknown_tag;
 }
 
-static void ensure_intermediate(block_body_t *body)
+static VALUE block_body_parse_from_serialize(block_body_t *body, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
-    if (body->compiled) {
-        rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is already compiled");
-    }
-}
+    assert(body->from_serialize);
+    assert(is_parse_context_for_serialize(parse_context_obj));
 
-static void ensure_intermediate_not_parsing(block_body_t *body)
-{
     ensure_intermediate(body);
-
-    if (body->as.intermediate.code->parsing) {
-        rb_raise(rb_eRuntimeError, "Liquid::C::BlockBody is in a incompletely parsed state");
+    if (body->as.serialize.parse_context != parse_context_obj) {
+        rb_raise(rb_eArgError, "Liquid::C::BlockBody#parse called with different parse context");
     }
+
+    serialize_parse_context_t *serialize_context;
+    SerializeParseContext_Get_Struct(parse_context_obj, serialize_context);
+
+    body->as.serialize.document_body_entry = serialize_context->current_entry;
+
+    tag_markup_header_t *current_tag = serialize_context->current_tag;
+    while (current_tag) {
+        bool tag_unknown = TAG_UNKNOWN_P(current_tag);
+
+        if (current_tag->line_number != 0) {
+            rb_ivar_set(parse_context_obj, id_ivar_line_number, UINT2NUM(current_tag->line_number));
+        }
+
+        if (tag_unknown) {
+            serialize_parse_context_enter_tag(serialize_context, current_tag);
+
+            VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
+            VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);
+
+            VALUE ret = rb_yield_values(2, tag_name, markup);
+            if (BUFFER_OFFSET_UNDEF_P(current_tag->block_body_offset)) {
+                serialize_parse_context_exit_tag(serialize_context, &body->as.serialize.document_body_entry, current_tag);
+            }
+            return ret;
+        } else {
+            VALUE tag_name = rb_utf8_str_new(tag_markup_header_name(current_tag), current_tag->tag_name_len);
+            VALUE markup = rb_utf8_str_new(tag_markup_header_markup(current_tag), current_tag->markup_len);
+
+            VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
+            if (!RTEST(tag_class)) {
+                rb_raise(cLiquidCDeserializationError, "cannot find known tag `%"PRIsVALUE"`", tag_name);
+            }
+
+            serialize_parse_context_enter_tag(serialize_context, current_tag);
+            VALUE new_tag = rb_funcall(tag_class, intern_parse, 4,
+                                       tag_name, markup, tokenizer_obj, parse_context_obj);
+            serialize_parse_context_exit_tag(serialize_context, &body->as.serialize.document_body_entry, current_tag);
+
+            c_buffer_write_ruby_value(&body->tags, new_tag);
+        }
+
+        current_tag = tag_markup_get_next_tag(current_tag);
+    }
+
+    return rb_yield_values(2, Qnil, Qnil);
 }
 
-static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_context_obj)
+static VALUE block_body_parse_from_source(VALUE self, block_body_t *body, VALUE tokenizer_obj, VALUE parse_context_obj)
 {
     parse_context_t parse_context = {
         .parent_tag = parse_context_get_parent_tag(parse_context_obj),
@@ -315,8 +384,6 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
         .ruby_obj = parse_context_obj,
     };
     Tokenizer_Get_Struct(tokenizer_obj, parse_context.tokenizer);
-    block_body_t *body;
-    BlockBody_Get_Struct(self, body);
 
     ensure_intermediate_not_parsing(body);
     if (body->as.intermediate.parse_context != parse_context_obj) {
@@ -333,16 +400,28 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
         tag_name = tag_markup_get_tag_name(unknown_tag);
         markup = tag_markup_get_markup(unknown_tag);
         block_body_push_tag_markup(body, parse_context_obj, unknown_tag);
+
+        if (RTEST(parse_context.parent_tag) && !body->as.intermediate.bound_to_tag) {
+            body->as.intermediate.bound_to_tag = true;
+            tag_markup_set_block_body(parse_context.parent_tag, self, body);
+        }
     }
 
     VALUE block_ret = rb_yield_values(2, tag_name, markup);
 
-    if (RTEST(parse_context.parent_tag) && !body->as.intermediate.bound_to_tag) {
-        body->as.intermediate.bound_to_tag = true;
-        tag_markup_set_block_body(parse_context.parent_tag, self, body);
-    }
-
     return block_ret;
+}
+
+static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_context_obj)
+{
+    block_body_t *body;
+    BlockBody_Get_Struct(self, body);
+
+    if (body->from_serialize) {
+        return block_body_parse_from_serialize(body, tokenizer_obj, parse_context_obj);
+    } else {
+        return block_body_parse_from_source(self, body, tokenizer_obj, parse_context_obj);
+    }
 }
 
 
@@ -353,25 +432,31 @@ static VALUE block_body_freeze(VALUE self)
 
     if (body->compiled) return Qnil;
 
-    VALUE parse_context = body->as.intermediate.parse_context;
-    VALUE document_body = parse_context_get_document_body(parse_context);
-
-    bool root = body->as.intermediate.root;
-
-    vm_assembler_pool_t *assembler_pool = body->as.intermediate.vm_assembler_pool;
-    vm_assembler_t *assembler = body->as.intermediate.code;
-    bool blank = body->as.intermediate.blank;
-    uint32_t render_score = body->as.intermediate.render_score;
-    vm_assembler_t *code = body->as.intermediate.code;
     body->compiled = true;
-    body->as.compiled.nodelist = Qundef;
-    document_body_write_block_body(document_body, blank, render_score, code, &body->as.compiled.document_body_entry);
-    vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
 
-    if (root) {
-        parse_context_remove_document_body(parse_context);
-        parse_context_remove_vm_assembler_pool(parse_context);
+    if (body->from_serialize) {
+        body->as.compiled.nodelist = Qundef;
+    } else {
+        VALUE parse_context = body->as.intermediate.parse_context;
+        VALUE document_body = parse_context_get_document_body(parse_context);
+
+        bool root = body->as.intermediate.root;
+
+        vm_assembler_pool_t *assembler_pool = body->as.intermediate.vm_assembler_pool;
+        vm_assembler_t *assembler = body->as.intermediate.code;
+        bool blank = body->as.intermediate.blank;
+        uint32_t render_score = body->as.intermediate.render_score;
+        vm_assembler_t *code = body->as.intermediate.code;
+        body->as.compiled.nodelist = Qundef;
+        document_body_write_block_body(document_body, blank, render_score, code, &body->as.compiled.document_body_entry);
+        vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
+
+        if (root) {
+            parse_context_remove_document_body(parse_context);
+            parse_context_remove_vm_assembler_pool(parse_context);
+        }
     }
+
 
     rb_call_super(0, NULL);
 
@@ -397,7 +482,10 @@ static VALUE block_body_blank_p(VALUE self)
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
-    if (body->compiled) {
+    if (body->from_serialize) {
+        block_body_header_t *body_header = document_body_get_block_body_header_ptr(&body->as.serialize.document_body_entry);
+        return BLOCK_BODY_HEADER_BLANK_P(body_header) ? Qtrue : Qfalse;
+    } else if (body->compiled) {
         block_body_header_t *body_header = document_body_get_block_body_header_ptr(&body->as.compiled.document_body_entry);
         return BLOCK_BODY_HEADER_BLANK_P(body_header) ? Qtrue : Qfalse;
     } else {
@@ -409,6 +497,8 @@ static VALUE block_body_remove_blank_strings(VALUE self)
 {
     block_body_t *body;
     BlockBody_Get_Struct(self, body);
+
+    if (body->from_serialize) return Qnil;
 
     ensure_intermediate_not_parsing(body);
 

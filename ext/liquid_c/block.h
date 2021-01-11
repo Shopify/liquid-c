@@ -6,6 +6,7 @@
 
 typedef struct block_body {
     bool compiled;
+    bool from_serialize;
     VALUE obj;
     c_buffer_t tags;
 
@@ -14,6 +15,10 @@ typedef struct block_body {
             document_body_entry_t document_body_entry;
             VALUE nodelist;
         } compiled;
+        struct {
+            document_body_entry_t document_body_entry;
+            VALUE parse_context;
+        } serialize;
         struct {
             VALUE parse_context;
             vm_assembler_pool_t *vm_assembler_pool;

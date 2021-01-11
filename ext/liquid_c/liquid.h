@@ -14,7 +14,7 @@ extern ID id_ivar_line_number;
 
 extern VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
 extern VALUE cLiquidVariableLookup, cLiquidRangeLookup;
-extern VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
+extern VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError, cLiquidCDeserializationError;
 extern rb_encoding *utf8_encoding;
 extern int utf8_encoding_index;
 

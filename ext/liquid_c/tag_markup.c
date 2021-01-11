@@ -66,6 +66,31 @@ void tag_markup_set_block_body(VALUE self, VALUE block_body_obj, block_body_t *b
     tag->block_body = block_body;
 }
 
+tag_markup_header_t *tag_markup_get_first_tag(document_body_entry_t *entry)
+{
+    // Should only be used for (deserialized) immutable document body
+    assert(!entry->body->mutable);
+
+    if (BUFFER_OFFSET_UNDEF_P(entry->buffer_offset)) {
+        return NULL;
+    }
+
+    block_body_header_t *header = document_body_get_block_body_header_ptr(entry);
+
+    if (!header->first_tag_offset)
+        return NULL;
+
+    return (tag_markup_header_t *)((char *)header + header->first_tag_offset);
+}
+
+tag_markup_header_t *tag_markup_get_next_tag(tag_markup_header_t *current_tag)
+{
+    if (!current_tag->next_tag_offset)
+        return NULL;
+
+    return (tag_markup_header_t *)((char *)current_tag + current_tag->next_tag_offset);
+}
+
 void liquid_define_tag_markup()
 {
     cLiquidCTagMarkup = rb_define_class_under(mLiquidC, "TagMarkup", rb_cObject);

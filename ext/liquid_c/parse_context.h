@@ -4,6 +4,9 @@
 #include <ruby.h>
 #include <stdbool.h>
 #include "vm_assembler_pool.h"
+#include "tag_markup.h"
+
+extern VALUE cLiquidParseContext;
 
 void liquid_define_parse_context();
 bool parse_context_document_body_initialized_p(VALUE self);

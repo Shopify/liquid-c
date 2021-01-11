@@ -401,17 +401,13 @@ static VALUE block_body_parse_from_source(VALUE self, block_body_t *body, VALUE 
         markup = tag_markup_get_markup(unknown_tag);
         block_body_push_tag_markup(body, parse_context_obj, unknown_tag);
 
-        if (RTEST(parse_context.parent_tag)) {
+        if (RTEST(parse_context.parent_tag) && !body->as.intermediate.bound_to_tag) {
+            body->as.intermediate.bound_to_tag = true;
             tag_markup_set_block_body(parse_context.parent_tag, self, body);
         }
     }
 
     VALUE block_ret = rb_yield_values(2, tag_name, markup);
-
-    if (RTEST(parse_context.parent_tag) && !body->as.intermediate.bound_to_tag) {
-        body->as.intermediate.bound_to_tag = true;
-        tag_markup_set_block_body(parse_context.parent_tag, self, body);
-    }
 
     return block_ret;
 }

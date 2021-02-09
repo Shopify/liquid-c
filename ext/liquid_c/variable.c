@@ -171,14 +171,14 @@ static VALUE variable_strict_parse_method(VALUE self, VALUE markup)
 }
 
 typedef struct {
-    VALUE self;
+    expression_t *expression;
     VALUE context;
 } variable_expression_evaluate_args_t;
 
 static VALUE try_variable_expression_evaluate(VALUE uncast_args)
 {
     variable_expression_evaluate_args_t *args = (void *)uncast_args;
-    return expression_evaluate(args->self, args->context);
+    return liquid_vm_evaluate(args->context, &args->expression->code);
 }
 
 static VALUE rescue_variable_expression_evaluate(VALUE uncast_args, VALUE exception)
@@ -189,10 +189,17 @@ static VALUE rescue_variable_expression_evaluate(VALUE uncast_args, VALUE except
     rb_exc_raise(exception);
 }
 
-static VALUE variable_expression_evaluate(VALUE self, VALUE context)
+VALUE internal_variable_expression_evaluate(expression_t *expression, VALUE context)
 {
-    variable_expression_evaluate_args_t args = { self, context };
+    variable_expression_evaluate_args_t args = { expression, context };
     return rb_rescue(try_variable_expression_evaluate, (VALUE)&args, rescue_variable_expression_evaluate, (VALUE)&args);
+}
+
+static VALUE variable_expression_evaluate_method(VALUE self, VALUE context)
+{
+    expression_t *expression;
+    Expression_Get_Struct(self, expression);
+    return internal_variable_expression_evaluate(expression, context);
 }
 
 void liquid_define_variable(void)
@@ -211,6 +218,6 @@ void liquid_define_variable(void)
 
     cLiquidCVariableExpression = rb_define_class_under(mLiquidC, "VariableExpression", cLiquidCExpression);
     rb_global_variable(&cLiquidCVariableExpression);
-    rb_define_method(cLiquidCVariableExpression, "evaluate", variable_expression_evaluate, 1);
+    rb_define_method(cLiquidCVariableExpression, "evaluate", variable_expression_evaluate_method, 1);
 }
 

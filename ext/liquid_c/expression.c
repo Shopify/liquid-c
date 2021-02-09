@@ -75,8 +75,6 @@ static VALUE expression_strict_parse(VALUE klass, VALUE markup)
     return expr_obj;
 }
 
-#define Expression_Get_Struct(obj, sval) TypedData_Get_Struct(obj, expression_t, &expression_data_type, sval)
-
 VALUE expression_evaluate(VALUE self, VALUE context)
 {
     expression_t *expression;

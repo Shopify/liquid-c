@@ -225,6 +225,13 @@ class VariableTest < Minitest::Test
     assert_equal('Liquid error: concat filter requires an array argument', exc.message)
   end
 
+  def test_filter_argument_error_translation
+    variable = Liquid::Variable.new("'some words' | split", Liquid::ParseContext.new)
+    context = Liquid::Context.new
+    exc = assert_raises(Liquid::ArgumentError) { variable.render(context) }
+    assert_equal('Liquid error: wrong number of arguments (given 1, expected 2)', exc.message)
+  end
+
   private
 
   def variable_strict_parse(markup)

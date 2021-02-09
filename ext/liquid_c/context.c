@@ -68,8 +68,14 @@ static VALUE context_evaluate(VALUE self, VALUE expression)
     switch (RB_BUILTIN_TYPE(expression)) {
         case T_DATA:
         {
-            if (RTYPEDDATA_P(expression) && RTYPEDDATA_TYPE(expression) == &expression_data_type)
-                return internal_expression_evaluate(DATA_PTR(expression), self);
+            if (RTYPEDDATA_P(expression) && RTYPEDDATA_TYPE(expression) == &expression_data_type) {
+                if (RBASIC_CLASS(expression) == cLiquidCExpression) {
+                    return internal_expression_evaluate(DATA_PTR(expression), self);
+                } else {
+                    assert(RBASIC_CLASS(expression) == cLiquidCVariableExpression);
+                    return internal_variable_expression_evaluate(DATA_PTR(expression), self);
+                }
+            }
             break; // e.g. BigDecimal
         }
         case T_OBJECT: // may be Liquid::VariableLookup or Liquid::RangeLookup

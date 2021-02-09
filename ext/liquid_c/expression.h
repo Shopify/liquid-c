@@ -11,6 +11,9 @@ typedef struct expression {
     vm_assembler_t code;
 } expression_t;
 
+extern const rb_data_type_t expression_data_type;
+#define Expression_Get_Struct(obj, sval) TypedData_Get_Struct(obj, expression_t, &expression_data_type, sval)
+
 void liquid_define_expression();
 
 VALUE expression_new(VALUE klass, expression_t **expression_ptr);

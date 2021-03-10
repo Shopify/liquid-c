@@ -5,8 +5,8 @@
 #include "vm_assembler.h"
 
 typedef struct block_body_header {
-    uint32_t instructions_offset;
     uint32_t instructions_bytes;
+    uint32_t first_tag_offset;
     uint32_t constants_offset;
     uint32_t constants_len;
     uint32_t flags;
@@ -16,6 +16,9 @@ typedef struct block_body_header {
 
 #define BLOCK_BODY_HEADER_FLAG_BLANK (1 << 0)
 #define BLOCK_BODY_HEADER_BLANK_P(header) (header->flags & BLOCK_BODY_HEADER_FLAG_BLANK)
+
+#define BUFFER_OFFSET_UNDEF UINT32_MAX
+#define BUFFER_OFFSET_UNDEF_P(val) (val == BUFFER_OFFSET_UNDEF)
 
 typedef struct document_body {
     VALUE self;

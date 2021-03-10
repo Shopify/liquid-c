@@ -42,6 +42,7 @@ extern filter_desc_t builtin_filters[];
 
 typedef struct vm_assembler {
     c_buffer_t instructions;
+    c_buffer_t tag_markups;
     c_buffer_t constants;
     size_t max_stack_size;
     size_t stack_size;
@@ -54,12 +55,12 @@ void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_reset(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);
 void vm_assembler_gc_mark(vm_assembler_t *code);
-VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr);
+VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr, const VALUE *tags_ptr);
 void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src);
 void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count);
 
 void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t size);
-void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node);
+void vm_assembler_add_write_node(vm_assembler_t *code);
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num);
 void vm_assembler_add_push_literal(vm_assembler_t *code, VALUE literal);
 void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg_count);
@@ -74,7 +75,7 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
 
 static inline size_t vm_assembler_alloc_memsize(const vm_assembler_t *code)
 {
-    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants);
+    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants) + c_buffer_capacity(&code->tag_markups);
 }
 
 static inline void vm_assembler_write_opcode(vm_assembler_t *code, enum opcode op)
@@ -218,6 +219,11 @@ static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code,
     uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 4);
     instructions[0] = OP_RENDER_VARIABLE_RESCUE;
     uint24_to_bytes((unsigned int)node_line_number, &instructions[1]);
+}
+
+static inline void vm_assembler_write_tag_markup(vm_assembler_t *code, VALUE tag_markup)
+{
+    c_buffer_write_ruby_value(&code->tag_markups, tag_markup);
 }
 
 #endif

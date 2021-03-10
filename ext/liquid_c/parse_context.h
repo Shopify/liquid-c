@@ -15,4 +15,7 @@ vm_assembler_pool_t *parse_context_init_vm_assembler_pool(VALUE self);
 vm_assembler_pool_t *parse_context_get_vm_assembler_pool(VALUE self);
 void parse_context_remove_vm_assembler_pool(VALUE self);
 
+VALUE parse_context_get_parent_tag(VALUE self);
+void parse_context_set_parent_tag(VALUE self, VALUE tag_header);
+
 #endif

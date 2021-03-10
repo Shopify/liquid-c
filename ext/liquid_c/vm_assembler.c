@@ -74,6 +74,7 @@ void vm_assembler_init(vm_assembler_t *code)
 {
     code->instructions = c_buffer_allocate(8);
     code->constants = c_buffer_allocate(8 * sizeof(VALUE));
+    code->tag_markups = c_buffer_init();
     vm_assembler_common_init(code);
 }
 
@@ -81,6 +82,7 @@ void vm_assembler_reset(vm_assembler_t *code)
 {
     c_buffer_reset(&code->instructions);
     c_buffer_reset(&code->constants);
+    c_buffer_reset(&code->tag_markups);
     vm_assembler_common_init(code);
 }
 
@@ -88,14 +90,16 @@ void vm_assembler_free(vm_assembler_t *code)
 {
     c_buffer_free(&code->instructions);
     c_buffer_free(&code->constants);
+    c_buffer_free(&code->tag_markups);
 }
 
 void vm_assembler_gc_mark(vm_assembler_t *code)
 {
     c_buffer_rb_gc_mark(&code->constants);
+    c_buffer_rb_gc_mark(&code->tag_markups);
 }
 
-VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr)
+VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr, const VALUE *tags_ptr)
 {
     const uint8_t *ip = start_ip;
     VALUE output = rb_str_buf_new(32);
@@ -177,7 +181,7 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
             }
 
             case OP_WRITE_NODE:
-                rb_str_catf(output, "write_node(%+"PRIsVALUE")\n", const_ptr[0]);
+                rb_str_catf(output, "write_node(%+"PRIsVALUE")\n", tags_ptr[0]);
                 break;
 
             case OP_PUSH_CONST:
@@ -208,7 +212,7 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
                 rb_str_catf(output, "<opcode number %d disassembly not implemented>\n", ip[0]);
                 break;
         }
-        liquid_vm_next_instruction(&ip, &const_ptr);
+        liquid_vm_next_instruction(&ip, &const_ptr, &tags_ptr);
     }
     return output;
 }
@@ -248,10 +252,9 @@ void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t
     c_buffer_write(&code->instructions, (char *)string, size);
 }
 
-void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)
+void vm_assembler_add_write_node(vm_assembler_t *code)
 {
     vm_assembler_write_opcode(code, OP_WRITE_NODE);
-    vm_assembler_write_ruby_constant(code, node);
 }
 
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num)

@@ -1,7 +1,7 @@
 #include "parse_context.h"
 #include "document_body.h"
 
-static ID id_document_body, id_vm_assembler_pool;
+static ID id_document_body, id_vm_assembler_pool, id_parent_tag;
 
 bool parse_context_document_body_initialized_p(VALUE self)
 {
@@ -62,8 +62,19 @@ void parse_context_remove_vm_assembler_pool(VALUE self)
 }
 
 
+VALUE parse_context_get_parent_tag(VALUE self)
+{
+    return rb_attr_get(self, id_parent_tag);
+}
+
+void parse_context_set_parent_tag(VALUE self, VALUE tag_header)
+{
+    rb_ivar_set(self, id_parent_tag, tag_header);
+}
+
 void liquid_define_parse_context()
 {
     id_document_body = rb_intern("document_body");
     id_vm_assembler_pool = rb_intern("vm_assembler_pool");
+    id_parent_tag = rb_intern("parent_tag");
 }

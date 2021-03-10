@@ -17,7 +17,6 @@ typedef struct block_body {
             VALUE parse_context;
             vm_assembler_pool_t *vm_assembler_pool;
             bool blank;
-            bool root;
             unsigned int render_score;
             vm_assembler_t *code;
         } intermediate;

@@ -92,7 +92,6 @@ static VALUE block_body_allocate(VALUE klass)
     body->compiled = false;
     body->obj = obj;
     body->as.intermediate.blank = true;
-    body->as.intermediate.root = false;
     body->as.intermediate.render_score = 0;
     body->as.intermediate.vm_assembler_pool = NULL;
     body->as.intermediate.code = NULL;
@@ -105,15 +104,7 @@ static VALUE block_body_initialize(VALUE self, VALUE parse_context)
     BlockBody_Get_Struct(self, body);
 
     body->as.intermediate.parse_context = parse_context;
-
-    if (parse_context_document_body_initialized_p(parse_context)) {
-        body->as.intermediate.vm_assembler_pool = parse_context_get_vm_assembler_pool(parse_context);
-    } else {
-        parse_context_init_document_body(parse_context);
-        body->as.intermediate.root = true;
-        body->as.intermediate.vm_assembler_pool = parse_context_init_vm_assembler_pool(parse_context);
-    }
-
+    body->as.intermediate.vm_assembler_pool = parse_context_get_vm_assembler_pool(parse_context);
     body->as.intermediate.code = vm_assembler_pool_alloc_assembler(body->as.intermediate.vm_assembler_pool);
     vm_assembler_add_leave(body->as.intermediate.code);
 
@@ -320,8 +311,6 @@ static VALUE block_body_freeze(VALUE self)
     VALUE parse_context = body->as.intermediate.parse_context;
     VALUE document_body = parse_context_get_document_body(parse_context);
 
-    bool root = body->as.intermediate.root;
-
     vm_assembler_pool_t *assembler_pool = body->as.intermediate.vm_assembler_pool;
     vm_assembler_t *assembler = body->as.intermediate.code;
     bool blank = body->as.intermediate.blank;
@@ -331,11 +320,6 @@ static VALUE block_body_freeze(VALUE self)
     body->as.compiled.nodelist = Qundef;
     document_body_write_block_body(document_body, blank, render_score, code, &body->as.compiled.document_body_entry);
     vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
-
-    if (root) {
-        parse_context_remove_document_body(parse_context);
-        parse_context_remove_vm_assembler_pool(parse_context);
-    }
 
     rb_call_super(0, NULL);
 

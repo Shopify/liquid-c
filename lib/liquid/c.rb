@@ -102,11 +102,21 @@ module Liquid
   module C
     module DocumentClassPatch
       def parse(tokenizer, parse_context)
-        if tokenizer.is_a?(Liquid::C::Tokenizer) && parse_context[:bug_compatible_whitespace_trimming]
-          # Temporary to test rollout of the fix for this bug
-          tokenizer.bug_compatible_whitespace_trimming!
+        if tokenizer.is_a?(Liquid::C::Tokenizer)
+          if parse_context[:bug_compatible_whitespace_trimming]
+            # Temporary to test rollout of the fix for this bug
+            tokenizer.bug_compatible_whitespace_trimming!
+          end
+
+          begin
+            parse_context.start_liquid_c_parsing
+            super
+          ensure
+            parse_context.cleanup_liquid_c_parsing
+          end
+        else
+          super
         end
-        super
       end
     end
     Liquid::Document.singleton_class.prepend(DocumentClassPatch)

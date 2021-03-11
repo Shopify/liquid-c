@@ -97,4 +97,26 @@ class BlockTest < MiniTest::Test
     end
     assert_equal(handler_error, exc)
   end
+
+  StubFileSystem = Struct.new(:partials) do
+    def read_template_file(template_path)
+      partials.fetch(template_path)
+    end
+  end
+
+  def test_include_partial_with_syntax_error
+    old_file_system = Liquid::Template.file_system
+    begin
+      Liquid::Template.file_system = StubFileSystem.new(
+        'invalid' => "{% foo %}",
+        'valid' => '{% include "nested" %}',
+        'nested' => 'valid',
+      )
+
+      template = Liquid::Template.parse("{% include 'invalid' %},{% include 'valid' %}")
+      assert_equal("Liquid syntax error: Unknown tag 'foo',valid", template.render)
+    ensure
+      Liquid::Template.file_system = old_file_system
+    end
+  end
 end

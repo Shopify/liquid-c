@@ -11,7 +11,7 @@ if ENV['LIQUID_C_DISABLE_VM']
   Liquid::ParseContext.liquid_c_nodes_disabled = true
 end
 
-test_files = FileList[File.join(liquid_test_dir, 'integration/**/*_test.rb')]
+test_files = Dir[File.join(liquid_test_dir, 'integration/**/*_test.rb')]
 test_files << File.join(liquid_test_dir, 'unit/tokenizer_unit_test.rb')
 test_files.each do |test_file|
   require test_file

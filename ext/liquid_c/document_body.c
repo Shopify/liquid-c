@@ -52,6 +52,8 @@ VALUE document_body_new_instance()
 
 void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry)
 {
+    assert(!RB_OBJ_FROZEN(self));
+
     document_body_t *body;
     DocumentBody_Get_Struct(self, body);
 

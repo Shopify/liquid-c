@@ -56,6 +56,7 @@ static VALUE parse_context_start_liquid_c_parsing(VALUE self)
 
 static VALUE parse_context_cleanup_liquid_c_parsing(VALUE self)
 {
+    rb_obj_freeze(rb_ivar_get(self, id_document_body));
     rb_ivar_set(self, id_document_body, Qnil);
     rb_ivar_set(self, id_vm_assembler_pool, Qnil);
     return Qnil;

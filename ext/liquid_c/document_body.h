@@ -49,4 +49,11 @@ static inline const VALUE *document_body_get_constants_ptr(const document_body_e
     return RARRAY_PTR(entry->body->constants) + header->constants_offset;
 }
 
+static inline void document_body_ensure_compile_finished(document_body_t *body)
+{
+    if (RB_UNLIKELY(!RB_OBJ_FROZEN(body->self))) {
+        rb_raise(rb_eRuntimeError, "Liquid document hasn't finished compilation");
+    }
+}
+
 #endif

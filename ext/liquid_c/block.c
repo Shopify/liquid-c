@@ -310,6 +310,7 @@ static VALUE block_body_freeze(VALUE self)
 
     VALUE parse_context = body->as.intermediate.parse_context;
     VALUE document_body = parse_context_get_document_body(parse_context);
+    rb_check_frozen(document_body);
 
     vm_assembler_pool_t *assembler_pool = body->as.intermediate.vm_assembler_pool;
     vm_assembler_t *assembler = body->as.intermediate.code;
@@ -335,6 +336,7 @@ static VALUE block_body_render_to_output_buffer(VALUE self, VALUE context, VALUE
     BlockBody_Get_Struct(self, body);
     ensure_body_compiled(body);
     document_body_entry_t *entry = &body->as.compiled.document_body_entry;
+    document_body_ensure_compile_finished(entry->body);
 
     liquid_vm_render(document_body_get_block_body_header_ptr(entry), document_body_get_constants_ptr(entry), context, output);
     return output;

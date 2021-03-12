@@ -97,12 +97,19 @@ module Liquid
           if parse_context[:bug_compatible_whitespace_trimming]
             tokenizer.bug_compatible_whitespace_trimming!
           end
+
+          begin
+            parse_context.start_liquid_c_parsing
+            super
+          ensure
+            parse_context.cleanup_liquid_c_parsing
+          end
         else
           # Liquid::Tokenizer.new may return a Liquid::Tokenizer if the source is too large
           # to be supported, so indicate in the parse context that the liquid VM won't be used
           parse_context.liquid_c_nodes_disabled = true
+          super
         end
-        super
       end
     end
     Liquid::Document.singleton_class.prepend(DocumentClassPatch)

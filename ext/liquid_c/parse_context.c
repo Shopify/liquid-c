@@ -3,15 +3,13 @@
 
 static ID id_document_body, id_vm_assembler_pool;
 
-bool parse_context_document_body_initialized_p(VALUE self)
+static bool parse_context_document_body_initialized_p(VALUE self)
 {
     return RTEST(rb_attr_get(self, id_document_body));
 }
 
-void parse_context_init_document_body(VALUE self)
+static void parse_context_init_document_body(VALUE self)
 {
-    assert(!parse_context_document_body_initialized_p(self));
-
     VALUE document_body = document_body_new_instance();
     rb_ivar_set(self, id_document_body, document_body);
 }
@@ -22,14 +20,6 @@ VALUE parse_context_get_document_body(VALUE self)
 
     return rb_ivar_get(self, id_document_body);
 }
-
-void parse_context_remove_document_body(VALUE self)
-{
-    assert(parse_context_document_body_initialized_p(self));
-
-    rb_ivar_set(self, id_document_body, Qnil);
-}
-
 
 vm_assembler_pool_t *parse_context_init_vm_assembler_pool(VALUE self)
 {
@@ -54,16 +44,30 @@ vm_assembler_pool_t *parse_context_get_vm_assembler_pool(VALUE self)
     return vm_assembler_pool;
 }
 
-void parse_context_remove_vm_assembler_pool(VALUE self)
+static VALUE parse_context_start_liquid_c_parsing(VALUE self)
 {
-    assert(RTEST(rb_attr_get(self, id_vm_assembler_pool)));
-
-    rb_ivar_set(self, id_vm_assembler_pool, Qnil);
+    if (RB_UNLIKELY(parse_context_document_body_initialized_p(self))) {
+        rb_raise(rb_eRuntimeError, "liquid-c parsing already started for this parse context");
+    }
+    parse_context_init_document_body(self);
+    parse_context_init_vm_assembler_pool(self);
+    return Qnil;
 }
 
+static VALUE parse_context_cleanup_liquid_c_parsing(VALUE self)
+{
+    rb_obj_freeze(rb_ivar_get(self, id_document_body));
+    rb_ivar_set(self, id_document_body, Qnil);
+    rb_ivar_set(self, id_vm_assembler_pool, Qnil);
+    return Qnil;
+}
 
 void liquid_define_parse_context()
 {
     id_document_body = rb_intern("document_body");
     id_vm_assembler_pool = rb_intern("vm_assembler_pool");
+
+    VALUE cLiquidParseContext = rb_const_get(mLiquid, rb_intern("ParseContext"));
+    rb_define_method(cLiquidParseContext, "start_liquid_c_parsing", parse_context_start_liquid_c_parsing, 0);
+    rb_define_method(cLiquidParseContext, "cleanup_liquid_c_parsing", parse_context_cleanup_liquid_c_parsing, 0);
 }

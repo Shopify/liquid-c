@@ -4,6 +4,7 @@
 #include "tokenizer.h"
 
 static VALUE id_block_name, id_raise_tag_never_closed, id_block_delimiter, id_ivar_body;
+static VALUE cLiquidRaw;
 
 struct full_token_possibly_invalid_t {
     long body_len;
@@ -82,8 +83,10 @@ static VALUE raw_parse_method(VALUE self, VALUE tokens)
             body_len += match.body_len;
             VALUE body_str = rb_enc_str_new(body, body_len, utf8_encoding);
             rb_ivar_set(self, id_ivar_body, body_str);
-            tokenizer->raw_tag_body = RSTRING_PTR(body_str);
-            tokenizer->raw_tag_body_len = (unsigned int)body_len;
+            if (RBASIC_CLASS(self) == cLiquidRaw) {
+                tokenizer->raw_tag_body = RSTRING_PTR(body_str);
+                tokenizer->raw_tag_body_len = (unsigned int)body_len;
+            }
             return Qnil;
         }
 
@@ -101,7 +104,7 @@ void liquid_define_raw()
     id_block_delimiter = rb_intern("block_delimiter");
     id_ivar_body = rb_intern("@body");
 
-    VALUE cLiquidRaw = rb_const_get(mLiquid, rb_intern("Raw"));
+    cLiquidRaw = rb_const_get(mLiquid, rb_intern("Raw"));
 
     rb_define_method(cLiquidRaw, "c_parse", raw_parse_method, 1);
 }

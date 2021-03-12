@@ -50,7 +50,7 @@ VALUE document_body_new_instance()
     return rb_class_new_instance(0, NULL, cLiquidCDocumentBody);
 }
 
-void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry)
+document_body_entry_t document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code)
 {
     assert(!RB_OBJ_FROZEN(self));
 
@@ -59,8 +59,7 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
 
     c_buffer_zero_pad_for_alignment(&body->buffer, alignof(block_body_header_t));
 
-    entry->body = body;
-    entry->buffer_offset = c_buffer_size(&body->buffer);
+    size_t buffer_offset = c_buffer_size(&body->buffer);
 
     assert(c_buffer_size(&code->constants) % sizeof(VALUE) == 0);
     uint32_t constants_len = (uint32_t)(c_buffer_size(&code->constants) / sizeof(VALUE));
@@ -78,6 +77,8 @@ void document_body_write_block_body(VALUE self, bool blank, uint32_t render_scor
     c_buffer_concat(&body->buffer, &code->instructions);
 
     rb_ary_cat(body->constants, (VALUE *)code->constants.data, constants_len);
+
+    return (document_body_entry_t) { .body = body, .buffer_offset = buffer_offset };
 }
 
 void liquid_define_document_body()

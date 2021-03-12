@@ -30,7 +30,7 @@ typedef struct document_body_entry {
 
 void liquid_define_document_body();
 VALUE document_body_new_instance();
-void document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code, document_body_entry_t *entry);
+document_body_entry_t document_body_write_block_body(VALUE self, bool blank, uint32_t render_score, vm_assembler_t *code);
 
 static inline void document_body_entry_mark(document_body_entry_t *entry)
 {

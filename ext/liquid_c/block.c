@@ -307,9 +307,9 @@ static VALUE block_body_freeze(VALUE self)
     bool blank = body->as.intermediate.blank;
     uint32_t render_score = body->as.intermediate.render_score;
     vm_assembler_t *code = body->as.intermediate.code;
-    body->compiled = true;
+    body->as.compiled.document_body_entry = document_body_write_block_body(document_body, blank, render_score, code);
     body->as.compiled.nodelist = Qundef;
-    document_body_write_block_body(document_body, blank, render_score, code, &body->as.compiled.document_body_entry);
+    body->compiled = true;
     vm_assembler_pool_recycle_assembler(assembler_pool, assembler);
 
     rb_call_super(0, NULL);

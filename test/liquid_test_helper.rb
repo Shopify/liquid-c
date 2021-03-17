@@ -17,3 +17,5 @@ if ENV['LIQUID_C_DISABLE_VM']
   puts "-- Liquid-C VM Disabled"
   Liquid::ParseContext.liquid_c_nodes_disabled = true
 end
+
+GC.stress = true if ENV['GC_STRESS']

@@ -7,3 +7,5 @@ if GC.respond_to?(:verify_compaction_references)
   # move objects around, helping to find object movement bugs.
   GC.verify_compaction_references(double_heap: true, toward: :empty)
 end
+
+GC.stress = true if ENV['GC_STRESS']

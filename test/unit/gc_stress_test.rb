@@ -16,9 +16,12 @@ class GCStressTest < Minitest::Test
   private
 
   def gc_stress
+    old_value = GC.stress
     GC.stress = true
-    yield
-  ensure
-    GC.stress = false
+    begin
+      yield
+    ensure
+      GC.stress = old_value
+    end
   end
 end

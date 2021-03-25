@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 2.5.0"
 
-  spec.add_dependency('liquid', '>= 3.0.0')
+  spec.add_dependency('liquid', '>= 5.0.1')
 
   spec.add_development_dependency('bundler', ">= 1.5") # has bugfix for segfaulting deploys
   spec.add_development_dependency("rake")

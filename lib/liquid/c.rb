@@ -73,7 +73,7 @@ Liquid::ParseContext.class_eval do
 
   def new_tokenizer(source, start_line_number: nil, for_liquid_tag: false)
     unless liquid_c_nodes_disabled?
-      source = source.to_s
+      source = source.to_s.to_str
       if source.bytesize <= Liquid::C::Tokenizer::MAX_SOURCE_BYTE_SIZE
         source = source.encode(Encoding::UTF_8)
         return Liquid::C::Tokenizer.new(source, start_line_number || 0, for_liquid_tag)

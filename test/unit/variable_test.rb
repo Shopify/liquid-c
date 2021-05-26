@@ -232,6 +232,27 @@ class VariableTest < Minitest::Test
     assert_equal('Liquid error: wrong number of arguments (given 1, expected 2)', exc.message)
   end
 
+  class IntegerDrop < Liquid::Drop
+    def initialize(value)
+      super()
+      @value = value.to_i
+    end
+
+    def to_liquid_value
+      @value
+    end
+  end
+
+  def test_to_liquid_value_on_variable_lookup
+    context = {
+      'number' => IntegerDrop.new('1'),
+      'list' => [1, 2, 3, 4, 5],
+    }
+
+    output = variable_strict_parse('list[number]').render!(context)
+    assert_equal('2', output)
+  end
+
   private
 
   def variable_strict_parse(markup)

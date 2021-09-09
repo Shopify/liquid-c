@@ -37,31 +37,31 @@ The latest benchmark results are shown below:
 
 ```
 $ bundle exec rake compare:lax
-/usr/local/Cellar/ruby/2.5.0_2/bin/ruby ./performance.rb bare benchmark lax
+/home/spin/.rubies/ruby-3.0.2/bin/ruby ./performance.rb bare benchmark lax
 
 Running benchmark for 10 seconds (with 5 seconds warmup).
 
 Warming up --------------------------------------
               parse:     2.000  i/100ms
-             render:     5.000  i/100ms
-     parse & render:     1.000  i/100ms
+             render:     8.000  i/100ms
+     parse & render:     2.000  i/100ms
 Calculating -------------------------------------
-              parse:     25.360  (±11.8%) i/s -    250.000  in  10.009777s
-             render:     61.636  (±11.4%) i/s -    610.000  in  10.056084s
-     parse & render:     17.421  (±11.5%) i/s -    170.000  in  10.018409s
+              parse:     29.527  (± 3.4%) i/s -    296.000  in  10.034520s
+             render:     89.403  (± 6.7%) i/s -    896.000  in  10.072939s
+     parse & render:     20.474  (± 4.9%) i/s -    206.000  in  10.072806s
 
-/usr/local/Cellar/ruby/2.5.0_2/bin/ruby ./performance.rb c benchmark lax
+/home/spin/.rubies/ruby-3.0.2/bin/ruby ./performance.rb c benchmark lax
 
 Running benchmark for 10 seconds (with 5 seconds warmup).
 
 Warming up --------------------------------------
               parse:    10.000  i/100ms
-             render:     6.000  i/100ms
-     parse & render:     3.000  i/100ms
+             render:    18.000  i/100ms
+     parse & render:     5.000  i/100ms
 Calculating -------------------------------------
-              parse:    104.037  (± 3.8%) i/s -      1.040k in  10.013895s
-             render:     61.480  (±14.6%) i/s -    600.000  in  10.010273s
-     parse & render:     37.443  (±10.7%) i/s -    369.000  in  10.024362s
+              parse:     90.672  (± 3.3%) i/s -    910.000  in  10.051124s
+             render:    163.871  (± 4.9%) i/s -      1.638k in  10.018105s
+     parse & render:     50.165  (± 4.0%) i/s -    505.000  in  10.077377s
 ```
 
 ## Developing

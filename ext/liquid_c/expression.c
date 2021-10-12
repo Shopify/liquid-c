@@ -12,7 +12,7 @@ static void expression_mark(void *ptr)
     vm_assembler_gc_mark(&expression->code);
 }
 
-static void expression_free(void *ptr)
+void expression_free(void *ptr)
 {
     expression_t *expression = ptr;
     vm_assembler_free(&expression->code);

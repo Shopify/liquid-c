@@ -73,8 +73,8 @@ static VALUE try_variable_strict_parse(VALUE uncast_args)
             vm_assembler_add_hash_new(code, keyword_arg_count);
 
             // There are no external references to this temporary object, so we can eagerly free it
+            expression_free(DATA_PTR(push_keywords_obj));
             DATA_PTR(push_keywords_obj) = NULL;
-            vm_assembler_free(push_keywords_code);
             rb_gc_force_recycle(push_keywords_obj); // also acts as a RB_GC_GUARD(push_keywords_obj);
         }
         vm_assembler_add_filter(code, filter_name, arg_count);

@@ -16,6 +16,7 @@ extern const rb_data_type_t expression_data_type;
 
 void liquid_define_expression();
 
+void expression_free(void *ptr);
 VALUE expression_new(VALUE klass, expression_t **expression_ptr);
 VALUE expression_evaluate(VALUE self, VALUE context);
 VALUE internal_expression_evaluate(expression_t *expression, VALUE context);

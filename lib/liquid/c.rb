@@ -122,6 +122,8 @@ module Liquid
             parse_context.cleanup_liquid_c_parsing
           end
         else
+          parse_context.instance_variable_set(:@liquid_c_nodes_disabled, true)
+
           super
         end
       end

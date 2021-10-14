@@ -31,6 +31,11 @@ class BlockTest < MiniTest::Test
     assert_equal(source, template.render!)
   end
 
+  def test_liquid_parse_context_fallback
+    parse_context = Liquid::ParseContext.new
+    Liquid::Document.parse(Liquid::Tokenizer.new("", true), parse_context)
+  end
+
   # Test for bug: https://github.com/Shopify/liquid-c/pull/120
   def test_bug_120_instrument
     calls = []

@@ -36,9 +36,12 @@ vm_assembler_pool_t *parse_context_init_vm_assembler_pool(VALUE self)
 
 vm_assembler_pool_t *parse_context_get_vm_assembler_pool(VALUE self)
 {
-    assert(RTEST(rb_attr_get(self, id_vm_assembler_pool)));
-
     VALUE obj = rb_ivar_get(self, id_vm_assembler_pool);
+
+    if (obj == Qnil) {
+        rb_raise(rb_eRuntimeError, "Liquid::ParseContext#start_liquid_c_parsing has not yet been called");
+    }
+
     vm_assembler_pool_t *vm_assembler_pool;
     VMAssemblerPool_Get_Struct(obj, vm_assembler_pool);
     return vm_assembler_pool;

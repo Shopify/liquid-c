@@ -31,6 +31,13 @@ class BlockTest < MiniTest::Test
     assert_equal(source, template.render!)
   end
 
+  def test_raise_for_non_c_parse_context
+    parse_context = Liquid::ParseContext.new
+    assert_raises(RuntimeError) do
+      Liquid::C::BlockBody.new(parse_context)
+    end
+  end
+
   # Test for bug: https://github.com/Shopify/liquid-c/pull/120
   def test_bug_120_instrument
     calls = []

@@ -58,7 +58,7 @@ static void block_body_mark(void *ptr)
 static void block_body_free(void *ptr)
 {
     block_body_t *body = ptr;
-    if (!body->compiled) {
+    if (!body->compiled && body->as.intermediate.code) {
         // Free the assembler instead of recycling it because the vm_assembler_pool may have been GC'd
         vm_assembler_pool_free_assembler(body->as.intermediate.code);
     }

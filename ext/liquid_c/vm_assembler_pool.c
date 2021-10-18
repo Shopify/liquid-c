@@ -15,7 +15,9 @@ static void vm_assembler_pool_free(void *ptr)
     vm_assembler_element_t *element = pool->freelist;
     while (element) {
         vm_assembler_free(&element->vm_assembler);
-        element = element->next;
+        vm_assembler_element_t *next = element->next;
+        xfree(element);
+        element = next;
     }
 
     xfree(pool);

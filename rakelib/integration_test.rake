@@ -1,33 +1,43 @@
 # frozen_string_literal: true
 
 namespace :test do
-  desc 'run test suite with default parser'
-  Rake::TestTask.new(integration: :compile) do |t|
+  integration_test_config = lambda do |t|
     t.libs << 'lib'
     t.test_files = ['test/integration_test.rb']
   end
 
+  desc 'run test suite with default parser'
+  Rake::TestTask.new(integration: :compile, &integration_test_config)
+
   namespace :integration do
-    integration_test_with_env = lambda do |env_vars|
-      proc do
-        old_env_values = ENV.to_hash.slice(*env_vars.keys)
-        task = Rake::Task['test:integration']
-        begin
-          env_vars.each { |key, value| ENV[key] = value }
-          task.invoke
-        ensure
-          old_env_values.each { |key, value| ENV[key] = value }
-          task.reenable
+    define_env_integration_tests = lambda do |task_name|
+      rake_task = Rake::Task[task_name]
+
+      [
+        [:lax, { 'LIQUID_PARSER_MODE' => 'lax' }],
+        [:strict, { 'LIQUID_PARSER_MODE' => 'strict' }],
+        [:without_vm, { 'LIQUID_C_DISABLE_VM' => 'true' }],
+      ].each do |name, env_vars|
+        task(name) do
+          old_env_values = ENV.to_hash.slice(*env_vars.keys)
+          begin
+            env_vars.each { |key, value| ENV[key] = value }
+            rake_task.invoke
+          ensure
+            old_env_values.each { |key, value| ENV[key] = value }
+            rake_task.reenable
+          end
         end
       end
+
+      task(all: [:lax, :strict, :without_vm])
     end
 
-    task :lax, &integration_test_with_env.call('LIQUID_PARSER_MODE' => 'lax')
+    define_env_integration_tests.call('test:integration')
 
-    task :strict, &integration_test_with_env.call('LIQUID_PARSER_MODE' => 'strict')
-
-    task :without_vm, &integration_test_with_env.call('LIQUID_C_DISABLE_VM' => 'true')
-
-    task all: [:lax, :strict, :without_vm]
+    RubyMemcheck::TestTask.new(valgrind: :compile, &integration_test_config)
+    namespace :valgrind do
+      define_env_integration_tests.call('test:integration:valgrind')
+    end
   end
 end

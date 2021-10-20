@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+at_exit { GC.start }
+
 require_relative 'liquid_test_helper'
 
 test_files = Dir[File.join(LIQUID_TEST_DIR, 'integration/**/*_test.rb')]

@@ -14,6 +14,7 @@ group :test do
   gem 'rubocop-shopify', '~> 1.0.6', require: false
   gem 'spy', '0.4.1'
   gem 'benchmark-ips'
+  gem 'ruby_memcheck'
 end
 
 group :development do

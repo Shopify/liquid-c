@@ -9,8 +9,10 @@ class ExpressionTest < MiniTest::Test
     assert_nil(Liquid::C::Expression.strict_parse('null'))
 
     empty = Liquid::C::Expression.strict_parse('empty')
-    assert_equal('', empty)
-    assert_same(empty, Liquid::C::Expression.strict_parse('blank'))
+    assert_equal([], empty)
+
+    blank = Liquid::C::Expression.strict_parse('blank')
+    assert_equal('', blank)
   end
 
   def test_push_literals

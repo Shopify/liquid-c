@@ -3,6 +3,7 @@
 #include "lexer.h"
 
 static VALUE empty_string;
+static VALUE frozen_empty_array;
 static ID id_to_i, idEvaluate;
 
 void init_parser(parser_t *p, const char *str, const char *end)
@@ -173,7 +174,7 @@ static VALUE try_parse_literal(parser_t *p)
                     break;
                 case 'e':
                     if (memcmp(str, "empty", size) == 0)
-                        result = empty_string;
+                        result = frozen_empty_array;
                     break;
             }
             break;
@@ -267,5 +268,9 @@ void liquid_define_parser(void)
 
     empty_string = rb_utf8_str_new_literal("");
     rb_global_variable(&empty_string);
+
+    frozen_empty_array = rb_ary_new();
+    rb_ary_freeze(frozen_empty_array);
+    rb_global_variable(&frozen_empty_array);
 }
 

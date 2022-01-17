@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'liquid'
-require 'liquid/c'
-liquid_lib_dir = $LOAD_PATH.detect { |p| File.exist?(File.join(p, 'liquid.rb')) }
+require "liquid"
+require "liquid/c"
+liquid_lib_dir = $LOAD_PATH.detect { |p| File.exist?(File.join(p, "liquid.rb")) }
 require File.join(File.dirname(liquid_lib_dir), "performance/theme_runner")
 
-TASK_NAMES = %w(run compile render)
-task_name = ARGV.first || 'run'
+TASK_NAMES = ["run", "compile", "render"]
+task_name = ARGV.first || "run"
 unless TASK_NAMES.include?(task_name)
   raise "Unsupported task '#{task_name}' (must be one of #{TASK_NAMES})"
 end

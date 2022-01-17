@@ -1,6 +1,7 @@
 # frozen_string_literal: true
-require 'test_helper'
-require 'bigdecimal'
+
+require "test_helper"
+require "bigdecimal"
 
 class ContextTest < Minitest::Test
   def test_evaluate_works_with_normal_values
@@ -66,7 +67,7 @@ class ContextTest < Minitest::Test
   end
 
   def test_c_filtering_predicate
-    context = Liquid::Context.new({ 'test' => [TestDrop.new] })
+    context = Liquid::Context.new({ "test" => [TestDrop.new] })
     template = Liquid::Template.parse('{{ test[0].is_filtering }},{{ test | map: "is_filtering" }}')
 
     assert_equal("false,true", template.render!(context))

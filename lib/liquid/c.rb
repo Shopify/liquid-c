@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'liquid/c/version'
-require 'liquid'
-require 'liquid_c'
-require 'liquid/c/compile_ext'
+require "liquid/c/version"
+require "liquid"
+require "liquid_c"
+require "liquid/c/compile_ext"
 
 Liquid::C::BlockBody.class_eval do
   def render(context)
-    render_to_output_buffer(context, +'')
+    render_to_output_buffer(context, +"")
   end
 end
 

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-require 'test_helper'
+
+require "test_helper"
 
 class BlockTest < MiniTest::Test
   def test_no_allocation_of_trimmed_strings
@@ -22,7 +23,7 @@ class BlockTest < MiniTest::Test
   def test_write_unicode_characters
     output = String.new(encoding: Encoding::UTF_8)
     template = Liquid::Template.parse("ü{{ unicode_char }}")
-    assert_equal("üñ", template.render!({ 'unicode_char' => 'ñ' }, output: output))
+    assert_equal("üñ", template.render!({ "unicode_char" => "ñ" }, output: output))
   end
 
   def test_op_write_raw_w
@@ -91,7 +92,7 @@ class BlockTest < MiniTest::Test
   def test_exception_renderer_exception
     original_error = Liquid::Error.new("original")
     handler_error = RuntimeError.new("exception handler error")
-    context = Liquid::Context.new('raise_error' => ->(_ctx) { raise(original_error) })
+    context = Liquid::Context.new("raise_error" => ->(_ctx) { raise(original_error) })
     context.exception_renderer = lambda do |exc|
       if exc == original_error
         raise(handler_error)
@@ -115,9 +116,9 @@ class BlockTest < MiniTest::Test
     old_file_system = Liquid::Template.file_system
     begin
       Liquid::Template.file_system = StubFileSystem.new(
-        'invalid' => "{% foo %}",
-        'valid' => '{% include "nested" %}',
-        'nested' => 'valid',
+        "invalid" => "{% foo %}",
+        "valid" => '{% include "nested" %}',
+        "nested" => "valid",
       )
 
       template = Liquid::Template.parse("{% include 'invalid' %},{% include 'valid' %}")

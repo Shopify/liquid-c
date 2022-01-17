@@ -2,11 +2,11 @@
 
 namespace :test do
   integration_test_config = lambda do |t|
-    t.libs << 'lib'
-    t.test_files = ['test/integration_test.rb']
+    t.libs << "lib"
+    t.test_files = ["test/integration_test.rb"]
   end
 
-  desc 'run test suite with default parser'
+  desc "run test suite with default parser"
   Rake::TestTask.new(integration: :compile, &integration_test_config)
 
   namespace :integration do
@@ -14,9 +14,9 @@ namespace :test do
       rake_task = Rake::Task[task_name]
 
       [
-        [:lax, { 'LIQUID_PARSER_MODE' => 'lax' }],
-        [:strict, { 'LIQUID_PARSER_MODE' => 'strict' }],
-        [:without_vm, { 'LIQUID_C_DISABLE_VM' => 'true' }],
+        [:lax, { "LIQUID_PARSER_MODE" => "lax" }],
+        [:strict, { "LIQUID_PARSER_MODE" => "strict" }],
+        [:without_vm, { "LIQUID_C_DISABLE_VM" => "true" }],
       ].each do |name, env_vars|
         task(name) do
           old_env_values = ENV.to_hash.slice(*env_vars.keys)
@@ -33,11 +33,11 @@ namespace :test do
       task(all: [:lax, :strict, :without_vm])
     end
 
-    define_env_integration_tests.call('test:integration')
+    define_env_integration_tests.call("test:integration")
 
     RubyMemcheck::TestTask.new(valgrind: :compile, &integration_test_config)
     namespace :valgrind do
-      define_env_integration_tests.call('test:integration:valgrind')
+      define_env_integration_tests.call("test:integration:valgrind")
     end
   end
 end

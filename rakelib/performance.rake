@@ -13,7 +13,7 @@ namespace :benchmark do
 end
 
 namespace :c_profile do
-  %i(run compile render).each do |task_name|
+  [:run, :compile, :render].each do |task_name|
     task(task_name) do
       ruby "./performance/c_profile.rb #{task_name}"
     end
@@ -33,7 +33,7 @@ namespace :profile do
 end
 
 namespace :compare do
-  %w(lax warn strict).each do |type|
+  ["lax", "warn", "strict"].each do |type|
     desc "Compare Liquid to Liquid-C in #{type} mode"
     task type.to_sym do
       ruby "./performance.rb bare benchmark #{type}"

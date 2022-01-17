@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-require 'test_helper'
+
+require "test_helper"
 
 class ResourceLimitsTest < Minitest::Test
   def test_increment_render_score
@@ -22,7 +23,7 @@ class ResourceLimitsTest < Minitest::Test
 
   def test_increment_write_score
     resource_limits = Liquid::ResourceLimits.new(render_length_limit: 5)
-    output = 'a' * 10
+    output = "a" * 10
     assert_raises(Liquid::MemoryError) do
       resource_limits.increment_write_score(output)
     end
@@ -38,7 +39,7 @@ class ResourceLimitsTest < Minitest::Test
 
   def test_with_capture
     resource_limits = Liquid::ResourceLimits.new(assign_score_limit: 5)
-    output = 'foo'
+    output = "foo"
 
     resource_limits.with_capture do
       resource_limits.increment_write_score(output)

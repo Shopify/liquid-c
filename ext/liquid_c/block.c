@@ -386,7 +386,7 @@ static VALUE block_body_remove_blank_strings(VALUE self)
     return Qnil;
 }
 
-static void memoize_variable_placeholder()
+static void memoize_variable_placeholder(void)
 {
     if (variable_placeholder == Qnil) {
         VALUE cLiquidCVariablePlaceholder = rb_const_get(mLiquidC, rb_intern("VariablePlaceholder"));
@@ -527,7 +527,7 @@ static VALUE block_body_add_filter(VALUE self, VALUE filter_name, VALUE num_args
 }
 
 
-void liquid_define_block_body()
+void liquid_define_block_body(void)
 {
     intern_raise_missing_variable_terminator = rb_intern("raise_missing_variable_terminator");
     intern_raise_missing_tag_terminator = rb_intern("raise_missing_tag_terminator");

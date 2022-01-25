@@ -65,7 +65,7 @@ static VALUE parse_context_cleanup_liquid_c_parsing(VALUE self)
     return Qnil;
 }
 
-void liquid_define_parse_context()
+void liquid_define_parse_context(void)
 {
     id_document_body = rb_intern("document_body");
     id_vm_assembler_pool = rb_intern("vm_assembler_pool");

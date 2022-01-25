@@ -43,7 +43,7 @@ const rb_data_type_t vm_assembler_pool_data_type = {
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
-VALUE vm_assembler_pool_new()
+VALUE vm_assembler_pool_new(void)
 {
     vm_assembler_pool_t *pool;
     VALUE obj = TypedData_Make_Struct(cLiquidCVMAssemblerPool, vm_assembler_pool_t, &vm_assembler_pool_data_type, pool);
@@ -89,7 +89,7 @@ void vm_assembler_pool_recycle_assembler(vm_assembler_pool_t *pool, vm_assembler
     pool->freelist = element;
 }
 
-void liquid_define_vm_assembler_pool()
+void liquid_define_vm_assembler_pool(void)
 {
     cLiquidCVMAssemblerPool = rb_define_class_under(mLiquidC, "VMAssemblerPool", rb_cObject);
     rb_global_variable(&cLiquidCVMAssemblerPool);

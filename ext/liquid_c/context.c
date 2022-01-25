@@ -200,7 +200,7 @@ VALUE context_filtering_p(VALUE self)
     return liquid_vm_filtering(self) ? Qtrue : Qfalse;
 }
 
-void liquid_define_context()
+void liquid_define_context(void)
 {
     id_has_key = rb_intern("key?");
     id_aset = rb_intern("[]=");

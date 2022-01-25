@@ -407,7 +407,7 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     vm_assembler_add_filter(code, filter_name, arg_count);
 }
 
-void liquid_define_vm_assembler()
+void liquid_define_vm_assembler(void)
 {
     builtin_filter_table = st_init_numtable_with_size(ARRAY_LENGTH(builtin_filters));
     for (unsigned int i = 0; i < ARRAY_LENGTH(builtin_filters); i++) {

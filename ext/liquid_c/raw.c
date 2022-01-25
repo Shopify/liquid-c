@@ -97,7 +97,7 @@ static VALUE raw_parse_method(VALUE self, VALUE tokens)
     return Qnil;
 }
 
-void liquid_define_raw()
+void liquid_define_raw(void)
 {
     id_block_name = rb_intern("block_name");
     id_raise_tag_never_closed = rb_intern("raise_tag_never_closed");

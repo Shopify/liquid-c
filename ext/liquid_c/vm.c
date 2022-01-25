@@ -553,7 +553,7 @@ void liquid_vm_render(block_body_header_t *body, const VALUE *const_ptr, VALUE c
 }
 
 
-void liquid_define_vm()
+void liquid_define_vm(void)
 {
     id_render_node = rb_intern("render_node");
     id_vm = rb_intern("vm");

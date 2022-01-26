@@ -18,7 +18,7 @@ typedef struct context {
     bool strict_filters;
 } context_t;
 
-void liquid_define_context();
+void liquid_define_context(void);
 void context_internal_init(VALUE context_obj, context_t *context);
 void context_mark(context_t *context);
 VALUE context_find_variable(context_t *context, VALUE key, VALUE raise_on_not_found);

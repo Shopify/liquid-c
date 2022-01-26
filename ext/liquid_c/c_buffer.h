@@ -9,7 +9,7 @@ typedef struct c_buffer {
     uint8_t *capacity_end;
 } c_buffer_t;
 
-static inline c_buffer_t c_buffer_init()
+static inline c_buffer_t c_buffer_init(void)
 {
     return (c_buffer_t) { NULL, NULL, NULL };
 }

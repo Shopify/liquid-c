@@ -49,7 +49,7 @@ typedef struct vm_assembler {
     bool parsing; // prevent executing when incomplete or extending when complete
 } vm_assembler_t;
 
-void liquid_define_vm_assembler();
+void liquid_define_vm_assembler(void);
 void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_reset(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);

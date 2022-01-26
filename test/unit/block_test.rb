@@ -115,11 +115,11 @@ class BlockTest < MiniTest::Test
   def test_include_partial_with_syntax_error
     old_file_system = Liquid::Template.file_system
     begin
-      Liquid::Template.file_system = StubFileSystem.new(
+      Liquid::Template.file_system = StubFileSystem.new({
         "invalid" => "{% foo %}",
         "valid" => '{% include "nested" %}',
         "nested" => "valid",
-      )
+      })
 
       template = Liquid::Template.parse("{% include 'invalid' %},{% include 'valid' %}")
       assert_equal("Liquid syntax error: Unknown tag 'foo',valid", template.render)

@@ -45,7 +45,7 @@ static VALUE document_body_allocate(VALUE klass)
 
 #define DocumentBody_Get_Struct(obj, sval) TypedData_Get_Struct(obj, document_body_t, &document_body_data_type, sval)
 
-VALUE document_body_new_instance()
+VALUE document_body_new_instance(void)
 {
     return rb_class_new_instance(0, NULL, cLiquidCDocumentBody);
 }
@@ -81,7 +81,7 @@ document_body_entry_t document_body_write_block_body(VALUE self, bool blank, uin
     return (document_body_entry_t) { .body = body, .buffer_offset = buffer_offset };
 }
 
-void liquid_define_document_body()
+void liquid_define_document_body(void)
 {
     cLiquidCDocumentBody = rb_define_class_under(mLiquidC, "DocumentBody", rb_cObject);
     rb_global_variable(&cLiquidCDocumentBody);

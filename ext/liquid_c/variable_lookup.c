@@ -35,7 +35,7 @@ VALUE variable_lookup_key(VALUE context, VALUE object, VALUE key, bool is_comman
     return Qnil;
 }
 
-void liquid_define_variable_lookup()
+void liquid_define_variable_lookup(void)
 {
     id_has_key = rb_intern("key?");
     id_aref = rb_intern("[]");

@@ -98,7 +98,7 @@ static VALUE expression_disassemble(VALUE self)
                                     (const VALUE *)expression->code.constants.data);
 }
 
-void liquid_define_expression()
+void liquid_define_expression(void)
 {
     cLiquidCExpression = rb_define_class_under(mLiquidC, "Expression", rb_cObject);
     rb_undef_alloc_func(cLiquidCExpression);

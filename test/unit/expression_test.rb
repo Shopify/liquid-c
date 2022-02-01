@@ -143,10 +143,10 @@ class ExpressionTest < MiniTest::Test
     expression = Liquid::C::Expression.strict_parse("foo.bar[123]")
     assert_equal(<<~ASM, expression.disassemble)
       0x0000: find_static_var("foo")
-      0x0001: lookup_const_key("bar")
-      0x0002: push_int8(123)
-      0x0004: lookup_key
-      0x0005: leave
+      0x0003: lookup_const_key("bar")
+      0x0006: push_int8(123)
+      0x0008: lookup_key
+      0x0009: leave
     ASM
   end
 

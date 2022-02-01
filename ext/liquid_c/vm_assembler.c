@@ -74,6 +74,7 @@ void vm_assembler_init(vm_assembler_t *code)
 {
     code->instructions = c_buffer_allocate(8);
     code->constants = c_buffer_allocate(8 * sizeof(VALUE));
+    code->constants_table = st_init_numtable();
     vm_assembler_common_init(code);
 }
 
@@ -81,6 +82,7 @@ void vm_assembler_reset(vm_assembler_t *code)
 {
     c_buffer_reset(&code->instructions);
     c_buffer_reset(&code->constants);
+    st_clear(code->constants_table);
     vm_assembler_common_init(code);
 }
 
@@ -88,6 +90,7 @@ void vm_assembler_free(vm_assembler_t *code)
 {
     c_buffer_free(&code->instructions);
     c_buffer_free(&code->constants);
+    st_free_table(code->constants_table);
 }
 
 void vm_assembler_gc_mark(vm_assembler_t *code)
@@ -95,12 +98,20 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
     c_buffer_rb_gc_mark(&code->constants);
 }
 
-VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr)
+VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *constants)
 {
     const uint8_t *ip = start_ip;
     VALUE output = rb_str_buf_new(32);
+    VALUE constant = Qnil;
+
     while (ip < end_ip) {
         rb_str_catf(output, "0x%04lx: ", ip - start_ip);
+
+        if (vm_assembler_opcode_has_constant(*ip)) {
+            uint16_t constant_index = (ip[1] << 8) | ip[2];
+            constant = RARRAY_AREF(*constants, constant_index);
+        }
+
         switch (*ip) {
             case OP_LEAVE:
                 rb_str_catf(output, "leave\n");
@@ -177,28 +188,32 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
             }
 
             case OP_WRITE_NODE:
-                rb_str_catf(output, "write_node(%+"PRIsVALUE")\n", const_ptr[0]);
+                rb_str_catf(output, "write_node(%+"PRIsVALUE")\n", constant);
                 break;
 
             case OP_PUSH_CONST:
-                rb_str_catf(output, "push_const(%+"PRIsVALUE")\n", const_ptr[0]);
+                rb_str_catf(output, "push_const(%+"PRIsVALUE")\n", constant);
                 break;
 
             case OP_FIND_STATIC_VAR:
-                rb_str_catf(output, "find_static_var(%+"PRIsVALUE")\n", const_ptr[0]);
+                rb_str_catf(output, "find_static_var(%+"PRIsVALUE")\n", constant);
                 break;
 
             case OP_LOOKUP_CONST_KEY:
-                rb_str_catf(output, "lookup_const_key(%+"PRIsVALUE")\n", const_ptr[0]);
+                rb_str_catf(output, "lookup_const_key(%+"PRIsVALUE")\n", constant);
                 break;
 
             case OP_LOOKUP_COMMAND:
-                rb_str_catf(output, "lookup_command(%+"PRIsVALUE")\n", const_ptr[0]);
+                rb_str_catf(output, "lookup_command(%+"PRIsVALUE")\n", constant);
                 break;
 
             case OP_FILTER:
-                rb_str_catf(output, "filter(name: %+"PRIsVALUE", num_args: %u)\n", const_ptr[0], ip[1]);
+            {
+                VALUE filter_name = RARRAY_AREF(constant, 0);
+                uint8_t num_args = RARRAY_AREF(constant, 1);
+                rb_str_catf(output, "filter(name: %+"PRIsVALUE", num_args: %u)\n", filter_name, num_args);
                 break;
+            }
 
             case OP_BUILTIN_FILTER:
                 rb_str_catf(output, "builtin_filter(name: :%s, num_args: %u)\n", builtin_filters[ip[1]].name, ip[2]);
@@ -208,15 +223,57 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
                 rb_str_catf(output, "<opcode number %d disassembly not implemented>\n", ip[0]);
                 break;
         }
-        liquid_vm_next_instruction(&ip, &const_ptr);
+        liquid_vm_next_instruction(&ip);
     }
     return output;
 }
 
+struct merge_constants_table_func_args {
+    st_table *hash;
+    size_t increment_amount;
+};
+
+static int merge_constants_table(st_data_t key, st_data_t value, VALUE _arg)
+{
+    struct merge_constants_table_func_args *arg = (struct merge_constants_table_func_args *)_arg;
+    st_table *dest_hash = arg->hash;
+    uint16_t new_value = value + arg->increment_amount;
+    st_insert(dest_hash, key, new_value);
+
+    return ST_CONTINUE;
+}
+
+void update_instructions_constants_table_index_ref(c_buffer_t *instructions, size_t increment_amount, c_buffer_t *constants)
+{
+    uint8_t *ip = instructions->data;
+
+    while (ip < instructions->data_end) {
+        if (vm_assembler_opcode_has_constant(*ip)) {
+            uint16_t constant_index = (ip[1] << 8) | ip[2];
+            uint16_t new_constant_index = constant_index + increment_amount;
+            ip[1] = new_constant_index >> 8;
+            ip[2] = (uint8_t)new_constant_index;
+        }
+
+        liquid_vm_next_instruction((const uint8_t **)&ip);
+    }
+}
+
 void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src)
 {
-    c_buffer_concat(&dest->instructions, &src->instructions);
+    size_t dest_element_count = c_buffer_size(&dest->constants) / sizeof(VALUE);
+
+    // merge src constants table into dest constants table with new index
+    struct merge_constants_table_func_args arg;
+    arg.hash = dest->constants_table;
+    arg.increment_amount = dest_element_count;
+    st_foreach(src->constants_table, merge_constants_table, (VALUE)&arg);
+
+    // merge constants array
     c_buffer_concat(&dest->constants, &src->constants);
+
+    update_instructions_constants_table_index_ref(&src->instructions, dest_element_count, &dest->constants);
+    c_buffer_concat(&dest->instructions, &src->instructions);
 
     size_t max_src_stack_size = dest->stack_size + src->max_stack_size;
     if (max_src_stack_size > dest->max_stack_size)
@@ -250,8 +307,7 @@ void vm_assembler_add_write_raw(vm_assembler_t *code, const char *string, size_t
 
 void vm_assembler_add_write_node(vm_assembler_t *code, VALUE node)
 {
-    vm_assembler_write_opcode(code, OP_WRITE_NODE);
-    vm_assembler_write_ruby_constant(code, node);
+    vm_assembler_add_op_with_constant(code, node, OP_WRITE_NODE);
 }
 
 void vm_assembler_add_push_fixnum(vm_assembler_t *code, VALUE num)
@@ -298,15 +354,17 @@ void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg
     st_data_t builtin_index;
     bool is_builtin = st_lookup(builtin_filter_table, filter_name, &builtin_index);
 
-    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, is_builtin ? 3 : 2);
     if (is_builtin) {
+        uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 3);
         *instructions++ = OP_BUILTIN_FILTER;
         *instructions++ = builtin_index;
+        *instructions++ = arg_count + 1; // include input
     } else {
-        vm_assembler_write_ruby_constant(code, filter_name);
-        *instructions++ = OP_FILTER;
+        VALUE filter_args = rb_ary_new_capa(2);
+        rb_ary_push(filter_args, filter_name);
+        rb_ary_push(filter_args, arg_count + 1);
+        vm_assembler_add_op_with_constant(code, filter_args, OP_FILTER);
     }
-    *instructions++ = arg_count + 1; // include input
 }
 
 static void ensure_parsing(vm_assembler_t *code)
@@ -344,6 +402,7 @@ void vm_assembler_add_evaluate_expression_from_ruby(vm_assembler_t *code, VALUE 
         default:
             break;
     }
+
     vm_assembler_add_push_const(code, expression);
 }
 
@@ -405,6 +464,20 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     filter_name = rb_str_intern(filter_name);
 
     vm_assembler_add_filter(code, filter_name, arg_count);
+}
+
+bool vm_assembler_opcode_has_constant(uint8_t ip) {
+    if (
+        ip == OP_PUSH_CONST ||
+        ip == OP_WRITE_NODE ||
+        ip == OP_FIND_STATIC_VAR ||
+        ip == OP_LOOKUP_CONST_KEY ||
+        ip == OP_LOOKUP_COMMAND ||
+        ip == OP_FILTER
+    ) {
+        return true;
+    }
+    return false;
 }
 
 void liquid_define_vm_assembler(void)

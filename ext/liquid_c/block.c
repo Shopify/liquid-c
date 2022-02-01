@@ -365,7 +365,6 @@ static VALUE block_body_remove_blank_strings(VALUE self)
         rb_raise(rb_eRuntimeError, "remove_blank_strings only support being called on a blank block body");
     }
 
-    VALUE *const_ptr = (VALUE *)body->as.intermediate.code->constants.data;
     uint8_t *ip = body->as.intermediate.code->instructions.data;
 
     while (*ip != OP_LEAVE) {
@@ -380,7 +379,7 @@ static VALUE block_body_remove_blank_strings(VALUE self)
                 body->as.intermediate.render_score--;
             }
         }
-        liquid_vm_next_instruction((const uint8_t **)&ip, (const VALUE **)&const_ptr);
+        liquid_vm_next_instruction((const uint8_t **)&ip);
     }
 
     return Qnil;
@@ -410,7 +409,7 @@ static VALUE block_body_nodelist(VALUE self)
 
     VALUE nodelist = rb_ary_new_capa(body_header->render_score);
 
-    const VALUE *const_ptr = document_body_get_constants_ptr(entry);
+    const VALUE *constants = &entry->body->constants;
     const uint8_t *ip = block_body_instructions_ptr(body_header);
     while (true) {
         switch (*ip) {
@@ -434,7 +433,9 @@ static VALUE block_body_nodelist(VALUE self)
             }
             case OP_WRITE_NODE:
             {
-                rb_ary_push(nodelist, const_ptr[0]);
+                uint16_t constant_index = (ip[1] << 8) | ip[2];
+                VALUE node = RARRAY_AREF(*constants, constant_index);
+                rb_ary_push(nodelist, node);
                 break;
             }
 
@@ -442,7 +443,7 @@ static VALUE block_body_nodelist(VALUE self)
                 rb_ary_push(nodelist, variable_placeholder);
                 break;
         }
-        liquid_vm_next_instruction(&ip, &const_ptr);
+        liquid_vm_next_instruction(&ip);
     }
 loop_break:
 
@@ -458,8 +459,11 @@ static VALUE block_body_disassemble(VALUE self)
     document_body_entry_t *entry = &body->as.compiled.document_body_entry;
     block_body_header_t *header = document_body_get_block_body_header_ptr(entry);
     const uint8_t *start_ip = block_body_instructions_ptr(header);
-    return vm_assembler_disassemble(start_ip, start_ip + header->instructions_bytes,
-                                    document_body_get_constants_ptr(entry));
+    return vm_assembler_disassemble(
+        start_ip,
+        start_ip + header->instructions_bytes,
+        &entry->body->constants
+    );
 }
 
 

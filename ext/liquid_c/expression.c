@@ -94,8 +94,16 @@ static VALUE expression_disassemble(VALUE self)
 {
     expression_t *expression;
     Expression_Get_Struct(self, expression);
-    return vm_assembler_disassemble(expression->code.instructions.data, expression->code.instructions.data_end,
-                                    (const VALUE *)expression->code.constants.data);
+
+    VALUE constants = rb_ary_new();
+    uint32_t constants_len = (uint32_t)(c_buffer_size(&expression->code.constants) / sizeof(VALUE));
+    rb_ary_cat(constants, (VALUE *)expression->code.constants.data, constants_len);
+
+    return vm_assembler_disassemble(
+        expression->code.instructions.data,
+        expression->code.instructions.data_end,
+        &constants
+    );
 }
 
 void liquid_define_expression(void)

@@ -43,6 +43,7 @@ extern filter_desc_t builtin_filters[];
 typedef struct vm_assembler {
     c_buffer_t instructions;
     c_buffer_t constants;
+    st_table *constants_table;
     size_t max_stack_size;
     size_t stack_size;
     size_t protected_stack_size;
@@ -54,7 +55,7 @@ void vm_assembler_init(vm_assembler_t *code);
 void vm_assembler_reset(vm_assembler_t *code);
 void vm_assembler_free(vm_assembler_t *code);
 void vm_assembler_gc_mark(vm_assembler_t *code);
-VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *const_ptr);
+VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *constants);
 void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src);
 void vm_assembler_require_stack_args(vm_assembler_t *code, unsigned int count);
 
@@ -72,9 +73,11 @@ void vm_assembler_add_new_int_range_from_ruby(vm_assembler_t *code);
 void vm_assembler_add_hash_new_from_ruby(vm_assembler_t *code, VALUE hash_size_obj);
 void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, VALUE arg_count_obj);
 
+bool vm_assembler_opcode_has_constant(uint8_t ip);
+
 static inline size_t vm_assembler_alloc_memsize(const vm_assembler_t *code)
 {
-    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants);
+    return c_buffer_capacity(&code->instructions) + c_buffer_capacity(&code->constants) + sizeof(st_table);
 }
 
 static inline void vm_assembler_write_opcode(vm_assembler_t *code, enum opcode op)
@@ -82,9 +85,19 @@ static inline void vm_assembler_write_opcode(vm_assembler_t *code, enum opcode o
     c_buffer_write_byte(&code->instructions, op);
 }
 
-static inline void vm_assembler_write_ruby_constant(vm_assembler_t *code, VALUE constant)
+static inline uint16_t vm_assembler_write_ruby_constant(vm_assembler_t *code, VALUE constant)
 {
-    c_buffer_write(&code->constants, &constant, sizeof(VALUE));
+    st_table *constants_table = code->constants_table;
+    st_data_t index_value;
+
+    if (st_lookup(constants_table, constant, &index_value)) {
+        return (uint16_t)index_value;
+    } else {
+        uint16_t index = c_buffer_size(&code->constants) / sizeof(VALUE);
+        st_insert(constants_table, constant, index);
+        c_buffer_write(&code->constants, &constant, sizeof(VALUE));
+        return index;
+    }
 }
 
 static inline void vm_assembler_increment_stack_size(vm_assembler_t *code, size_t amount)
@@ -100,6 +113,14 @@ static inline void vm_assembler_reserve_stack_size(vm_assembler_t *code, size_t 
     code->stack_size -= amount;
 }
 
+static inline void vm_assembler_add_op_with_constant(vm_assembler_t *code, VALUE constant, uint8_t opcode)
+{
+    uint16_t index = vm_assembler_write_ruby_constant(code, constant);
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 3);
+    instructions[0] = opcode;
+    instructions[1] = index >> 8;
+    instructions[2] = (uint8_t)index;
+}
 
 static inline void vm_assembler_add_leave(vm_assembler_t *code)
 {
@@ -170,15 +191,13 @@ static inline void vm_assembler_add_push_int16(vm_assembler_t *code, int16_t val
 static inline void vm_assembler_add_push_const(vm_assembler_t *code, VALUE constant)
 {
     vm_assembler_increment_stack_size(code, 1);
-    vm_assembler_write_ruby_constant(code, constant);
-    vm_assembler_write_opcode(code, OP_PUSH_CONST);
+    vm_assembler_add_op_with_constant(code, constant, OP_PUSH_CONST);
 }
 
 static inline void vm_assembler_add_find_static_variable(vm_assembler_t *code, VALUE key)
 {
     vm_assembler_increment_stack_size(code, 1);
-    vm_assembler_write_ruby_constant(code, key);
-    vm_assembler_write_opcode(code, OP_FIND_STATIC_VAR);
+    vm_assembler_add_op_with_constant(code, key, OP_FIND_STATIC_VAR);
 }
 
 static inline void vm_assembler_add_find_variable(vm_assembler_t *code)
@@ -190,8 +209,7 @@ static inline void vm_assembler_add_find_variable(vm_assembler_t *code)
 static inline void vm_assembler_add_lookup_const_key(vm_assembler_t *code, VALUE key)
 {
     vm_assembler_reserve_stack_size(code, 1); // push 1, pop 2, push 1
-    vm_assembler_write_ruby_constant(code, key);
-    vm_assembler_write_opcode(code, OP_LOOKUP_CONST_KEY);
+    vm_assembler_add_op_with_constant(code, key, OP_LOOKUP_CONST_KEY);
 }
 
 static inline void vm_assembler_add_lookup_key(vm_assembler_t *code)
@@ -203,8 +221,7 @@ static inline void vm_assembler_add_lookup_key(vm_assembler_t *code)
 static inline void vm_assembler_add_lookup_command(vm_assembler_t *code, VALUE command)
 {
     vm_assembler_reserve_stack_size(code, 1); // push 1, pop 2, push 1
-    vm_assembler_write_ruby_constant(code, command);
-    vm_assembler_write_opcode(code, OP_LOOKUP_COMMAND);
+    vm_assembler_add_op_with_constant(code, command, OP_LOOKUP_COMMAND);
 }
 
 static inline void vm_assembler_add_new_int_range(vm_assembler_t *code)

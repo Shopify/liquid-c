@@ -231,20 +231,18 @@ static void hash_bulk_insert(long argc, const VALUE *argv, VALUE hash)
 static VALUE vm_render_until_error(VALUE uncast_args)
 {
     vm_render_until_error_args_t *args = (void *)uncast_args;
-    const VALUE *const_ptr = args->const_ptr;
+    const VALUE *constants = args->const_ptr;
     const uint8_t *ip = args->ip;
     vm_t *vm = args->vm;
     VALUE output = args->output;
+    uint16_t constant_index;
+    VALUE constant = Qnil;
     args->ip = NULL; // used by vm_render_rescue, NULL to indicate that it isn't in a rescue block
 
     while (true) {
         switch (*ip++) {
             case OP_LEAVE:
                 return false;
-
-            case OP_PUSH_CONST:
-                vm_stack_push(vm, *const_ptr++);
-                break;
             case OP_PUSH_NIL:
                 vm_stack_push(vm, Qnil);
                 break;
@@ -268,8 +266,14 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             }
             case OP_FIND_STATIC_VAR:
-                vm_stack_push(vm, *const_ptr++);
-                /* fallthrough */
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                VALUE value = context_find_variable(&vm->context, constant, Qtrue);
+                vm_stack_push(vm, value);
+                break;
+            }
             case OP_FIND_VAR:
             {
                 VALUE key = vm_stack_pop(vm);
@@ -279,11 +283,16 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_LOOKUP_CONST_KEY:
             case OP_LOOKUP_COMMAND:
-                vm_stack_push(vm, *const_ptr++);
-                /* fallthrough */
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                vm_stack_push(vm, constant);
+            }
+            /* fallthrough */
             case OP_LOOKUP_KEY:
             {
-                bool is_command = ip[-1] == OP_LOOKUP_COMMAND;
+                bool is_command = ip[-3] == OP_LOOKUP_COMMAND;
                 VALUE key = vm_stack_pop(vm);
                 VALUE object = vm_stack_pop(vm);
                 VALUE result = variable_lookup_key(vm->context.self, object, key, is_command);
@@ -313,13 +322,20 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             case OP_BUILTIN_FILTER:
             {
                 VALUE filter_name;
+                uint8_t num_args;
+
                 if (ip[-1] == OP_FILTER) {
-                    filter_name = *const_ptr++;
+                    constant_index = (ip[0] << 8) | ip[1];
+                    constant = constants[constant_index];
+                    filter_name = RARRAY_AREF(constant, 0);
+                    num_args = RARRAY_AREF(constant, 1);
+                    ip += 2;
                 } else {
                     assert(ip[-1] == OP_BUILTIN_FILTER);
                     filter_name = builtin_filters[*ip++].sym;
+                    num_args = *ip++; // includes input argument
                 }
-                uint8_t num_args = *ip++; // includes input argument
+
                 VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, num_args);
                 VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
                 vm_stack_push(vm, result);
@@ -360,13 +376,29 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 break;
             }
 
+            case OP_PUSH_CONST:
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                vm_stack_push(vm, constant);
+                break;
+            }
+
             case OP_WRITE_NODE:
-                rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, (VALUE)*const_ptr++);
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, constant);
+
                 if (RARRAY_LEN(vm->context.interrupts)) {
                     return false;
                 }
+
                 resource_limits_increment_write_score(vm->context.resource_limits, output);
                 break;
+            }
             case OP_RENDER_VARIABLE_RESCUE:
                 // Save state used by vm_render_rescue to rescue from a variable rendering exception
                 args->node_line_number = ip;
@@ -374,7 +406,6 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 // following OP_POP_WRITE_VARIABLE to resume rendering from
                 ip += 3;
                 args->ip = ip;
-                args->const_ptr = const_ptr;
                 break;
             case OP_POP_WRITE:
             {
@@ -414,7 +445,7 @@ VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
     return ret;
 }
 
-void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_ptr)
+void liquid_vm_next_instruction(const uint8_t **ip_ptr)
 {
     const uint8_t *ip = *ip_ptr;
 
@@ -436,24 +467,17 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr, const VALUE **const_ptr_
 
         case OP_BUILTIN_FILTER:
         case OP_PUSH_INT16:
-            ip += 2;
-            break;
-
-        case OP_WRITE_NODE:
         case OP_PUSH_CONST:
+        case OP_WRITE_NODE:
         case OP_FIND_STATIC_VAR:
         case OP_LOOKUP_CONST_KEY:
         case OP_LOOKUP_COMMAND:
-            (*const_ptr_ptr)++;
+        case OP_FILTER:
+            ip += 2;
             break;
 
         case OP_RENDER_VARIABLE_RESCUE:
             ip += 3;
-            break;
-
-        case OP_FILTER:
-            ip++;
-            (*const_ptr_ptr)++;
             break;
 
         case OP_WRITE_RAW_W:
@@ -514,7 +538,7 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     enum opcode last_op;
     do {
         last_op = *ip;
-        liquid_vm_next_instruction(&ip, &render_args->const_ptr);
+        liquid_vm_next_instruction(&ip);
     } while (last_op != OP_POP_WRITE);
     render_args->ip = ip;
     // remove temporary stack values from variable evaluation

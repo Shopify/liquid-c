@@ -96,8 +96,18 @@ static VALUE variable_strict_parse_rescue(VALUE uncast_args, VALUE exception)
     vm_assembler_t *code = parse_args->code;
 
     // undo partial strict parse
+    uint8_t *last_constants_data_end = (uint8_t *)code->constants.data + rescue_args->constants_size;
+    VALUE *const_ptr = (VALUE *)last_constants_data_end;
+    st_table *constants_table = code->constants_table;
+
+    while((uint8_t *)const_ptr < code->constants.data_end) {
+        st_data_t key = (st_data_t)const_ptr[0];
+        st_delete(constants_table, &key, 0);
+        const_ptr++;
+    }
+
     code->instructions.data_end = code->instructions.data + rescue_args->instructions_size;
-    code->constants.data_end = code->constants.data + rescue_args->constants_size;
+    code->constants.data_end = last_constants_data_end;
     code->stack_size = rescue_args->stack_size;
 
     if (rb_obj_is_kind_of(exception, cLiquidSyntaxError) == Qfalse)

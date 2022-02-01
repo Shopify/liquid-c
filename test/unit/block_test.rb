@@ -78,14 +78,14 @@ class BlockTest < MiniTest::Test
       0x0000: write_raw("raw")
       0x0005: render_variable_rescue(line_number: 2)
       0x0009: find_static_var("var")
-      0x000a: push_const("none")
-      0x000b: push_const("allow_false")
-      0x000c: push_true
-      0x000d: hash_new(1)
-      0x000f: builtin_filter(name: :default, num_args: 3)
-      0x0012: pop_write
-      0x0013: write_node(#{increment_node.inspect})
-      0x0014: leave
+      0x000c: push_const(\"none\")
+      0x000f: push_const(\"allow_false\")
+      0x0012: push_true
+      0x0013: hash_new(1)
+      0x0015: builtin_filter(name: :default, num_args: 3)
+      0x0018: pop_write
+      0x0019: write_node(#{increment_node.inspect})
+      0x001c: leave
     ASM
   end
 
@@ -115,11 +115,11 @@ class BlockTest < MiniTest::Test
   def test_include_partial_with_syntax_error
     old_file_system = Liquid::Template.file_system
     begin
-      Liquid::Template.file_system = StubFileSystem.new({
+      Liquid::Template.file_system = StubFileSystem.new(
         "invalid" => "{% foo %}",
         "valid" => '{% include "nested" %}',
         "nested" => "valid",
-      })
+      )
 
       template = Liquid::Template.parse("{% include 'invalid' %},{% include 'valid' %}")
       assert_equal("Liquid syntax error: Unknown tag 'foo',valid", template.render)

@@ -6,6 +6,7 @@
 #include "variable_lookup.h"
 #include "intutil.h"
 #include "document_body.h"
+#include "filter.h"
 
 ID id_render_node;
 ID id_vm;
@@ -175,9 +176,19 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *
         return args[0];
     }
 
+    VALUE result;
+
     vm->invoking_filter = true;
-    VALUE result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);
+    VALUE str_filter_name = rb_sym2str(filter_name);
+
+    if (false && rb_str_equal(str_filter_name, rb_str_new_cstr("split"))) {
+        result = filter_split(args);
+    } else {
+        result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);
+    }
+
     vm->invoking_filter = false;
+
     return rb_funcall(result, id_to_liquid, 0);
 }
 

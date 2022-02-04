@@ -186,9 +186,9 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *
     VALUE result;
 
     vm->invoking_filter = true;
-    VALUE str_filter_name = rb_sym2str(filter_name);
+    char *str_filter_name = RSTRING_PTR(rb_sym2str(filter_name));
 
-    if (false && rb_str_equal(str_filter_name, rb_str_new_cstr("split"))) {
+    if (strcmp(str_filter_name, "split") == 0) {
         result = rb_rescue2(filter_split, args, rescue_filter, args, rb_eTypeError, rb_eArgError, (VALUE)0);
     } else {
         result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);

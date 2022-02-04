@@ -165,6 +165,13 @@ static inline void vm_stack_reserve_for_write(vm_t *vm, size_t num_values)
     c_buffer_reserve_for_write(&vm->stack, num_values * sizeof(VALUE));
 }
 
+static VALUE rescue_filter(VALUE args, VALUE exception) {
+    rb_p(exception);
+
+    // Return the string that was originally provided
+    return ((VALUE*) args)[0];
+}
+
 static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *args)
 {
     bool not_invokable = rb_hash_lookup(vm->context.filter_methods, filter_name) != Qtrue;
@@ -182,7 +189,7 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *
     VALUE str_filter_name = rb_sym2str(filter_name);
 
     if (false && rb_str_equal(str_filter_name, rb_str_new_cstr("split"))) {
-        result = filter_split(args);
+        result = rb_rescue2(filter_split, args, rescue_filter, args, rb_eTypeError, rb_eArgError, (VALUE)0);
     } else {
         result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);
     }

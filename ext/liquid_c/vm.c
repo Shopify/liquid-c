@@ -189,7 +189,7 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *
     char *str_filter_name = RSTRING_PTR(rb_sym2str(filter_name));
 
     if (strcmp(str_filter_name, "split") == 0) {
-        result = rb_rescue2(filter_split, args, rescue_filter, args, rb_eTypeError, rb_eArgError, (VALUE)0);
+        result = filter_split(args, num_args);
     } else {
         result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);
     }

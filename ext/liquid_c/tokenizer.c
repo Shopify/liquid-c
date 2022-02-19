@@ -3,6 +3,7 @@
 #include "tokenizer.h"
 #include "stringutil.h"
 #include <string.h>
+#include "immintrin.h"
 
 VALUE cLiquidTokenizer;
 
@@ -113,56 +114,18 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
     }
 }
 
-char* vcompare(char* cursor) {
-    const unsigned long* first_eight = (unsigned long*) cursor;
-    const unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
-    long result = 0;
 
-    char* start = (char*) first_eight;
-    char* needle = (char*) &repeated;
-    char* res = (char*) &result;
+char* vcompare2(char* cursor) {
+    const __m256i haystack = _mm256_loadu_si256((const __m256i*)cursor);
+    const __m256i needles = _mm256_set1_epi8('{');
+    const __m256i eq = _mm256_cmpeq_epi8(haystack, needles);
+    int result = _mm256_movemask_epi8(eq);
 
+    if(result == 0)
+        return &cursor[31];
 
-    for(int i=0; i<8; i++) {
-        res[i] = start[i] == needle[i];
-    }
-
-    if(result==0)
-        return &cursor[8];
-
-    return cursor + __builtin_ctz(result)/8 + 1;
+    return cursor + __builtin_ctz(result) / 8;
 }
-
-char* compare(char* cursor) {
-    const unsigned long* first_eight = (unsigned long*) cursor;
-    const unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
-    const unsigned long find_char = *first_eight ^ repeated;
-    const char contains_zero = (find_char - 0x0101010101010101) & ~(find_char) & 0x8080808080808080;
-
-    if(contains_zero) {
-        for(int i=0; i<8; i++) {
-            if (*cursor++ == '{') {
-                return cursor;
-            }
-        }
-    } 
-    return &cursor[8];
-}
-
-// char* compare(char* cursor) {
-//     unsigned long* first_eight = (unsigned long*) cursor;
-//     unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
-//     unsigned long find_char = *first_eight ^ repeated;
-//     char contains_zero = (find_char - UINT64_C(0x0101010101010101)) & ~(find_char) & UINT64_C(0x8080808080808080);
-//     if(contains_zero) {
-//         for(int i=0; i<8; i++) {
-//             if (*cursor++ == '{') {
-//                 return cursor;
-//             }
-//         }
-//     } 
-//     return &cursor[8];
-// }
 
 // Tokenizes contents of a full Liquid template
 static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
@@ -174,54 +137,16 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
     token->str_full = cursor;
     token->type = TOKEN_RAW;
 
-    int block_size = 8;
+    int block_size = 32;
 
-    while (cursor < last) {
-        // size_t has_chunk = (((last - cursor + 1) >= block_size) << 6 & block_size);
-        // size_t search_length = (!has_chunk & ((last - cursor) + 1)) + has_chunk;
-
-        // size_t search_length = block_size;
-
-        // if((last - cursor + 1) <= block_size) {
-        //     search_length = (last - cursor + 1);
-        // }
-
-        // test = (char*) memchr(cursor, '{', search_length);
-
-        // if(!test) {
-        //     cursor += search_length;
-        //     continue;
-        // }
-
-        // cursor = ++test;
-    
-        if((last - cursor + 1) <= block_size) {
-            cursor = vcompare(cursor);
-        } else if (*cursor++ != '{') {
+    while (cursor < last) {  
+        if((last - cursor + 1) < block_size) {
+            cursor = vcompare2(cursor);
+        }
+        
+        if (*cursor++ != '{') {
             continue;
         }
-
-        // if((last - cursor + 1) >= block_size) {
-        //     test = (char*) memchr(cursor, '{', block_size);
-        //     if(!test) {
-        //         cursor += block_size;
-        //     } else {
-        //         cursor = test;
-        //     }
-        // } else {
-        //     cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
-        // }
-
-        // cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
-
-        /*
-        if (*cursor++ != '{')
-            continue;
-
-        char c = *cursor++;
-        if (c != '%' && c != '{')
-            continue;
-        */
 
         char c = *cursor++;
         if (c != '%' && c != '{')

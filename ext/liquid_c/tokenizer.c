@@ -113,11 +113,32 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
     }
 }
 
+char* vcompare(char* cursor) {
+    const unsigned long* first_eight = (unsigned long*) cursor;
+    const unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
+    long result = 0;
+
+    char* start = (char*) first_eight;
+    char* needle = (char*) &repeated;
+    char* res = (char*) &result;
+
+
+    for(int i=0; i<8; i++) {
+        res[i] = start[i] == needle[i];
+    }
+
+    if(result==0)
+        return &cursor[8];
+
+    return cursor + __builtin_ctz(result)/8 + 1;
+}
+
 char* compare(char* cursor) {
     const unsigned long* first_eight = (unsigned long*) cursor;
     const unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
     const unsigned long find_char = *first_eight ^ repeated;
     const char contains_zero = (find_char - 0x0101010101010101) & ~(find_char) & 0x8080808080808080;
+
     if(contains_zero) {
         for(int i=0; i<8; i++) {
             if (*cursor++ == '{') {
@@ -175,7 +196,7 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
         // cursor = ++test;
     
         if((last - cursor + 1) <= block_size) {
-            cursor = compare(cursor);
+            cursor = vcompare(cursor);
         } else if (*cursor++ != '{') {
             continue;
         }

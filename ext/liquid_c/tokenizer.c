@@ -115,14 +115,16 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
 }
 
 
-char* vcompare2(char* cursor) {
+char* vcompare2(char* cursor, char needle) {
     const __m256i haystack = _mm256_loadu_si256((const __m256i*)cursor);
-    const __m256i needles = _mm256_set1_epi8('{');
+    const __m256i needles = _mm256_set1_epi8(needle);
     const __m256i eq = _mm256_cmpeq_epi8(haystack, needles);
     int result = _mm256_movemask_epi8(eq);
 
+    return result;
+
     if(result == 0)
-        return &cursor[31];
+        return &cursor[32];
 
     return cursor + __builtin_ctz(result) / 8;
 }
@@ -141,7 +143,7 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
 
     while (cursor < last) {  
         if((last - cursor + 1) < block_size) {
-            cursor = vcompare2(cursor);
+            cursor = vcompare2(cursor, '{');
         }
         
         if (*cursor++ != '{') {
@@ -149,12 +151,15 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
         }
 
         char c = *cursor++;
+
         if (c != '%' && c != '{')
             continue;
+
         if (cursor <= last && *cursor == '-') {
             cursor++;
             token->rstrip = 1;
         }
+
         if (cursor - tokenizer->cursor > (ptrdiff_t)(2 + token->rstrip)) {
             token->type = TOKEN_RAW;
             cursor -= 2 + token->rstrip;
@@ -162,12 +167,15 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
             tokenizer->lstrip_flag = false;
             goto found;
         }
+
         tokenizer->lstrip_flag = false;
         token->type = TOKEN_INVALID;
         token->lstrip = token->rstrip;
         token->rstrip = 0;
+
         if (c == '%') {
             while (cursor < last) {
+
                 if (*cursor++ != '%')
                     continue;
                 c = *cursor++;

@@ -151,20 +151,40 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
     token->str_full = cursor;
     token->type = TOKEN_RAW;
 
-    long block_size = 32;
+    int block_size = 8;
 
     while (cursor < last) {
-//        ((cursor + block_size < last) << 4 & block_size)
-        if((last - cursor + 1) >= block_size) {
-            test = (char*) memchr(cursor, '{', block_size);
-            if(!test) {
-                cursor += block_size;
-            } else {
-                cursor = test;
-            }
-        } else {
-            cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
+        // size_t has_chunk = (((last - cursor + 1) >= block_size) << 6 & block_size);
+        // size_t search_length = (!has_chunk & ((last - cursor) + 1)) + has_chunk;
+
+        size_t search_length = block_size;
+
+        if((last - cursor + 1) <= block_size) {
+            search_length = (last - cursor + 1);
         }
+
+        test = (char*) memchr(cursor, '{', search_length);
+
+        if(!test) {
+            cursor += search_length;
+            continue;
+        }
+
+        cursor = test;
+    
+
+
+
+        // if((last - cursor + 1) >= block_size) {
+        //     test = (char*) memchr(cursor, '{', block_size);
+        //     if(!test) {
+        //         cursor += block_size;
+        //     } else {
+        //         cursor = test;
+        //     }
+        // } else {
+        //     cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
+        // }
 
         // cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
 
@@ -177,8 +197,6 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
             continue;
         */
 
-        if (!cursor)
-            break;
         cursor++;
         char c = *cursor++;
         if (c != '%' && c != '{')

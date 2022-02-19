@@ -151,7 +151,7 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
     token->str_full = cursor;
     token->type = TOKEN_RAW;
 
-    long block_size = 8;
+    long block_size = 32;
 
     while (cursor < last) {
 //        ((cursor + block_size < last) << 4 & block_size)
@@ -168,6 +168,14 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
 
         // cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
 
+        /*
+        if (*cursor++ != '{')
+            continue;
+
+        char c = *cursor++;
+        if (c != '%' && c != '{')
+            continue;
+        */
 
         if (!cursor)
             break;

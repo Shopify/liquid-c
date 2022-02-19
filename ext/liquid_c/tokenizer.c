@@ -2,6 +2,7 @@
 #include "liquid.h"
 #include "tokenizer.h"
 #include "stringutil.h"
+#include <string.h>
 
 VALUE cLiquidTokenizer;
 
@@ -112,19 +113,65 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
     }
 }
 
+// char* next_token(char* cursor, char* last) {
+//     int block_size = 128;
+//     int indicator[block_size];
+//     char offset = 0;
+//     char matcher[64] = "{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{";
+
+//     if(&cursor[block_size] < last) {
+//         for(int i=0; i<block_size; i++) {
+//             offset = offset | (cursor[i] == '{');
+//         }
+
+//         if(offset) {
+//             for(int i=0; i<block_size; i++) {
+//                 if(cursor[i] == '{') {
+//                     return &cursor[i+1];
+//                 }
+//             }
+//         }
+//         return &cursor[block_size];
+//     } else {
+//         while(cursor < last) {
+//             if (*cursor++ == '{')
+//                 break;
+//         }
+//         return cursor;
+//     }
+// }
+
 // Tokenizes contents of a full Liquid template
 static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
 {
     const char *cursor = tokenizer->cursor;
     const char *last = tokenizer->cursor_end - 1;
-
+    char *test;
+    
     token->str_full = cursor;
     token->type = TOKEN_RAW;
 
-    while (cursor < last) {
-        if (*cursor++ != '{')
-            continue;
+    long block_size = 8;
 
+    while (cursor < last) {
+//        ((cursor + block_size < last) << 4 & block_size)
+        if((last - cursor + 1) >= block_size) {
+            test = (char*) memchr(cursor, '{', block_size);
+            if(!test) {
+                cursor += block_size;
+            } else {
+                cursor = test;
+            }
+        } else {
+            cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
+        }
+
+        // cursor = (char*) memchr(cursor, '{', (last - cursor) + 1);
+
+
+        if (!cursor)
+            break;
+        cursor++;
         char c = *cursor++;
         if (c != '%' && c != '{')
             continue;

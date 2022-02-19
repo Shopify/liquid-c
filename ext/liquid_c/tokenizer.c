@@ -113,32 +113,34 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
     }
 }
 
-// char* next_token(char* cursor, char* last) {
-//     int block_size = 128;
-//     int indicator[block_size];
-//     char offset = 0;
-//     char matcher[64] = "{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{";
+char* compare(char* cursor) {
+    const unsigned long* first_eight = (unsigned long*) cursor;
+    const unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
+    const unsigned long find_char = *first_eight ^ repeated;
+    const char contains_zero = (find_char - 0x0101010101010101) & ~(find_char) & 0x8080808080808080;
+    if(contains_zero) {
+        for(int i=0; i<8; i++) {
+            if (*cursor++ == '{') {
+                return cursor;
+            }
+        }
+    } 
+    return &cursor[8];
+}
 
-//     if(&cursor[block_size] < last) {
-//         for(int i=0; i<block_size; i++) {
-//             offset = offset | (cursor[i] == '{');
-//         }
-
-//         if(offset) {
-//             for(int i=0; i<block_size; i++) {
-//                 if(cursor[i] == '{') {
-//                     return &cursor[i+1];
-//                 }
+// char* compare(char* cursor) {
+//     unsigned long* first_eight = (unsigned long*) cursor;
+//     unsigned long repeated = 0x7b7b7b7b7b7b7b7b;
+//     unsigned long find_char = *first_eight ^ repeated;
+//     char contains_zero = (find_char - UINT64_C(0x0101010101010101)) & ~(find_char) & UINT64_C(0x8080808080808080);
+//     if(contains_zero) {
+//         for(int i=0; i<8; i++) {
+//             if (*cursor++ == '{') {
+//                 return cursor;
 //             }
 //         }
-//         return &cursor[block_size];
-//     } else {
-//         while(cursor < last) {
-//             if (*cursor++ == '{')
-//                 break;
-//         }
-//         return cursor;
-//     }
+//     } 
+//     return &cursor[8];
 // }
 
 // Tokenizes contents of a full Liquid template
@@ -157,23 +159,26 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
         // size_t has_chunk = (((last - cursor + 1) >= block_size) << 6 & block_size);
         // size_t search_length = (!has_chunk & ((last - cursor) + 1)) + has_chunk;
 
-        size_t search_length = block_size;
+        // size_t search_length = block_size;
 
+        // if((last - cursor + 1) <= block_size) {
+        //     search_length = (last - cursor + 1);
+        // }
+
+        // test = (char*) memchr(cursor, '{', search_length);
+
+        // if(!test) {
+        //     cursor += search_length;
+        //     continue;
+        // }
+
+        // cursor = ++test;
+    
         if((last - cursor + 1) <= block_size) {
-            search_length = (last - cursor + 1);
-        }
-
-        test = (char*) memchr(cursor, '{', search_length);
-
-        if(!test) {
-            cursor += search_length;
+            cursor = compare(cursor);
+        } else if (*cursor++ != '{') {
             continue;
         }
-
-        cursor = test;
-    
-
-
 
         // if((last - cursor + 1) >= block_size) {
         //     test = (char*) memchr(cursor, '{', block_size);
@@ -197,7 +202,6 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
             continue;
         */
 
-        cursor++;
         char c = *cursor++;
         if (c != '%' && c != '{')
             continue;

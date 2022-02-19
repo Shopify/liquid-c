@@ -3,7 +3,6 @@
 #include "tokenizer.h"
 #include "stringutil.h"
 #include <string.h>
-#include "immintrin.h"
 
 VALUE cLiquidTokenizer;
 
@@ -93,7 +92,7 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
     token->str_full = start;
     token->str_trimmed = start_trimmed;
 
-    const char *end_full = read_while(start_trimmed, end, not_newline);
+    const char *end_full = read_while_not_newline(start_trimmed, end);
     if (end_full < end) {
         tokenizer->cursor = end_full + 1;
         if (tokenizer->line_number)
@@ -114,21 +113,6 @@ static void tokenizer_next_for_liquid_tag(tokenizer_t *tokenizer, token_t *token
     }
 }
 
-
-char* vcompare2(char* cursor, char needle) {
-    const __m256i haystack = _mm256_loadu_si256((const __m256i*)cursor);
-    const __m256i needles = _mm256_set1_epi8(needle);
-    const __m256i eq = _mm256_cmpeq_epi8(haystack, needles);
-    int result = _mm256_movemask_epi8(eq);
-
-    return result;
-
-    if(result == 0)
-        return &cursor[32];
-
-    return cursor + __builtin_ctz(result) / 8;
-}
-
 // Tokenizes contents of a full Liquid template
 static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
 {
@@ -142,9 +126,7 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
     int block_size = 32;
 
     while (cursor < last) {  
-        if((last - cursor + 1) < block_size) {
-            cursor = vcompare2(cursor, '{');
-        }
+        cursor = block_search(cursor, last, '{');
         
         if (*cursor++ != '{') {
             continue;
@@ -175,12 +157,9 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
 
         if (c == '%') {
             while (cursor < last) {
-
+                cursor = block_search(cursor, last, '%');
                 if (*cursor++ != '%')
                     continue;
-                c = *cursor++;
-                while (c == '%' && cursor <= last)
-                    c = *cursor++;
                 if (c != '}')
                     continue;
                 token->type = TOKEN_TAG;
@@ -194,6 +173,7 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
             goto found;
         } else {
             while (cursor < last) {
+                cursor = block_search(cursor, last, '}');
                 if (*cursor++ != '}')
                     continue;
                 if (*cursor++ != '}') {

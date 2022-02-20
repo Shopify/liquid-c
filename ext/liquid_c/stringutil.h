@@ -1,33 +1,30 @@
 #include "immintrin.h"
 
-inline static char* vcompare2(char* cursor, char needle) {
+#if !defined(LIQUID_UTIL_H)
+#define LIQUID_UTIL_H
+
+char* vcompare2(char* cursor, char needle) {
     const __m256i haystack = _mm256_loadu_si256((const __m256i*)cursor);
     const __m256i needles = _mm256_set1_epi8(needle);
     const __m256i eq = _mm256_cmpeq_epi8(haystack, needles);
     int result = _mm256_movemask_epi8(eq);
 
-    if(result == 0)
-        return &cursor[32];
-
-    return cursor + __builtin_ctz(result) / 8;
+    return cursor + __builtin_ctz(result);
 }
 
-inline static char* block_search(char* cursor, char* last, char needle) {
+char* block_search(char* cursor, char* last, char needle) {
+    char* test;
     while((last - cursor + 1) >= 32) {
-        cursor = vcompare2(cursor, needle);
-        if(*cursor == needle)
-            return cursor;
+        test = vcompare2(cursor, needle);
+        if(test != cursor + 32)
+            return test;
+        cursor = test;
     }
-    while(cursor < last) {
-        if(*cursor == needle)
-            return cursor;
+    while(cursor < last && *cursor != needle) {
         cursor++;
     }
     return cursor;
 }
-
-#if !defined(LIQUID_UTIL_H)
-#define LIQUID_UTIL_H
 
 inline static const char *read_while_not_newline(const char *start, const char *end)
 {

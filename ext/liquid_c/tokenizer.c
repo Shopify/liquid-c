@@ -2,7 +2,6 @@
 #include "liquid.h"
 #include "tokenizer.h"
 #include "stringutil.h"
-#include <string.h>
 
 VALUE cLiquidTokenizer;
 
@@ -118,30 +117,23 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
 {
     const char *cursor = tokenizer->cursor;
     const char *last = tokenizer->cursor_end - 1;
-    char *test;
-    
+
     token->str_full = cursor;
     token->type = TOKEN_RAW;
 
-    int block_size = 32;
-
-    while (cursor < last) {  
+    while (cursor < last) {
         cursor = block_search(cursor, last, '{');
-        
-        if (*cursor++ != '{') {
+
+        if (*cursor++ != '{')
             continue;
-        }
 
         char c = *cursor++;
-
         if (c != '%' && c != '{')
             continue;
-
         if (cursor <= last && *cursor == '-') {
             cursor++;
             token->rstrip = 1;
         }
-
         if (cursor - tokenizer->cursor > (ptrdiff_t)(2 + token->rstrip)) {
             token->type = TOKEN_RAW;
             cursor -= 2 + token->rstrip;
@@ -149,17 +141,19 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
             tokenizer->lstrip_flag = false;
             goto found;
         }
-
         tokenizer->lstrip_flag = false;
         token->type = TOKEN_INVALID;
         token->lstrip = token->rstrip;
         token->rstrip = 0;
-
         if (c == '%') {
             while (cursor < last) {
                 cursor = block_search(cursor, last, '%');
+
                 if (*cursor++ != '%')
                     continue;
+                c = *cursor++;
+                while (c == '%' && cursor <= last)
+                    c = *cursor++;
                 if (c != '}')
                     continue;
                 token->type = TOKEN_TAG;
@@ -172,19 +166,19 @@ static void tokenizer_next_for_template(tokenizer_t *tokenizer, token_t *token)
             tokenizer->lstrip_flag = false;
             goto found;
         } else {
-            while (cursor < last) {
-                cursor = block_search(cursor, last, '}');
-                if (*cursor++ != '}')
-                    continue;
-                if (*cursor++ != '}') {
-                    // variable incomplete end, used to end raw tags
-                    cursor--;
-                    goto found;
-                }
-                token->type = TOKEN_VARIABLE;
-                if(cursor[-3] == '-')
-                    token->rstrip = tokenizer->lstrip_flag = true;
+            
+            cursor = block_search(cursor, last, '}');
+
+            if (*cursor++ == '}') {
+            if (*cursor++ != '}') {
+                // variable incomplete end, used to end raw tags
+                cursor--;
                 goto found;
+            }
+            token->type = TOKEN_VARIABLE;
+            if(cursor[-3] == '-')
+                token->rstrip = tokenizer->lstrip_flag = true;
+            goto found;
             }
             // unterminated variable
             cursor = tokenizer->cursor + 2;
@@ -306,4 +300,3 @@ void liquid_define_tokenizer(void)
     rb_define_private_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
     rb_define_private_method(cLiquidTokenizer, "shift_trimmed", tokenizer_shift_trimmed_method, 0);
 }
-

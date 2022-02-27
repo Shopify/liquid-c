@@ -6,15 +6,19 @@
     "configurations": [
         {
             "name": "(lldb) Launch",
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
-            "program": "bundle exec rake",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${fileDirname}",
-            "environment": [],
+            "program": "/opt/rubies/3.1.1/bin/ruby",
+            "args": ["${workspaceRoot}/test.rb"],
+            "stopOnEntry": false,
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "BUNDLE_GEMFILE": "/Users/franklyndsouza/src/github.com/Shopify/liquid-c/Gemfile"
+            },
+            "targetCreateCommands": ["bundle exec rake compile"],
             "externalConsole": false,
+            "targetArchitecture": "arm64",
             "MIMode": "lldb"
         }
     ]
-}
+} 

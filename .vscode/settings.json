@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "system_error": "c",
+        "memory": "c",
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "sstream": "c"
+    }
+}

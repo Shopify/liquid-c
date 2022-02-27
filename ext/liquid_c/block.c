@@ -1,12 +1,13 @@
 #include "liquid.h"
 #include "block.h"
 #include "intutil.h"
-#include "tokenizer.h"
+//#include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
 #include "variable.h"
 #include "context.h"
 #include "parse_context.h"
+#include "expression.h"
 #include "vm_assembler.h"
 #include <stdio.h>
 
@@ -15,23 +16,13 @@ static ID
     intern_raise_missing_tag_terminator,
     intern_is_blank,
     intern_parse,
+    intern_new,
     intern_square_brackets,
     intern_unknown_tag_in_liquid_tag,
     intern_ivar_nodelist;
 
 static VALUE tag_registry;
 static VALUE variable_placeholder = Qnil;
-
-typedef struct tag_markup {
-    VALUE name;
-    VALUE markup;
-} tag_markup_t;
-
-typedef struct parse_context {
-    tokenizer_t *tokenizer;
-    VALUE tokenizer_obj;
-    VALUE ruby_obj;
-} parse_context_t;
 
 static void ensure_body_compiled(const block_body_t *body)
 {
@@ -116,6 +107,13 @@ static int is_id(int c)
     return rb_isalnum(c) || c == '_';
 }
 
+void print_pointer(char* start, char* end) {
+    while(start < end) {
+        printf("%c", *start++);
+    }
+    printf("\n");
+}
+
 static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
 {
     tokenizer_t *tokenizer = parse_context->tokenizer;
@@ -192,7 +190,6 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
             case TOKEN_TAG:
             {
                 const char *start = token.str_trimmed, *end = token.str_trimmed + token.len_trimmed;
-
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);
                 const char *name_end = read_while(name_start, end, is_id);
@@ -222,11 +219,29 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     break;
                 }
 
-                VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
-                VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
+                if (
+                    (name_len == 4 && strncmp(name_start, "else", 4) == 0) 
+                    || (name_len == 5 && strncmp(name_start, "elsif", 5) == 0)
+                    || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)
+                ) {
+                    VALUE str = rb_enc_str_new(name_start, name_len, utf8_encoding);
+                    unknown_tag = (tag_markup_t) { str, str };
+                    goto loop_break;
+                }
 
                 const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
+
+                if (name_len == 2 && strncmp(name_start, "if", 2) == 0) {
+                    unknown_tag = parse_if_tag(markup, body, parse_context);
+                    if (unknown_tag.name != Qnil) {
+                        goto loop_break;
+                    }
+                    break;
+                }
+
+                VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
+                VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
 
                 if (tag_class == Qnil) {
                     unknown_tag = (tag_markup_t) { tag_name, markup };
@@ -261,6 +276,86 @@ loop_break:
     body->as.intermediate.render_score += render_score_increment;
     return unknown_tag;
 }
+
+VALUE parse_single_binary_comparison(VALUE markup) {
+    if (NIL_P(markup))
+        return Qnil;
+
+    StringValue(markup);
+    char *start = RSTRING_PTR(markup);
+
+    parser_t p;
+    init_parser(&p, start, start + RSTRING_LEN(markup));
+    VALUE a = internal_expression_parse(&p);
+    lexer_token_t op = parser_consume(&p, TOKEN_COMPARISON);
+    
+    if(op.type) {
+        VALUE op_str = rb_enc_str_new(op.val, op.val_end - op.val, utf8_encoding);
+        VALUE b = internal_expression_parse(&p);
+        return rb_funcall(cLiquidCondition, intern_new, 3, a, op_str, b);
+    } 
+
+    return rb_funcall(cLiquidCondition, intern_new, 1, a);
+}
+
+tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *parse_context) {
+    /*
+        1 parse expression
+        2 push write node OP_EVAL with condition object
+        3 push OP_BRANCH_UNLESS
+        4 recursively parse body
+    */
+
+    VALUE condition_obj = parse_single_binary_comparison(markup);
+    vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
+    uint8_t* pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
+    uint8_t* pending_else_branch = NULL;
+
+    tag_markup_t unknown_tag;
+
+    uint8_t *address_start = body->as.intermediate.code->instructions.data_end;
+
+    while(true) {
+        unknown_tag = internal_block_body_parse(body, parse_context);
+
+        if(unknown_tag.name != Qnil) {
+            StringValue(unknown_tag.name);
+            char *name_start = RSTRING_PTR(unknown_tag.name);
+            int name_len = RSTRING_LEN(unknown_tag.name);
+            uint8_t * address_end = body->as.intermediate.code->instructions.data_end;
+            uint16_t jump = 42 ; //(address_end - address_start + 1);
+
+            if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
+                pending_branch[1] = jump >> 8;
+                pending_branch[2] = (uint8_t) jump;
+                pending_branch = NULL;
+                pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+            } else if(name_len == 5 && strncmp(name_start, "elsif", 5) == 0) {
+                pending_branch[1] = jump >> 8;
+                pending_branch[2] = (uint8_t) jump;
+                pending_branch = NULL;
+                pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+                condition_obj = parse_single_binary_comparison(unknown_tag.markup);
+                vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
+                pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
+            } else if(name_len == 5 && strncmp(name_start, "endif", 5) == 0) {
+                if(pending_branch != NULL) {
+                    pending_branch[1] = jump >> 8;
+                    pending_branch[2] = (uint8_t) jump;
+                }
+                if(pending_else_branch != NULL) {
+                    pending_else_branch[1] = jump >> 8;
+                    pending_else_branch[2] = (uint8_t) jump;
+                }
+                // vm_assembler_add_branch(body->as.intermediate.code, jump);
+                return  (tag_markup_t) { Qnil, Qnil };
+            } else {
+                return unknown_tag;
+            }
+        }
+    }
+}
+
 
 static void ensure_intermediate(block_body_t *body)
 {
@@ -537,6 +632,7 @@ void liquid_define_block_body(void)
     intern_raise_missing_tag_terminator = rb_intern("raise_missing_tag_terminator");
     intern_is_blank = rb_intern("blank?");
     intern_parse = rb_intern("parse");
+    intern_new = rb_intern("new");
     intern_square_brackets = rb_intern("[]");
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
     intern_ivar_nodelist = rb_intern("@nodelist");

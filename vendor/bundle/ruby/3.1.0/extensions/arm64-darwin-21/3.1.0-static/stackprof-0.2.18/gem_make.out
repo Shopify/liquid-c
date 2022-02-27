@@ -1,0 +1,19 @@
+current directory: /Users/franklyndsouza/src/github.com/Shopify/liquid-c/vendor/bundle/ruby/3.1.0/gems/stackprof-0.2.18/ext/stackprof
+/opt/rubies/3.1.1/bin/ruby -I /opt/rubies/3.1.1/lib/ruby/3.1.0 -r ./siteconf20220225-93850-oaa4ky.rb extconf.rb
+checking for rb_postponed_job_register_one()... yes
+checking for rb_profile_frames()... yes
+checking for rb_tracepoint_new()... yes
+checking for RUBY_INTERNAL_EVENT_NEWOBJ... yes
+creating Makefile
+
+current directory: /Users/franklyndsouza/src/github.com/Shopify/liquid-c/vendor/bundle/ruby/3.1.0/gems/stackprof-0.2.18/ext/stackprof
+make DESTDIR\= clean
+
+current directory: /Users/franklyndsouza/src/github.com/Shopify/liquid-c/vendor/bundle/ruby/3.1.0/gems/stackprof-0.2.18/ext/stackprof
+make DESTDIR\=
+compiling stackprof.c
+linking shared-object stackprof/stackprof.bundle
+
+current directory: /Users/franklyndsouza/src/github.com/Shopify/liquid-c/vendor/bundle/ruby/3.1.0/gems/stackprof-0.2.18/ext/stackprof
+make DESTDIR\= install
+/usr/bin/install -c -m 0755 stackprof.bundle ./.gem.20220225-93850-8sz3mw/stackprof

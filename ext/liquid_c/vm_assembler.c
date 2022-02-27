@@ -141,6 +141,24 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
                 rb_str_catf(output, "lookup_key\n");
                 break;
 
+            case OP_EVAL_CONDITION:
+                rb_str_catf(output, "eval_condition\n");
+                break;
+
+            case OP_BRANCH_UNLESS:
+            {
+                int num = (ip[1] << 8) | ip[2];
+                rb_str_catf(output, "branch_unless %u\n", num);
+                break;
+            }
+
+            case OP_BRANCH:
+            {
+                int num = (ip[1] << 8) | ip[2];
+                rb_str_catf(output, "branch %u\n", num);
+                break;
+            }
+
             case OP_NEW_INT_RANGE:
                 rb_str_catf(output, "new_int_range\n");
                 break;
@@ -466,8 +484,20 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     vm_assembler_add_filter(code, filter_name, arg_count);
 }
 
+uint8_t* vm_assembler_add_branch(vm_assembler_t *code, enum opcode op, uint16_t jump)
+{
+    uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 3);
+    instructions[0] = op;
+    instructions[1] = jump >> 8;
+    instructions[2] = (uint8_t)jump;
+    return instructions;
+}
+
 bool vm_assembler_opcode_has_constant(uint8_t ip) {
     if (
+        ip == OP_EVAL_CONDITION ||
+        ip == OP_BRANCH ||
+        ip == OP_BRANCH_UNLESS ||
         ip == OP_PUSH_CONST ||
         ip == OP_WRITE_NODE ||
         ip == OP_FIND_STATIC_VAR ||

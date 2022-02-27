@@ -31,6 +31,9 @@ enum opcode {
     OP_WRITE_RAW,
     OP_JUMP_FWD_W,
     OP_JUMP_FWD,
+    OP_EVAL_CONDITION,
+    OP_BRANCH_UNLESS,
+    OP_BRANCH
 };
 
 typedef struct {
@@ -72,6 +75,7 @@ void vm_assembler_add_lookup_key_from_ruby(vm_assembler_t *code, VALUE code_obj,
 void vm_assembler_add_new_int_range_from_ruby(vm_assembler_t *code);
 void vm_assembler_add_hash_new_from_ruby(vm_assembler_t *code, VALUE hash_size_obj);
 void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, VALUE arg_count_obj);
+uint8_t* vm_assembler_add_branch(vm_assembler_t *code, enum opcode op, uint16_t jump);
 
 bool vm_assembler_opcode_has_constant(uint8_t ip);
 

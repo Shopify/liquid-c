@@ -40,7 +40,7 @@ VALUE expression_new(VALUE klass, expression_t **expression_ptr)
     return obj;
 }
 
-static VALUE internal_expression_parse(parser_t *p)
+VALUE internal_expression_parse(parser_t *p)
 {
     if (p->cur.type == TOKEN_EOS)
         return Qnil;

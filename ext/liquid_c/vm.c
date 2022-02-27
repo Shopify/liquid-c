@@ -9,6 +9,7 @@
 
 ID id_render_node;
 ID id_vm;
+//ID id_evaluate;
 
 static VALUE cLiquidCVM;
 
@@ -362,6 +363,36 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 resource_limits_increment_write_score(vm->context.resource_limits, output);
                 break;
             }
+
+            case OP_EVAL_CONDITION:
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                VALUE condition_eval = rb_funcall(constant, id_evaluate, 1, vm->context.self);
+                vm_stack_push(vm, RTEST(condition_eval));
+                break;
+            }
+
+            case OP_BRANCH_UNLESS:
+            {
+                VALUE condition_truthy = vm_stack_pop(vm);
+                if(!condition_truthy) {
+                    constant_index = (ip[0] << 8) | ip[1];
+                    ip += constant_index;
+                    break;
+                }
+                ip += 2;
+                break;
+            }
+
+            case OP_BRANCH:
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                ip += constant_index;
+                break;
+            }
+
             case OP_JUMP_FWD_W:
             {
                 size_t size = bytes_to_uint24(ip);
@@ -465,6 +496,9 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr)
             ip++;
             break;
 
+        case OP_BRANCH:
+        case OP_BRANCH_UNLESS:
+        case OP_EVAL_CONDITION:
         case OP_BUILTIN_FILTER:
         case OP_PUSH_INT16:
         case OP_PUSH_CONST:
@@ -581,6 +615,7 @@ void liquid_define_vm(void)
 {
     id_render_node = rb_intern("render_node");
     id_vm = rb_intern("vm");
+    // id_evaluate = rb_intern("evaluate");
 
     cLiquidCVM = rb_define_class_under(mLiquidC, "VM", rb_cObject);
     rb_undef_alloc_func(cLiquidCVM);

@@ -12,7 +12,7 @@ extern ID id_call;
 extern ID id_compile_evaluate;
 extern ID id_ivar_line_number;
 
-extern VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+extern VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody, cLiquidCondition;
 extern VALUE cLiquidVariableLookup, cLiquidRangeLookup;
 extern VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
 extern rb_encoding *utf8_encoding;

@@ -379,7 +379,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 VALUE condition_truthy = vm_stack_pop(vm);
                 if(!condition_truthy) {
                     constant_index = (ip[0] << 8) | ip[1];
-                    ip += constant_index;
+                    ip = &ip[constant_index];
                     break;
                 }
                 ip += 2;
@@ -389,7 +389,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             case OP_BRANCH:
             {
                 constant_index = (ip[0] << 8) | ip[1];
-                ip += constant_index;
+                ip = &ip[constant_index];
                 break;
             }
 

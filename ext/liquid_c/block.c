@@ -237,6 +237,8 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     if (unknown_tag.name != Qnil) {
                         goto loop_break;
                     }
+                    render_score_increment += 1;
+                    body->as.intermediate.blank = false;
                     break;
                 }
 
@@ -308,12 +310,11 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
 
     VALUE condition_obj = parse_single_binary_comparison(markup);
     vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
-    uint8_t* pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 5);
-    uint8_t* pending_else_branch = NULL;
+    ptrdiff_t pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
+    ptrdiff_t pending_else_branch = -1;
+    ptrdiff_t jump;
 
     tag_markup_t unknown_tag;
-
-    uint8_t *address_start = body->as.intermediate.code->instructions.data_end;
 
     while(true) {
         unknown_tag = internal_block_body_parse(body, parse_context);
@@ -322,30 +323,35 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             StringValue(unknown_tag.name);
             char *name_start = RSTRING_PTR(unknown_tag.name);
             int name_len = RSTRING_LEN(unknown_tag.name);
-            uint8_t * address_end = body->as.intermediate.code->instructions.data_end;
-            uint16_t jump = (address_end - address_start + 1);
+            
 
             if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
-                pending_branch[1] = jump >> 8;
-                pending_branch[2] = (uint8_t) jump;
-                pending_branch = NULL;
                 pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+                jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
+                uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
+                instruction[1] = jump >> 8;
+                instruction[2] = (uint8_t) jump;
+                pending_branch = -1;
             } else if(name_len == 5 && strncmp(name_start, "elsif", 5) == 0) {
-                pending_branch[1] = jump >> 8;
-                pending_branch[2] = (uint8_t) jump;
-                pending_branch = NULL;
+                uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
+                instruction[1] = jump >> 8;
+                instruction[2] = (uint8_t) jump;
+                pending_branch = -1;
                 pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
                 condition_obj = parse_single_binary_comparison(unknown_tag.markup);
                 vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
                 pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
             } else if(name_len == 5 && strncmp(name_start, "endif", 5) == 0) {
-                if(pending_branch != NULL) {
-                    pending_branch[1] = jump >> 8;
-                    pending_branch[2] = (uint8_t) jump;
+                jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
+                if(pending_branch != -1) {
+                    uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
+                    instruction[1] = jump >> 8;
+                    instruction[2] = (uint8_t) jump;
                 }
-                if(pending_else_branch != NULL) {
-                    pending_else_branch[1] = jump >> 8;
-                    pending_else_branch[2] = (uint8_t) jump;
+                if(pending_else_branch != -1) {
+                    uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_else_branch;
+                    instruction[1] = jump >> 8;
+                    instruction[2] = (uint8_t) jump;
                 }
                 // vm_assembler_add_branch(body->as.intermediate.code, jump);
                 return  (tag_markup_t) { Qnil, Qnil };

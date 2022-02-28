@@ -4,6 +4,11 @@
         "memory": "c",
         "bitset": "cpp",
         "chrono": "cpp",
-        "sstream": "c"
+        "sstream": "c",
+        "array": "c",
+        "vector": "c",
+        "string": "c",
+        "string_view": "c",
+        "typeinfo": "c"
     }
 }

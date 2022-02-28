@@ -2,7 +2,15 @@ require "bundler/setup"
 require "liquid/c"
 
 @template = Liquid::Template.parse(
-"{%- if name == 'tobi' -%}
+"
+Hi Frank
+
+{%- if name == 'tobi' -%}
+    Inside if
+{%- else %}
+    Inside Else
+{%- endif -%}
+{%- if name == 'tobi' -%}
     Inside if
 {%- else %}
     Inside Else
@@ -10,8 +18,8 @@ require "liquid/c"
 
 Hi Frank
 ", line_numbers: false)
-# puts @template.render({'name' => 'tobi'})
-#puts @template.root.body.disassemble
+#puts @template.render({'name' => 'tobi'})
+puts @template.root.body.disassemble
 
 # Hi Tobi
 # Hi Tobi

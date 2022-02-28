@@ -15,7 +15,7 @@ Hi Frank
 {% else %}
     1 Inside Else
 {% endif -%}
-{% if name == 'match' %}
+{% if name == 'frank' %}
     2 Inside if
 {% else %}
     2 Inside Else

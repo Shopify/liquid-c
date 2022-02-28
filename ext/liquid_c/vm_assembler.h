@@ -241,4 +241,12 @@ static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code,
     uint24_to_bytes((unsigned int)node_line_number, &instructions[1]);
 }
 
+static inline void vm_assembler_update_branch(vm_assembler_t *code, ptrdiff_t index, uint16_t jump)
+{
+    uint8_t* branch_instruction = code->instructions.data + index;
+    branch_instruction[1] = jump >> 8;
+    branch_instruction[2] = (uint8_t) jump;
+}
+
+
 #endif

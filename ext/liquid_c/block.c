@@ -302,10 +302,14 @@ VALUE parse_single_binary_comparison(VALUE markup) {
 
 tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *parse_context) {
     /*
-        1 parse expression
+        1 parse expression into condition object
         2 push write node OP_EVAL with condition object
-        3 push OP_BRANCH_UNLESS
+        3 push OP_BRANCH_UNLESS with placeholder address
         4 recursively parse body
+        5 on else/elsif 
+          - push OP_BRANCH with placeholder address, this will make previous blocks jump to endif once they are done
+          - resolve the address for the previous OP_BRANCH_UNLESS
+        6 on endif resolve the address for any OP_BRANCH/OP_BRANCH_UNLESS
     */
 
     VALUE condition_obj = parse_single_binary_comparison(markup);

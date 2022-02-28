@@ -11,3 +11,5 @@ instruments*.trace
 *.cpu
 *.object
 *.dSYM
+.vscode/
+vendor/

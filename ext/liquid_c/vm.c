@@ -9,7 +9,6 @@
 
 ID id_render_node;
 ID id_vm;
-//ID id_evaluate;
 
 static VALUE cLiquidCVM;
 
@@ -370,7 +369,6 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 constant = constants[constant_index];
                 ip += 2;
                 VALUE condition_eval = rb_funcall(constant, id_evaluate, 1, vm->context.self);
-                int num = RTEST(condition_eval);
                 vm_stack_push(vm, RTEST(condition_eval));
                 break;
             }
@@ -616,7 +614,6 @@ void liquid_define_vm(void)
 {
     id_render_node = rb_intern("render_node");
     id_vm = rb_intern("vm");
-    // id_evaluate = rb_intern("evaluate");
 
     cLiquidCVM = rb_define_class_under(mLiquidC, "VM", rb_cObject);
     rb_undef_alloc_func(cLiquidCVM);

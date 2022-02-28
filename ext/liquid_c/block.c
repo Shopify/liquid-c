@@ -1,7 +1,6 @@
 #include "liquid.h"
 #include "block.h"
 #include "intutil.h"
-//#include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
 #include "variable.h"
@@ -105,13 +104,6 @@ static VALUE block_body_initialize(VALUE self, VALUE parse_context)
 static int is_id(int c)
 {
     return rb_isalnum(c) || c == '_';
-}
-
-void print_pointer(char* start, char* end) {
-    while(start < end) {
-        printf("%c", *start++);
-    }
-    printf("\n");
 }
 
 static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_t *parse_context)
@@ -219,12 +211,6 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     break;
                 }
 
-                if ((name_len == 4 && strncmp(name_start, "else", 4) == 0) || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)) {
-                    VALUE str = rb_enc_str_new(name_start, name_len, utf8_encoding);
-                    unknown_tag = (tag_markup_t) { str, str };
-                    goto loop_break;
-                }
-
                 const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
                 VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
@@ -317,8 +303,6 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
     vm_assembler_t* body_code = body->as.intermediate.code;
     VALUE condition_obj = parse_single_binary_comparison(markup);
     vm_assembler_add_op_with_constant(body_code, condition_obj, OP_EVAL_CONDITION);
-
-    uint8_t* instruction;
 
     ptrdiff_t exit_branches[10];
     ptrdiff_t* exit_start = exit_branches;

@@ -241,8 +241,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     (name_len == 5 && strncmp(name_start, "elsif", 5) == 0)
                     ||(name_len == 4 && strncmp(name_start, "else", 4) == 0) 
                     || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)
-                ) 
-                {
+                ) {
                     unknown_tag = (tag_markup_t) { tag_name, markup };
                     goto loop_break;
                 }
@@ -307,7 +306,7 @@ VALUE parse_single_binary_comparison(VALUE markup) {
 tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *parse_context) {
     /*
         1 parse expression into condition object
-        2 push write node OP_EVAL with condition object
+        2 push OP_EVAL with condition object
         3 push OP_BRANCH_UNLESS with placeholder address
         4 recursively parse body
         5 on else/elsif 

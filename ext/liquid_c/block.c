@@ -328,6 +328,7 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
                 pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
                 jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
+                jump = jump - pending_branch - 1;
                 uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
                 instruction[1] = jump >> 8;
                 instruction[2] = (uint8_t) jump;
@@ -344,11 +345,13 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             } else if(name_len == 5 && strncmp(name_start, "endif", 5) == 0) {
                 jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
                 if(pending_branch != -1) {
+                    jump = jump - pending_branch - 1;
                     uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
                     instruction[1] = jump >> 8;
                     instruction[2] = (uint8_t) jump;
                 }
                 if(pending_else_branch != -1) {
+                    jump = jump - pending_else_branch - 1;
                     uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_else_branch;
                     instruction[1] = jump >> 8;
                     instruction[2] = (uint8_t) jump;

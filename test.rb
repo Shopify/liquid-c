@@ -5,20 +5,20 @@ require "liquid/c"
 "
 Hi Frank
 
-{%- if name == 'tobi' -%}
+{%- if name == 'tobi' %}
     Inside if
 {%- else %}
     Inside Else
 {%- endif -%}
-{%- if name == 'tobi' -%}
+{%- if name == 'tobi' %}
     Inside if
 {%- else %}
     Inside Else
-{%- endif -%}
+{%- endif %}
 
 Hi Frank
 ", line_numbers: false)
-#puts @template.render({'name' => 'tobi'})
+puts @template.render({'name' => 'toi'})
 puts @template.root.body.disassemble
 
 # Hi Tobi

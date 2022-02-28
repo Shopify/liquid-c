@@ -315,9 +315,9 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
           - resolve the address for the previous OP_BRANCH_UNLESS
         6 on endif resolve the address for any OP_BRANCH/OP_BRANCH_UNLESS
     */
-
+    vm_assembler_t* body_code = body->as.intermediate.code;
     VALUE condition_obj = parse_single_binary_comparison(markup);
-    vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
+    vm_assembler_add_op_with_constant(body_code, condition_obj, OP_EVAL_CONDITION);
 
     uint8_t* instruction;
 
@@ -325,7 +325,7 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
     ptrdiff_t* exit_start = exit_branches;
     ptrdiff_t* exit_end = exit_branches;
 
-    ptrdiff_t pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
+    ptrdiff_t open_branch = vm_assembler_open_branch(body_code, OP_BRANCH_UNLESS);
     ptrdiff_t jump;
 
     tag_markup_t unknown_tag;
@@ -337,47 +337,42 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             StringValue(unknown_tag.name);
             char *name_start = RSTRING_PTR(unknown_tag.name);
             int name_len = RSTRING_LEN(unknown_tag.name);
-            
 
             if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
-                *exit_end++ = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+                *exit_end++ = vm_assembler_open_branch(body_code, OP_BRANCH);
 
-                // Figure out the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
-                jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
-                jump = jump - pending_branch - 1;
+                // Calculate the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
+                jump = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+                jump = jump - open_branch - 1;
 
                 // Resolve the pending branch from the <if> with the calculated offset.
-                instruction = body->as.intermediate.code->instructions.data + pending_branch;
-                instruction[1] = jump >> 8;
-                instruction[2] = (uint8_t) jump;
-                pending_branch = -1;
+                vm_assembler_close_branch(body_code, open_branch, jump);
+                open_branch = -1;
             } else if(name_len == 5 && strncmp(name_start, "elsif", 5) == 0) {
-                *exit_end++ = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+                *exit_end++ = vm_assembler_open_branch(body_code, OP_BRANCH);
 
-                // Figure out the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
-                jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
-                jump = jump - pending_branch - 1;
+                // Calculate the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
+                jump = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+                jump = jump - open_branch - 1;
 
                 // Resolve the pending branch from the <if> with the calculated offset.
-                instruction = body->as.intermediate.code->instructions.data + pending_branch;
-                instruction[1] = jump >> 8;
-                instruction[2] = (uint8_t) jump;
-                pending_branch = -1;
+                vm_assembler_close_branch(body_code, open_branch, jump);
+                open_branch = -1;
 
                 condition_obj = parse_single_binary_comparison(unknown_tag.markup);
-                vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
-                pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
+                vm_assembler_add_op_with_constant(body_code, condition_obj, OP_EVAL_CONDITION);
+                open_branch = vm_assembler_open_branch(body_code, OP_BRANCH_UNLESS);
             } else if(name_len == 5 && strncmp(name_start, "endif", 5) == 0) {
-                ptrdiff_t jump_dest = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
-                if(pending_branch != -1) {
-                    jump = jump_dest - pending_branch - 1;
-                    instruction = body->as.intermediate.code->instructions.data + pending_branch;
+                ptrdiff_t jump_dest = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+                if(open_branch != -1) {
+                    jump = jump_dest - open_branch - 1;
+                    instruction = body_code->instructions.data + open_branch;
                     instruction[1] = jump >> 8;
                     instruction[2] = (uint8_t) jump;
                 }
                 while(exit_start < exit_end) {
                     jump = jump_dest - *exit_start - 1;
-                    instruction = body->as.intermediate.code->instructions.data + *exit_start;
+                    instruction = body_code->instructions.data + *exit_start;
                     instruction[1] = jump >> 8;
                     instruction[2] = (uint8_t) jump;
                     exit_start++;
@@ -389,7 +384,6 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
         }
     }
 }
-
 
 static void ensure_intermediate(block_body_t *body)
 {

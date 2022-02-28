@@ -75,7 +75,7 @@ void vm_assembler_add_lookup_key_from_ruby(vm_assembler_t *code, VALUE code_obj,
 void vm_assembler_add_new_int_range_from_ruby(vm_assembler_t *code);
 void vm_assembler_add_hash_new_from_ruby(vm_assembler_t *code, VALUE hash_size_obj);
 void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, VALUE arg_count_obj);
-ptrdiff_t vm_assembler_add_branch(vm_assembler_t *code, enum opcode op, uint16_t jump);
+ptrdiff_t vm_assembler_open_branch(vm_assembler_t *code, enum opcode op);
 
 bool vm_assembler_opcode_has_constant(uint8_t ip);
 
@@ -241,7 +241,7 @@ static inline void vm_assembler_add_render_variable_rescue(vm_assembler_t *code,
     uint24_to_bytes((unsigned int)node_line_number, &instructions[1]);
 }
 
-static inline void vm_assembler_update_branch(vm_assembler_t *code, ptrdiff_t index, uint16_t jump)
+static inline void vm_assembler_close_branch(vm_assembler_t *code, ptrdiff_t index, uint16_t jump)
 {
     uint8_t* branch_instruction = code->instructions.data + index;
     branch_instruction[1] = jump >> 8;

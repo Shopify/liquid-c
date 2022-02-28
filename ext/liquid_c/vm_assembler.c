@@ -484,13 +484,13 @@ void vm_assembler_add_filter_from_ruby(vm_assembler_t *code, VALUE filter_name, 
     vm_assembler_add_filter(code, filter_name, arg_count);
 }
 
-ptrdiff_t vm_assembler_add_branch(vm_assembler_t *code, enum opcode op, uint16_t jump)
+ptrdiff_t vm_assembler_open_branch(vm_assembler_t *code, enum opcode op)
 {
     ptrdiff_t index = (ptrdiff_t) (code->instructions.data_end - code->instructions.data);
     uint8_t *instructions = c_buffer_extend_for_write(&code->instructions, 3);
     instructions[0] = op;
-    instructions[1] = jump >> 8;
-    instructions[2] = (uint8_t)jump;
+    instructions[1] = 0;
+    instructions[2] = 0;
     return index;
 }
 

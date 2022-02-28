@@ -5,14 +5,14 @@ require "liquid/c"
 "
 Hi Frank
 
-{%- if name == 'tobi' %}
+{% if name == 'tobi' %}
     Inside if
-{%- else %}
+{% else %}
     Inside Else
-{%- endif -%}
-{%- if name == 'tobi' %}
+{% endif -%}
+{% if name == 'tobi' %}
     Inside if
-{%- else %}
+{% else %}
     Inside Else
 {%- endif %}
 

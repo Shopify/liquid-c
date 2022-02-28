@@ -327,18 +327,29 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
 
             if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
                 pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+
+                // Figure out the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
                 jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
                 jump = jump - pending_branch - 1;
+
+                // Resolve the pending branch from the <if> with the calculated offset.
                 uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
                 instruction[1] = jump >> 8;
                 instruction[2] = (uint8_t) jump;
                 pending_branch = -1;
             } else if(name_len == 5 && strncmp(name_start, "elsif", 5) == 0) {
+                pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+
+                // Figure out the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
+                jump = (ptrdiff_t) (body->as.intermediate.code->instructions.data_end - body->as.intermediate.code->instructions.data);
+                jump = jump - pending_branch - 1;
+
+                // Resolve the pending branch from the <if> with the calculated offset.
                 uint8_t* instruction = body->as.intermediate.code->instructions.data + pending_branch;
                 instruction[1] = jump >> 8;
                 instruction[2] = (uint8_t) jump;
                 pending_branch = -1;
-                pending_else_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH, 0);
+
                 condition_obj = parse_single_binary_comparison(unknown_tag.markup);
                 vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
                 pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);

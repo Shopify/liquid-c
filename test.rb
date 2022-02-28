@@ -10,7 +10,9 @@ normal raw text
     {% if name == 'frank' %}
         1 text matched from nested if
     {% elsif name == 'match' %}
-        1 text matched from nested elsif
+        1 text matched from nested if
+    {% elsif name == 'no match' %}
+        1 text no matched from nested elsif
     {% endif -%}
 {% else %}
     1 text matched from else

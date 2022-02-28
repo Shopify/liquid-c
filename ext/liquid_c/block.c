@@ -1,7 +1,6 @@
 #include "liquid.h"
 #include "block.h"
 #include "intutil.h"
-//#include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
 #include "variable.h"
@@ -217,12 +216,6 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                         goto loop_break;
                     }
                     break;
-                }
-
-                if ((name_len == 4 && strncmp(name_start, "else", 4) == 0) || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)) {
-                    VALUE str = rb_enc_str_new(name_start, name_len, utf8_encoding);
-                    unknown_tag = (tag_markup_t) { str, str };
-                    goto loop_break;
                 }
 
                 const char *markup_start = read_while(name_end, end, rb_isspace);

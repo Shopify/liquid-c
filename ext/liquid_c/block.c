@@ -308,7 +308,7 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
 
     VALUE condition_obj = parse_single_binary_comparison(markup);
     vm_assembler_add_op_with_constant(body->as.intermediate.code, condition_obj, OP_EVAL_CONDITION);
-    uint8_t* pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 0);
+    uint8_t* pending_branch = vm_assembler_add_branch(body->as.intermediate.code, OP_BRANCH_UNLESS, 5);
     uint8_t* pending_else_branch = NULL;
 
     tag_markup_t unknown_tag;
@@ -323,7 +323,7 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             char *name_start = RSTRING_PTR(unknown_tag.name);
             int name_len = RSTRING_LEN(unknown_tag.name);
             uint8_t * address_end = body->as.intermediate.code->instructions.data_end;
-            uint16_t jump = 42 ; //(address_end - address_start + 1);
+            uint16_t jump = (address_end - address_start + 1);
 
             if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
                 pending_branch[1] = jump >> 8;
@@ -354,6 +354,7 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             }
         }
     }
+
 }
 
 

@@ -496,8 +496,6 @@ uint8_t* vm_assembler_add_branch(vm_assembler_t *code, enum opcode op, uint16_t 
 bool vm_assembler_opcode_has_constant(uint8_t ip) {
     if (
         ip == OP_EVAL_CONDITION ||
-        ip == OP_BRANCH ||
-        ip == OP_BRANCH_UNLESS ||
         ip == OP_PUSH_CONST ||
         ip == OP_WRITE_NODE ||
         ip == OP_FIND_STATIC_VAR ||

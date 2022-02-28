@@ -5,20 +5,25 @@ require "liquid/c"
 "
 Hi Frank
 
-{% if name == 'tobi' %}
-    Inside if
+{% if name == 'match' %}
+    HEY
+    {% if name == 'frank' %}
+        1 if frank
+    {% elsif name == 'match' %}
+        1 if match
+    {% endif -%}
 {% else %}
-    Inside Else
+    1 Inside Else
 {% endif -%}
-{% if name == 'tobi' %}
-    Inside if
+{% if name == 'match' %}
+    2 Inside if
 {% else %}
-    Inside Else
+    2 Inside Else
 {%- endif %}
 
 Hi Frank
 ", line_numbers: false)
-puts @template.render({'name' => 'toi'})
+puts @template.render({'name' => 'match'})
 puts @template.root.body.disassemble
 
 # Hi Tobi

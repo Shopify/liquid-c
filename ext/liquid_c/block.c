@@ -219,11 +219,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     break;
                 }
 
-                if (
-                    (name_len == 4 && strncmp(name_start, "else", 4) == 0) 
-                    || (name_len == 5 && strncmp(name_start, "elsif", 5) == 0)
-                    || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)
-                ) {
+                if ((name_len == 4 && strncmp(name_start, "else", 4) == 0) || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)) {
                     VALUE str = rb_enc_str_new(name_start, name_len, utf8_encoding);
                     unknown_tag = (tag_markup_t) { str, str };
                     goto loop_break;
@@ -231,6 +227,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
 
                 const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
+                VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
 
                 if (name_len == 2 && strncmp(name_start, "if", 2) == 0) {
                     unknown_tag = parse_if_tag(markup, body, parse_context);
@@ -240,9 +237,17 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     render_score_increment += 1;
                     body->as.intermediate.blank = false;
                     break;
+                } else if (
+                    (name_len == 5 && strncmp(name_start, "elsif", 5) == 0)
+                    ||(name_len == 4 && strncmp(name_start, "else", 4) == 0) 
+                    || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)
+                ) 
+                {
+                    unknown_tag = (tag_markup_t) { tag_name, markup };
+                    goto loop_break;
                 }
 
-                VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
+                
                 VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
 
                 if (tag_class == Qnil) {
@@ -371,7 +376,6 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
                     instruction[1] = jump >> 8;
                     instruction[2] = (uint8_t) jump;
                 }
-                // vm_assembler_add_branch(body->as.intermediate.code, jump);
                 return  (tag_markup_t) { Qnil, Qnil };
             } else {
                 return unknown_tag;

@@ -370,6 +370,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 constant = constants[constant_index];
                 ip += 2;
                 VALUE condition_eval = rb_funcall(constant, id_evaluate, 1, vm->context.self);
+                int num = RTEST(condition_eval);
                 vm_stack_push(vm, RTEST(condition_eval));
                 break;
             }

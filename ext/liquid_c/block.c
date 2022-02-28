@@ -338,44 +338,48 @@ tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *par
             int name_len = RSTRING_LEN(unknown_tag.name);
 
             if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
+                // Unconditionally branch to endif for the previous block
                 *exit_end++ = vm_assembler_open_branch(body_code, OP_BRANCH);
 
                 // Calculate the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
                 jump = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
                 jump = jump - open_branch - 1;
 
-                // Resolve the pending branch from the <if> with the calculated offset.
+                // Resolve the open branch from the <if> with the calculated offset.
                 vm_assembler_close_branch(body_code, open_branch, jump);
                 open_branch = -1;
             } else if(name_len == 5 && strncmp(name_start, "elsif", 5) == 0) {
+                // Unconditionally branch to endif for the previous block
                 *exit_end++ = vm_assembler_open_branch(body_code, OP_BRANCH);
 
                 // Calculate the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
                 jump = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
                 jump = jump - open_branch - 1;
 
-                // Resolve the pending branch from the <if> with the calculated offset.
+                // Resolve the open branch from the <if> with the calculated offset.
                 vm_assembler_close_branch(body_code, open_branch, jump);
                 open_branch = -1;
 
+                // Start a new condition eval and branch for the elsif.
                 condition_obj = parse_single_binary_comparison(unknown_tag.markup);
                 vm_assembler_add_op_with_constant(body_code, condition_obj, OP_EVAL_CONDITION);
                 open_branch = vm_assembler_open_branch(body_code, OP_BRANCH_UNLESS);
             } else if(name_len == 5 && strncmp(name_start, "endif", 5) == 0) {
                 ptrdiff_t jump_dest = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+
+                // Resolve an open branch from an if/elsif.
                 if(open_branch != -1) {
                     jump = jump_dest - open_branch - 1;
-                    instruction = body_code->instructions.data + open_branch;
-                    instruction[1] = jump >> 8;
-                    instruction[2] = (uint8_t) jump;
+                    vm_assembler_close_branch(body_code, open_branch, jump);
                 }
+
+                // Resolve all the open uncoditional branches.
                 while(exit_start < exit_end) {
                     jump = jump_dest - *exit_start - 1;
-                    instruction = body_code->instructions.data + *exit_start;
-                    instruction[1] = jump >> 8;
-                    instruction[2] = (uint8_t) jump;
+                    vm_assembler_close_branch(body_code, *exit_start, jump);
                     exit_start++;
                 }
+
                 return  (tag_markup_t) { Qnil, Qnil };
             } else {
                 return unknown_tag;

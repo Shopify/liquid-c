@@ -25,20 +25,3 @@ normal raw text
 ", line_numbers: false)
 puts @template.render({'name' => 'match'})
 puts @template.root.body.disassemble
-
-# Hi Tobi
-# Hi Tobi
-# {%- if name == 'tobi' -%}
-# {%- if name == 'tobi' %}
-# Inside 1
-# {%- endif -%}
-# {%- else %}
-# Hi Frank
-# {%- endif -%}
-# {%- if name == 'tobi' -%}
-# {%- if name == 'tobi' %}
-# Inside 2
-# {%- endif -%}
-# {%- else %}
-# Hi Frank
-# {%- endif -%}

@@ -2,8 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'liquid', github: 'Shopify/liquid', branch: 'master'
-
+gem 'liquid', '~> 4.0.0'
 
 group :test do
   gem 'spy', '0.4.1'

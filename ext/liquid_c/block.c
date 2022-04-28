@@ -199,9 +199,14 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 long name_len = name_end - name_start;
 
                 if (name_len == 0) {
-                    VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
-                    unknown_tag = (tag_markup_t) { str, str };
-                    goto loop_break;
+                    if (name_start < end && *name_start == '#') { // inline comment
+                        name_end++;
+                        name_len++;
+                    } else {
+                        VALUE str = rb_enc_str_new(token.str_trimmed, token.len_trimmed, utf8_encoding);
+                        unknown_tag = (tag_markup_t) { str, str };
+                        goto loop_break;
+                    }
                 }
 
                 if (name_len == 6 && strncmp(name_start, "liquid", 6) == 0) {

@@ -86,7 +86,7 @@ Liquid::ParseContext.class_eval do
 
   def parse_expression(markup)
     if liquid_c_nodes_disabled?
-      Liquid::Expression.ruby_parse(markup)
+      Liquid::Expression.parse(markup)
     else
       Liquid::C::Expression.lax_parse(markup)
     end
@@ -207,22 +207,17 @@ Liquid::C::Expression.class_eval do
     def lax_parse(markup)
       strict_parse(markup)
     rescue Liquid::SyntaxError
-      Liquid::Expression.ruby_parse(markup)
+      Liquid::Expression.parse(markup)
     end
-  end
-end
 
-Liquid::Expression.class_eval do
-  class << self
-    alias_method :ruby_parse, :parse
-
-    def c_parse(markup)
-      Liquid::C::Expression.lax_parse(markup)
-    end
+    # Default to strict parsing, since Liquid::C::Expression.parse should only really
+    # be used with constant expressions.  Otherwise, prefer parse_context.parse_expression.
+    alias_method :parse, :strict_parse
   end
 end
 
 Liquid::Context.class_eval do
+  alias_method :ruby_parse_evaluate, :[]
   alias_method :ruby_evaluate, :evaluate
   alias_method :ruby_find_variable, :find_variable
   alias_method :ruby_strict_variables=, :strict_variables=
@@ -231,6 +226,10 @@ Liquid::Context.class_eval do
   # so the wrapper method isn't costly.
   def c_find_variable_kwarg(key, raise_on_not_found: true)
     c_find_variable(key, raise_on_not_found)
+  end
+
+  def c_parse_evaluate(expression)
+    c_evaluate(Liquid::C::Expression.lax_parse(expression))
   end
 end
 
@@ -256,15 +255,15 @@ module Liquid
       def enabled=(value)
         @enabled = value
         if value
+          Liquid::Context.send(:alias_method, :[], :c_parse_evaluate)
           Liquid::Context.send(:alias_method, :evaluate, :c_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :c_find_variable_kwarg)
           Liquid::Context.send(:alias_method, :strict_variables=, :c_strict_variables=)
-          Liquid::Expression.singleton_class.send(:alias_method, :parse, :c_parse)
         else
+          Liquid::Context.send(:alias_method, :[], :ruby_parse_evaluate)
           Liquid::Context.send(:alias_method, :evaluate, :ruby_evaluate)
           Liquid::Context.send(:alias_method, :find_variable, :ruby_find_variable)
           Liquid::Context.send(:alias_method, :strict_variables=, :ruby_strict_variables=)
-          Liquid::Expression.singleton_class.send(:alias_method, :parse, :ruby_parse)
         end
       end
     end

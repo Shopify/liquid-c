@@ -159,7 +159,7 @@ class ExpressionTest < MiniTest::Test
   end
 
   def test_disable_c_nodes
-    context = Liquid::Context.new({ "x" => 123 })
+    context = Liquid::Context.new({ "x" => 123, "y" => { 123 => 42 } })
 
     expr = Liquid::ParseContext.new.parse_expression("x")
     assert_instance_of(Liquid::C::Expression, expr)
@@ -168,6 +168,11 @@ class ExpressionTest < MiniTest::Test
     expr = Liquid::ParseContext.new(disable_liquid_c_nodes: true).parse_expression("x")
     assert_instance_of(Liquid::VariableLookup, expr)
     assert_equal(123, context.evaluate(expr))
+
+    expr = Liquid::ParseContext.new(disable_liquid_c_nodes: true).parse_expression("y[x]")
+    assert_instance_of(Liquid::VariableLookup, expr)
+    assert_instance_of(Liquid::VariableLookup, expr.lookups.first)
+    assert_equal(42, context.evaluate(expr))
   end
 
   private

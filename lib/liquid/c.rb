@@ -92,6 +92,13 @@ Liquid::ParseContext.class_eval do
     end
   end
 
+  # Backport this method for liquid version 5.4.0 and older
+  unless method_defined?(:tags)
+    def tags
+      Liquid::Template.tags
+    end
+  end
+
   # @api private
   def liquid_c_nodes_disabled?
     # Liquid::Profiler exposes the internal parse tree that we don't want to build when

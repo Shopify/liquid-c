@@ -16,10 +16,10 @@ static ID
     intern_is_blank,
     intern_parse,
     intern_square_brackets,
+    intern_tags,
     intern_unknown_tag_in_liquid_tag,
     intern_ivar_nodelist;
 
-static VALUE tag_registry;
 static VALUE variable_placeholder = Qnil;
 
 typedef struct tag_markup {
@@ -31,6 +31,7 @@ typedef struct parse_context {
     tokenizer_t *tokenizer;
     VALUE tokenizer_obj;
     VALUE ruby_obj;
+    VALUE tags;
 } parse_context_t;
 
 static void ensure_body_compiled(const block_body_t *body)
@@ -228,7 +229,7 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                 }
 
                 VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
-                VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
+                VALUE tag_class = rb_funcall(parse_context->tags, intern_square_brackets, 1, tag_name);
 
                 const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
@@ -288,6 +289,7 @@ static VALUE block_body_parse(VALUE self, VALUE tokenizer_obj, VALUE parse_conte
     parse_context_t parse_context = {
         .tokenizer_obj = tokenizer_obj,
         .ruby_obj = parse_context_obj,
+        .tags = rb_funcall(parse_context_obj, intern_tags, 0),
     };
     Tokenizer_Get_Struct(tokenizer_obj, parse_context.tokenizer);
     block_body_t *body;
@@ -543,11 +545,9 @@ void liquid_define_block_body(void)
     intern_is_blank = rb_intern("blank?");
     intern_parse = rb_intern("parse");
     intern_square_brackets = rb_intern("[]");
+    intern_tags = rb_intern("tags");
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
     intern_ivar_nodelist = rb_intern("@nodelist");
-
-    tag_registry = rb_funcall(cLiquidTemplate, rb_intern("tags"), 0);
-    rb_global_variable(&tag_registry);
 
     VALUE cLiquidCBlockBody = rb_define_class_under(mLiquidC, "BlockBody", rb_cObject);
     rb_define_alloc_func(cLiquidCBlockBody, block_body_allocate);

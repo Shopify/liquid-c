@@ -49,7 +49,7 @@ static void block_body_mark(void *ptr)
     } else {
         rb_gc_mark(body->as.intermediate.parse_context);
         if (body->as.intermediate.vm_assembler_pool)
-            vm_assembler_pool_gc_mark(body->as.intermediate.vm_assembler_pool);
+            rb_gc_mark(body->as.intermediate.vm_assembler_pool->self);
         if (body->as.intermediate.code)
             vm_assembler_gc_mark(body->as.intermediate.code);
     }

@@ -9,6 +9,14 @@ static VALUE cLiquidCDocumentBody;
 static void document_body_mark(void *ptr)
 {
     document_body_t *body = ptr;
+    /* When Liquid::C::BlockBody#freeze is called, it calls
+     * document_body_write_block_body which sets the document_body_entry but
+     * does not yet set the compiled flag to true. During this time, the only
+     * reference to this Liquid::C::DocumentBody object is in the instance
+     * variables of the parse_context which is marked movable by Ruby. This
+     * causes the self reference here to be moved by compaction causing it to
+     * point to an incorrect object. */
+    rb_gc_mark(body->self);
     rb_gc_mark(body->constants);
 }
 

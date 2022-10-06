@@ -3,8 +3,10 @@
 
 static VALUE cLiquidCVMAssemblerPool;
 
-void vm_assembler_pool_gc_mark(vm_assembler_pool_t *pool)
+static void vm_assembler_pool_mark(void *ptr)
 {
+    vm_assembler_pool_t *pool = ptr;
+
     rb_gc_mark(pool->self);
 }
 
@@ -39,7 +41,7 @@ static size_t vm_assembler_pool_memsize(const void *ptr)
 
 const rb_data_type_t vm_assembler_pool_data_type = {
     "liquid_vm_assembler_pool",
-    { NULL, vm_assembler_pool_free, vm_assembler_pool_memsize, },
+    { vm_assembler_pool_mark, vm_assembler_pool_free, vm_assembler_pool_memsize, },
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 

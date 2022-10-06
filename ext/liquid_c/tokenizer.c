@@ -22,9 +22,15 @@ static size_t tokenizer_memsize(const void *ptr)
     return ptr ? sizeof(tokenizer_t) : 0;
 }
 
+static void tokenizer_update_references(void *ptr)
+{
+    tokenizer_t *tokenizer = ptr;
+    tokenizer->source = rb_gc_location(tokenizer->source);
+}
+
 const rb_data_type_t tokenizer_data_type = {
     "liquid_tokenizer",
-    { tokenizer_mark, tokenizer_free, tokenizer_memsize, },
+    { tokenizer_mark, tokenizer_free, tokenizer_memsize, tokenizer_update_references },
 #if defined(RUBY_TYPED_FREE_IMMEDIATELY)
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 #endif

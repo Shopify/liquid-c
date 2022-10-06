@@ -38,6 +38,12 @@ static inline void document_body_entry_mark(document_body_entry_t *entry)
     rb_gc_mark(entry->body->constants);
 }
 
+static inline void document_body_entry_gc_update_references(document_body_entry_t *entry)
+{
+    entry->body->self = rb_gc_location(entry->body->self);
+    entry->body->constants = rb_gc_location(entry->body->constants);
+}
+
 static inline block_body_header_t *document_body_get_block_body_header_ptr(const document_body_entry_t *entry)
 {
     return (block_body_header_t *)(entry->body->buffer.data + entry->buffer_offset);

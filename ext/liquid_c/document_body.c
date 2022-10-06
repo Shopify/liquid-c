@@ -19,6 +19,13 @@ static void document_body_free(void *ptr)
     xfree(body);
 }
 
+static void document_body_gc_update_references(void *ptr)
+{
+    document_body_t *body = ptr;
+    body->self = rb_gc_location(body->self);
+    body->constants = rb_gc_location(body->constants);
+}
+
 static size_t document_body_memsize(const void *ptr)
 {
     const document_body_t *body = ptr;
@@ -27,7 +34,7 @@ static size_t document_body_memsize(const void *ptr)
 
 const rb_data_type_t document_body_data_type = {
     "liquid_document_body",
-    { document_body_mark, document_body_free, document_body_memsize },
+    { document_body_mark, document_body_free, document_body_memsize, document_body_gc_update_references },
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 

@@ -37,9 +37,15 @@ static size_t vm_assembler_pool_memsize(const void *ptr)
     return sizeof(vm_assembler_pool_t) + elements_size;
 }
 
+void vm_assembler_pool_gc_update_references(void *ptr)
+{
+    vm_assembler_pool_t *pool = ptr;
+    pool->self = rb_gc_location(pool->self);
+}
+
 const rb_data_type_t vm_assembler_pool_data_type = {
     "liquid_vm_assembler_pool",
-    { NULL, vm_assembler_pool_free, vm_assembler_pool_memsize, },
+    { NULL, vm_assembler_pool_free, vm_assembler_pool_memsize, vm_assembler_pool_gc_update_references },
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 

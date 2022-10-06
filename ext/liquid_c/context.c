@@ -54,6 +54,19 @@ void context_mark(context_t *context)
     rb_gc_mark(context->global_filter);
 }
 
+void context_update_references(context_t *context)
+{
+    context->self = rb_gc_location(context->self);
+    context->environments = rb_gc_location(context->environments);
+    context->static_environments = rb_gc_location(context->static_environments);
+    context->scopes = rb_gc_location(context->scopes);
+    context->strainer = rb_gc_location(context->strainer);
+    context->filter_methods = rb_gc_location(context->filter_methods);
+    context->interrupts = rb_gc_location(context->interrupts);
+    context->resource_limits_obj = rb_gc_location(context->resource_limits_obj);
+    context->global_filter = rb_gc_location(context->global_filter);
+}
+
 static context_t *context_from_obj(VALUE self)
 {
     return &vm_from_context(self)->context;

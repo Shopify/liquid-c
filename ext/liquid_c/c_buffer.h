@@ -68,6 +68,14 @@ static inline void c_buffer_rb_gc_mark(c_buffer_t *buffer)
     }
 }
 
+static inline void c_buffer_gc_update_references(c_buffer_t *buffer)
+{
+    VALUE *buffer_end = (VALUE *)buffer->data_end;
+    for (VALUE *obj_ptr = (VALUE *)buffer->data; obj_ptr < buffer_end; obj_ptr++) {
+        *obj_ptr = rb_gc_location(*obj_ptr);
+    }
+}
+
 static inline void c_buffer_concat(c_buffer_t *dest, c_buffer_t *src)
 {
     c_buffer_write(dest, src->data, c_buffer_size(src));

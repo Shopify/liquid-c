@@ -20,6 +20,12 @@ static void vm_mark(void *ptr)
     context_mark(&vm->context);
 }
 
+static void vm_update_references(void *ptr)
+{
+    vm_t *vm = ptr;
+    context_update_references(&vm->context);
+}
+
 static void vm_free(void *ptr)
 {
     vm_t *vm = ptr;
@@ -35,7 +41,7 @@ static size_t vm_memsize(const void *ptr)
 
 const rb_data_type_t vm_data_type = {
     "liquid_vm",
-    { vm_mark, vm_free, vm_memsize, },
+    { vm_mark, vm_free, vm_memsize, vm_update_references},
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 

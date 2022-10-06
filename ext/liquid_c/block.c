@@ -76,9 +76,23 @@ static size_t block_body_memsize(const void *ptr)
     }
 }
 
+static void block_body_update_references(void *ptr)
+{
+    block_body_t *body = ptr;
+    if (body->compiled) {
+        document_body_entry_gc_update_references(&body->as.compiled.document_body_entry);
+        body->as.compiled.nodelist = rb_gc_location(body->as.compiled.nodelist);
+    } else {
+        body->as.intermediate.parse_context = rb_gc_location(body->as.intermediate.parse_context);
+        if (body->as.intermediate.vm_assembler_pool) {
+            vm_assembler_pool_gc_update_references(body->as.intermediate.vm_assembler_pool);
+        }
+    }
+}
+
 const rb_data_type_t block_body_data_type = {
     "liquid_block_body",
-    { block_body_mark, block_body_free, block_body_memsize, },
+    { block_body_mark, block_body_free, block_body_memsize, block_body_update_references},
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 

@@ -19,6 +19,12 @@ static void expression_free(void *ptr)
     xfree(expression);
 }
 
+static void expression_update_references(void *ptr)
+{
+    expression_t *expression = ptr;
+    vm_assembler_gc_update_references(&expression->code);
+}
+
 static size_t expression_memsize(const void *ptr)
 {
     const expression_t *expression = ptr;
@@ -27,7 +33,7 @@ static size_t expression_memsize(const void *ptr)
 
 const rb_data_type_t expression_data_type = {
     "liquid_expression",
-    { expression_mark, expression_free, expression_memsize, },
+    { expression_mark, expression_free, expression_memsize, expression_update_references},
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 

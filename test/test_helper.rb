@@ -15,4 +15,9 @@ if GC.respond_to?(:verify_compaction_references)
   end
 end
 
+# Enable Auto compaction in the GC if supported.
+if GC.respond_to?(:auto_compact=)
+  GC.auto_compact = true
+end
+
 GC.stress = true if ENV["GC_STRESS"]

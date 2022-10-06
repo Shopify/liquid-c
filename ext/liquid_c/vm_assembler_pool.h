@@ -19,6 +19,8 @@ extern const rb_data_type_t vm_assembler_pool_data_type;
 
 void liquid_define_vm_assembler_pool(void);
 void vm_assembler_pool_gc_mark(vm_assembler_pool_t *pool);
+void vm_assembler_pool_gc_update_references(void *ptr);
+
 VALUE vm_assembler_pool_new(void);
 vm_assembler_t *vm_assembler_pool_alloc_assembler(vm_assembler_pool_t *pool);
 void vm_assembler_pool_free_assembler(vm_assembler_t *assembler);

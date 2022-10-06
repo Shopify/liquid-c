@@ -98,6 +98,11 @@ void vm_assembler_gc_mark(vm_assembler_t *code)
     c_buffer_rb_gc_mark(&code->constants);
 }
 
+void vm_assembler_gc_update_references(vm_assembler_t *code)
+{
+    c_buffer_gc_update_references(&code->constants);
+}
+
 VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, const VALUE *constants)
 {
     const uint8_t *ip = start_ip;

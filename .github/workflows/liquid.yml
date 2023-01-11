@@ -6,7 +6,8 @@ jobs:
     strategy:
       matrix:
         entry:
-          - { ruby: 2.6 }
+          - { ruby: 2.7 }
+          - { ruby: 3.2 }
     name: test (${{ matrix.entry.ruby }})
     steps:
       - uses: actions/checkout@v2

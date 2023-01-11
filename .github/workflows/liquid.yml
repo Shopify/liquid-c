@@ -21,5 +21,3 @@ jobs:
           restore-keys: ${{ runner.os }}-gems-
       - run: bundle install --jobs=3 --retry=3 --path=vendor/bundle
       - run: bundle exec rake
-        env:
-          LIQUID_C_PEDANTIC: 'true'

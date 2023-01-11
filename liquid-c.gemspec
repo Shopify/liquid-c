@@ -18,6 +18,8 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
+  spec.metadata["allowed_push_host"] = "https://rubygems.org"
+
   spec.add_dependency 'liquid', '>= 3.0.0'
 
   spec.add_development_dependency "bundler", ">= 1.5"

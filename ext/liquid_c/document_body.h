@@ -46,7 +46,7 @@ static inline block_body_header_t *document_body_get_block_body_header_ptr(const
 static inline const VALUE *document_body_get_constants_ptr(const document_body_entry_t *entry)
 {
     block_body_header_t *header = document_body_get_block_body_header_ptr(entry);
-    return RARRAY_PTR(entry->body->constants) + header->constants_offset;
+    return RARRAY_CONST_PTR(entry->body->constants) + header->constants_offset;
 }
 
 static inline void document_body_ensure_compile_finished(document_body_t *body)

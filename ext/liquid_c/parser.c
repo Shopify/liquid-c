@@ -67,7 +67,7 @@ static VALUE parse_number(parser_t *p)
     return out;
 }
 
-static void raise_invalid_expression_type(const char *expr, int expr_len)
+__attribute__((noreturn)) static void raise_invalid_expression_type(const char *expr, int expr_len)
 {
     rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Invalid expression type '%.*s' in range expression", expr_len, expr);
 }

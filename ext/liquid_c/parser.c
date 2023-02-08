@@ -67,7 +67,7 @@ static VALUE parse_number(parser_t *p)
     return out;
 }
 
-static void raise_invalid_expression_type(const char *expr, int expr_len)
+__attribute__((noreturn)) static void raise_invalid_expression_type(const char *expr, int expr_len)
 {
     rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Invalid expression type '%.*s' in range expression", expr_len, expr);
 }
@@ -97,10 +97,10 @@ static VALUE try_parse_constant_range(parser_t *p)
     parser_must_consume(p, TOKEN_CLOSE_ROUND);
 
     begin = rb_check_funcall(begin, id_to_i, 0, NULL);
-    if (begin == Qundef) raise_invalid_expression_type(begin_str, begin_str_end - begin_str);
+    if (begin == Qundef) raise_invalid_expression_type(begin_str, (int)(begin_str_end - begin_str));
 
     end = rb_check_funcall(end, id_to_i, 0, NULL);
-    if (end == Qundef) raise_invalid_expression_type(end_str, end_str_end - end_str);
+    if (end == Qundef) raise_invalid_expression_type(end_str, (int)(end_str_end - end_str));
 
     bool exclude_end = false;
     return rb_range_new(begin, end, exclude_end);

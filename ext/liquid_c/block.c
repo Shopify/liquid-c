@@ -1,12 +1,12 @@
 #include "liquid.h"
 #include "block.h"
 #include "intutil.h"
-#include "tokenizer.h"
 #include "stringutil.h"
 #include "vm.h"
 #include "variable.h"
 #include "context.h"
 #include "parse_context.h"
+#include "expression.h"
 #include "vm_assembler.h"
 #include <stdio.h>
 
@@ -15,23 +15,13 @@ static ID
     intern_raise_missing_tag_terminator,
     intern_is_blank,
     intern_parse,
+    intern_new,
     intern_square_brackets,
     intern_unknown_tag_in_liquid_tag,
     intern_ivar_nodelist;
 
 static VALUE tag_registry;
 static VALUE variable_placeholder = Qnil;
-
-typedef struct tag_markup {
-    VALUE name;
-    VALUE markup;
-} tag_markup_t;
-
-typedef struct parse_context {
-    tokenizer_t *tokenizer;
-    VALUE tokenizer_obj;
-    VALUE ruby_obj;
-} parse_context_t;
 
 static void ensure_body_compiled(const block_body_t *body)
 {
@@ -192,7 +182,6 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
             case TOKEN_TAG:
             {
                 const char *start = token.str_trimmed, *end = token.str_trimmed + token.len_trimmed;
-
                 // Imitate \s*(\w+)\s*(.*)? regex
                 const char *name_start = read_while(start, end, rb_isspace);
                 const char *name_end = read_while(name_start, end, is_id);
@@ -227,11 +216,28 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
                     break;
                 }
 
-                VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
-                VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
-
                 const char *markup_start = read_while(name_end, end, rb_isspace);
                 VALUE markup = rb_enc_str_new(markup_start, end - markup_start, utf8_encoding);
+                VALUE tag_name = rb_enc_str_new(name_start, name_end - name_start, utf8_encoding);
+
+                if (name_len == 2 && strncmp(name_start, "if", 2) == 0) {
+                    unknown_tag = parse_if_tag(markup, body, parse_context);
+                    if (unknown_tag.name != Qnil) {
+                        goto loop_break;
+                    }
+                    render_score_increment += 1;
+                    body->as.intermediate.blank = false;
+                    break;
+                } else if (
+                    (name_len == 5 && strncmp(name_start, "elsif", 5) == 0)
+                    ||(name_len == 4 && strncmp(name_start, "else", 4) == 0) 
+                    || (name_len == 5 && strncmp(name_start, "endif", 5) == 0)
+                ) {
+                    unknown_tag = (tag_markup_t) { tag_name, markup };
+                    goto loop_break;
+                }
+                
+                VALUE tag_class = rb_funcall(tag_registry, intern_square_brackets, 1, tag_name);
 
                 if (tag_class == Qnil) {
                     unknown_tag = (tag_markup_t) { tag_name, markup };
@@ -265,6 +271,110 @@ static tag_markup_t internal_block_body_parse(block_body_t *body, parse_context_
 loop_break:
     body->as.intermediate.render_score += render_score_increment;
     return unknown_tag;
+}
+
+VALUE parse_single_binary_comparison(VALUE markup) {
+    if (NIL_P(markup))
+        return Qnil;
+
+    StringValue(markup);
+    char *start = RSTRING_PTR(markup);
+
+    parser_t p;
+    init_parser(&p, start, start + RSTRING_LEN(markup));
+    VALUE a = internal_expression_parse(&p);
+    lexer_token_t op = parser_consume(&p, TOKEN_COMPARISON);
+    
+    if(op.type) {
+        VALUE op_str = rb_enc_str_new(op.val, op.val_end - op.val, utf8_encoding);
+        VALUE b = internal_expression_parse(&p);
+        return rb_funcall(cLiquidCondition, intern_new, 3, a, op_str, b);
+    } 
+
+    return rb_funcall(cLiquidCondition, intern_new, 1, a);
+}
+
+tag_markup_t parse_if_tag(VALUE markup, block_body_t *body, parse_context_t *parse_context) {
+    /*
+        1 parse expression into condition object
+        2 push OP_EVAL with condition object
+        3 push OP_BRANCH_UNLESS with placeholder address
+        4 recursively parse body
+        5 on else/elsif 
+          - push OP_BRANCH with placeholder address, this will make previous blocks jump to endif once they are done
+          - resolve the address for the previous OP_BRANCH_UNLESS
+        6 on endif resolve the address for any OP_BRANCH/OP_BRANCH_UNLESS
+    */
+    vm_assembler_t* body_code = body->as.intermediate.code;
+    VALUE condition_obj = parse_single_binary_comparison(markup);
+    vm_assembler_add_op_with_constant(body_code, condition_obj, OP_EVAL_CONDITION);
+
+    ptrdiff_t exit_branches[10];
+    ptrdiff_t* exit_start = exit_branches;
+    ptrdiff_t* exit_end = exit_branches;
+
+    ptrdiff_t open_branch = vm_assembler_open_branch(body_code, OP_BRANCH_UNLESS);
+    ptrdiff_t jump;
+
+    tag_markup_t unknown_tag;
+
+    while(true) {
+        unknown_tag = internal_block_body_parse(body, parse_context);
+
+        if(unknown_tag.name != Qnil) {
+            StringValue(unknown_tag.name);
+            char *name_start = RSTRING_PTR(unknown_tag.name);
+            int name_len = RSTRING_LEN(unknown_tag.name);
+
+            if (name_len == 4 && strncmp(name_start, "else", 4) == 0) {
+                // Unconditionally branch to endif for the previous block
+                *exit_end++ = vm_assembler_open_branch(body_code, OP_BRANCH);
+
+                // Calculate the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
+                jump = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+                jump = jump - open_branch - 1;
+
+                // Resolve the open branch from the <if> with the calculated offset.
+                vm_assembler_close_branch(body_code, open_branch, jump);
+                open_branch = -1;
+            } else if(name_len == 5 && strncmp(name_start, "elsif", 5) == 0) {
+                // Unconditionally branch to endif for the previous block
+                *exit_end++ = vm_assembler_open_branch(body_code, OP_BRANCH);
+
+                // Calculate the offset that would jump to here, this is where the <if> jumps to if it fails the condition.
+                jump = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+                jump = jump - open_branch - 1;
+
+                // Resolve the open branch from the <if> with the calculated offset.
+                vm_assembler_close_branch(body_code, open_branch, jump);
+                open_branch = -1;
+
+                // Start a new condition eval and branch for the elsif.
+                condition_obj = parse_single_binary_comparison(unknown_tag.markup);
+                vm_assembler_add_op_with_constant(body_code, condition_obj, OP_EVAL_CONDITION);
+                open_branch = vm_assembler_open_branch(body_code, OP_BRANCH_UNLESS);
+            } else if(name_len == 5 && strncmp(name_start, "endif", 5) == 0) {
+                ptrdiff_t jump_dest = (ptrdiff_t) (body_code->instructions.data_end - body_code->instructions.data);
+
+                // Resolve an open branch from an if/elsif.
+                if(open_branch != -1) {
+                    jump = jump_dest - open_branch - 1;
+                    vm_assembler_close_branch(body_code, open_branch, jump);
+                }
+
+                // Resolve all the open uncoditional branches.
+                while(exit_start < exit_end) {
+                    jump = jump_dest - *exit_start - 1;
+                    vm_assembler_close_branch(body_code, *exit_start, jump);
+                    exit_start++;
+                }
+
+                return  (tag_markup_t) { Qnil, Qnil };
+            } else {
+                return unknown_tag;
+            }
+        }
+    }
 }
 
 static void ensure_intermediate(block_body_t *body)
@@ -542,6 +652,7 @@ void liquid_define_block_body(void)
     intern_raise_missing_tag_terminator = rb_intern("raise_missing_tag_terminator");
     intern_is_blank = rb_intern("blank?");
     intern_parse = rb_intern("parse");
+    intern_new = rb_intern("new");
     intern_square_brackets = rb_intern("[]");
     intern_unknown_tag_in_liquid_tag = rb_intern("unknown_tag_in_liquid_tag");
     intern_ivar_nodelist = rb_intern("@nodelist");

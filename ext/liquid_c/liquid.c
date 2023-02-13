@@ -22,7 +22,7 @@ ID id_call;
 ID id_compile_evaluate;
 ID id_ivar_line_number;
 
-VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody;
+VALUE mLiquid, mLiquidC, cLiquidVariable, cLiquidTemplate, cLiquidBlockBody, cLiquidCondition;
 VALUE cLiquidVariableLookup, cLiquidRangeLookup;
 VALUE cLiquidArgumentError, cLiquidSyntaxError, cMemoryError;
 
@@ -69,6 +69,9 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
 
     cLiquidBlockBody = rb_const_get(mLiquid, rb_intern("BlockBody"));
     rb_global_variable(&cLiquidBlockBody);
+
+    cLiquidCondition = rb_const_get(mLiquid, rb_intern("Condition"));
+    rb_global_variable(&cLiquidCondition);
 
     cLiquidVariableLookup = rb_const_get(mLiquid, rb_intern("VariableLookup"));
     rb_global_variable(&cLiquidVariableLookup);

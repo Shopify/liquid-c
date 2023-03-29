@@ -141,22 +141,24 @@ static inline void vm_stack_push(vm_t *vm, VALUE value)
     vm->stack.data_end = (uint8_t *)stack_ptr;
 }
 
-static inline VALUE vm_stack_pop(vm_t *vm)
-{
-    VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
-    stack_ptr--;
-    assert((VALUE *)vm->stack.data <= stack_ptr);
-    vm->stack.data_end = (uint8_t *)stack_ptr;
-    return *stack_ptr;
-}
-
-static inline VALUE *vm_stack_pop_n_use_in_place(vm_t *vm, size_t n)
+static inline VALUE *vm_stack_peek_n(vm_t *vm, size_t n)
 {
     VALUE *stack_ptr = (VALUE *)vm->stack.data_end;
     stack_ptr -= n;
     assert((VALUE *)vm->stack.data <= stack_ptr);
+    return stack_ptr;
+}
+
+static inline VALUE *vm_stack_pop_n(vm_t *vm, size_t n)
+{
+    VALUE *stack_ptr = vm_stack_peek_n(vm, n);
     vm->stack.data_end = (uint8_t *)stack_ptr;
     return stack_ptr;
+}
+
+static inline VALUE vm_stack_pop(vm_t *vm)
+{
+    return *vm_stack_pop_n(vm, 1);
 }
 
 static inline void vm_stack_reserve_for_write(vm_t *vm, size_t num_values)
@@ -313,8 +315,11 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 size_t hash_size = *ip++;
                 size_t num_keys_and_values = hash_size * 2;
                 VALUE hash = rb_hash_new();
-                VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, num_keys_and_values);
+
+                VALUE *args_ptr = vm_stack_peek_n(vm, num_keys_and_values);
                 hash_bulk_insert(num_keys_and_values, args_ptr, hash);
+                vm_stack_pop_n(vm, num_keys_and_values);
+
                 vm_stack_push(vm, hash);
                 break;
             }
@@ -336,8 +341,10 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                     num_args = *ip++; // includes input argument
                 }
 
-                VALUE *args_ptr = vm_stack_pop_n_use_in_place(vm, num_args);
+                VALUE *args_ptr = vm_stack_peek_n(vm, num_args);
                 VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
+                vm_stack_pop_n(vm, num_args);
+
                 vm_stack_push(vm, result);
                 break;
             }

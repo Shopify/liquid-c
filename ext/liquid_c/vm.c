@@ -342,9 +342,22 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 }
 
                 VALUE *args_ptr = vm_stack_peek_n(vm, num_args);
-                VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
-                vm_stack_pop_n(vm, num_args);
 
+                size_t original_stack_size = c_buffer_size(&vm->stack);
+                void *stack_copy = malloc(original_stack_size);
+                memcpy(stack_copy, vm->stack.data, original_stack_size);
+
+                VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
+
+                if (original_stack_size != c_buffer_size(&vm->stack)) {
+                    rb_bug("stack size modified (%ld != %ld)", original_stack_size, c_buffer_size(&vm->stack));
+                }
+                if (memcmp(stack_copy, vm->stack.data, original_stack_size) != 0) {
+                    rb_bug("stack modified");
+                }
+
+                free(stack_copy);
+                vm_stack_pop_n(vm, num_args);
                 vm_stack_push(vm, result);
                 break;
             }

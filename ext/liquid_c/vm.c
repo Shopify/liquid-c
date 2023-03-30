@@ -166,8 +166,15 @@ static inline void vm_stack_reserve_for_write(vm_t *vm, size_t num_values)
     c_buffer_reserve_for_write(&vm->stack, num_values * sizeof(VALUE));
 }
 
-static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args, VALUE *args)
+static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args)
 {
+    VALUE *popped_args = vm_stack_pop_n(vm, num_args);
+    /* We have to copy popped_args_ptr to the stack because the VM
+     * no longer holds onto these objects, so they have to exist on
+     * the stack to ensure they don't get garbage collected. */
+    VALUE *args = alloca(sizeof(VALUE *) * num_args);
+    memcpy(args, popped_args, sizeof(VALUE *) * num_args);
+
     bool not_invokable = rb_hash_lookup(vm->context.filter_methods, filter_name) != Qtrue;
     if (RB_UNLIKELY(not_invokable)) {
         if (vm->context.strict_filters) {
@@ -341,10 +348,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                     num_args = *ip++; // includes input argument
                 }
 
-                VALUE *args_ptr = vm_stack_peek_n(vm, num_args);
-                VALUE result = vm_invoke_filter(vm, filter_name, num_args, args_ptr);
-                vm_stack_pop_n(vm, num_args);
-
+                VALUE result = vm_invoke_filter(vm, filter_name, num_args);
                 vm_stack_push(vm, result);
                 break;
             }

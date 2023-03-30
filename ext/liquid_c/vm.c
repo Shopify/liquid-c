@@ -191,6 +191,8 @@ typedef struct vm_render_until_error_args {
     /* rendering fields */
     VALUE output;
     const uint8_t *node_line_number;
+
+    size_t old_stack_byte_size;
 } vm_render_until_error_args_t;
 
 static VALUE raise_invalid_integer(VALUE unused_arg, VALUE exc)
@@ -435,6 +437,9 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 write_obj(output, var_result);
                 args->ip = NULL; // mark the end of a rescue block, used by vm_render_rescue
                 resource_limits_increment_write_score(vm->context.resource_limits, output);
+                if (vm->stack.data_end != vm->stack.data + args->old_stack_byte_size) {
+                    rb_bug("what");
+                }
                 break;
             }
 
@@ -564,6 +569,9 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     // remove temporary stack values from variable evaluation
     vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;
 
+    if (args->old_stack_byte_size != 0)
+        rb_bug("old_stack_byte_size %ld\n", args->old_stack_byte_size);
+
     assert(render_args->node_line_number);
     unsigned int node_line_number = bytes_to_uint24(render_args->node_line_number);
     VALUE line_number = node_line_number != 0 ? UINT2NUM(node_line_number) : Qnil;
@@ -585,6 +593,7 @@ void liquid_vm_render(block_body_header_t *body, const VALUE *const_ptr, VALUE c
         .const_ptr = const_ptr,
         .ip = block_body_instructions_ptr(body),
         .output = output,
+        .old_stack_byte_size = c_buffer_size(&vm->stack),
     };
     vm_render_rescue_args_t rescue_args = {
         .render_args = &render_args,

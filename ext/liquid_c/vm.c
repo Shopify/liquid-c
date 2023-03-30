@@ -569,8 +569,6 @@ static VALUE vm_render_rescue(VALUE uncast_args, VALUE exception)
     // remove temporary stack values from variable evaluation
     vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;
 
-    if (args->old_stack_byte_size != 0)
-        rb_bug("old_stack_byte_size %ld\n", args->old_stack_byte_size);
 
     assert(render_args->node_line_number);
     unsigned int node_line_number = bytes_to_uint24(render_args->node_line_number);

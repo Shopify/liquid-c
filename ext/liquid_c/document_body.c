@@ -1,4 +1,3 @@
-#include <ruby.h>
 #include <stdalign.h>
 #include "liquid.h"
 #include "vm_assembler.h"

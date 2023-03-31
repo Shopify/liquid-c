@@ -1,7 +1,7 @@
 #ifndef LIQUID_C_BUFFER_H
 #define LIQUID_C_BUFFER_H
 
-#include <ruby.h>
+#include "ruby_with_assert.h"
 
 typedef struct c_buffer {
     uint8_t *data;

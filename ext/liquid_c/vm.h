@@ -1,7 +1,7 @@
 #ifndef VM_H
 #define VM_H
 
-#include <ruby.h>
+#include "ruby_with_assert.h"
 #include "block.h"
 #include "vm_assembler.h"
 #include "context.h"

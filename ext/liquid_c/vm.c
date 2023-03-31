@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <assert.h>
 
 #include "liquid.h"
 #include "vm.h"

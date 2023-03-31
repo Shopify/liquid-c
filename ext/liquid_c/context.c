@@ -2,7 +2,7 @@
 #include "context.h"
 #include "variable_lookup.h"
 #include "variable.h"
-#include "vm.h"
+#include "liquid_vm.h"
 #include "expression.h"
 #include "document_body.h"
 

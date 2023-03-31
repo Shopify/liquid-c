@@ -1,7 +1,7 @@
 #include "liquid.h"
 #include "vm_assembler.h"
 #include "parser.h"
-#include "vm.h"
+#include "liquid_vm.h"
 #include "expression.h"
 
 VALUE cLiquidCExpression;

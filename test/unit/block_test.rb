@@ -127,4 +127,11 @@ class BlockTest < MiniTest::Test
       Liquid::Template.file_system = old_file_system
     end
   end
+
+  def test_assign_filter_argument_exception
+    source = "{% assign v = 'IN' | truncate: 123, liquid_error %}{{ v | default: 'err swallowed' }}"
+    template = Liquid::Template.parse(source)
+    output = template.render({ "liquid_error" => -> { raise Liquid::Error, "var lookup error" } })
+    assert_equal("err swallowed", output)
+  end
 end

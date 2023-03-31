@@ -435,24 +435,43 @@ static VALUE vm_render_until_error(VALUE uncast_args)
     }
 }
 
+typedef struct vm_evaluate_rescue_args {
+    vm_render_until_error_args_t *render_args;
+    size_t old_stack_byte_size;
+} vm_evaluate_rescue_args_t;
+
+static VALUE vm_evaluate_rescue(VALUE uncast_args, VALUE exception)
+{
+    vm_evaluate_rescue_args_t *args = (void *)uncast_args;
+    vm_render_until_error_args_t *render_args = args->render_args;
+    vm_t *vm = render_args->vm;
+
+    vm->stack.data_end = vm->stack.data + args->old_stack_byte_size;
+
+    rb_exc_raise(exception);
+    return Qnil;
+}
+
 // Evaluate instructions that avoid using rendering instructions and leave with the result on
 // the top of the stack
 VALUE liquid_vm_evaluate(VALUE context, vm_assembler_t *code)
 {
     vm_t *vm = vm_from_context(context);
     vm_stack_reserve_for_write(vm, code->max_stack_size);
-#ifndef NDEBUG
-    size_t old_stack_byte_size = c_buffer_size(&vm->stack);
-#endif
 
     vm_render_until_error_args_t args = {
         .vm = vm,
         .const_ptr = (const size_t *)code->constants.data,
         .ip = code->instructions.data
     };
-    vm_render_until_error((VALUE)&args);
+    vm_evaluate_rescue_args_t rescue_args = {
+        .render_args = &args,
+        .old_stack_byte_size = c_buffer_size(&vm->stack),
+    };
+    rb_rescue(vm_render_until_error, (VALUE)&args, vm_evaluate_rescue, (VALUE)&rescue_args);
+
     VALUE ret = vm_stack_pop(vm);
-    assert(old_stack_byte_size == c_buffer_size(&vm->stack));
+    assert(rescue_args.old_stack_byte_size == c_buffer_size(&vm->stack));
     return ret;
 }
 

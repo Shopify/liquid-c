@@ -1,7 +1,7 @@
 #ifndef LIQUID_PARSE_CONTEXT_H
 #define LIQUID_PARSE_CONTEXT_H
 
-#include "ruby_with_assert.h"
+#include <ruby.h>
 #include <stdbool.h>
 #include "vm_assembler_pool.h"
 

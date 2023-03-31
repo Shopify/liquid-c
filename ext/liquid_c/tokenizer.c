@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "liquid.h"
 #include "tokenizer.h"
 #include "stringutil.h"

@@ -1,6 +1,7 @@
 #ifndef VM_ASSEMBLER_H
 #define VM_ASSEMBLER_H
 
+#include <assert.h>
 #include "liquid.h"
 #include "c_buffer.h"
 #include "intutil.h"

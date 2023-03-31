@@ -1,7 +1,7 @@
 #include "liquid.h"
 #include "vm_assembler.h"
 #include "expression.h"
-#include "vm.h"
+#include "liquid_vm.h"
 
 #define ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
 

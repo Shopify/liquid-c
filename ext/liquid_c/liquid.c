@@ -12,7 +12,7 @@
 #include "parse_context.h"
 #include "variable_lookup.h"
 #include "vm_assembler_pool.h"
-#include "vm.h"
+#include "liquid_vm.h"
 #include "usage.h"
 
 ID id_evaluate;

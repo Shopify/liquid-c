@@ -2,7 +2,7 @@
 #include <assert.h>
 
 #include "liquid.h"
-#include "vm.h"
+#include "liquid_vm.h"
 #include "variable_lookup.h"
 #include "intutil.h"
 #include "document_body.h"

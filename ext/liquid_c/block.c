@@ -3,7 +3,7 @@
 #include "intutil.h"
 #include "tokenizer.h"
 #include "stringutil.h"
-#include "vm.h"
+#include "liquid_vm.h"
 #include "variable.h"
 #include "context.h"
 #include "parse_context.h"

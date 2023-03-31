@@ -2,7 +2,7 @@
 #include "variable.h"
 #include "parser.h"
 #include "expression.h"
-#include "vm.h"
+#include "liquid_vm.h"
 
 #include <stdio.h>
 

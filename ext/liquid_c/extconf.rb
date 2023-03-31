@@ -12,6 +12,10 @@ end
 if ENV["DEBUG"] == "true"
   append_cflags("-fbounds-check")
   CONFIG["optflags"] = " -O0"
+  # Hack to enable assertions since ruby/assert.h disables assertions unless
+  # Ruby was compiled with -DRUBY_DEBUG.
+  # https://github.com/ruby/ruby/blob/9e678cdbd054f78576a8f21b3f97cccc395ade22/include/ruby/assert.h#L36-L41
+  $CFLAGS << " -DRUBY_DEBUG"
 else
   $CFLAGS << " -DNDEBUG"
 end

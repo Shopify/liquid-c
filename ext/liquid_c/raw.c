@@ -30,10 +30,18 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
     for (long i = len - 3; i >= 0; i--) {
         char c = str[i];
 
-        if (is_word_char(c)) {
+        // match \s
+        bool is_whitespace = (
+            c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f'
+        );
+
+        if (!is_word_char(c) && !is_whitespace && c != '%' && c != '-') {
+            match->delimiter_start = curr_delimiter_start = NULL;
+            match->delimiter_len = curr_delimiter_len = 0;
+        } else if (is_word_char(c)) {
             curr_delimiter_start = str + i;
             curr_delimiter_len++;
-        } else {
+        } else if (is_whitespace) {
             if (curr_delimiter_len > 0) {
                 match->delimiter_start = curr_delimiter_start;
                 match->delimiter_len = curr_delimiter_len;

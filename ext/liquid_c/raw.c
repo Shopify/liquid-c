@@ -31,9 +31,7 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
         char c = str[i];
 
         // match \s
-        bool is_whitespace = (
-            c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f'
-        );
+        bool is_whitespace = rb_isspace(c);
 
         if (!is_word_char(c) && !is_whitespace && c != '%' && c != '-') {
             match->delimiter_start = curr_delimiter_start = NULL;

@@ -13,12 +13,43 @@ class RawTest < Minitest::Test
   Liquid::Template.register_tag("raw_wrapper", RawWrapper)
 
   def test_derived_class
-    output = Liquid::Template.parse("{% raw_wrapper %}body{% endraw_wrapper %}").render!
-    assert_equal("<body>", output)
+    [
+      "{% raw_wrapper %}body{% endraw_wrapper %}",
+      "{% raw_wrapper %}body{%endraw_wrapper%}",
+      "{% raw_wrapper %}body{%- endraw_wrapper -%}",
+      "{% raw_wrapper %}body{%- endraw_wrapper %}",
+      "{% raw_wrapper %}body{% endraw_wrapper -%}",
+    ].each do |template|
+      output = Liquid::Template.parse(template).render!
+
+      assert_equal(
+        "<body>",
+        output,
+        "Template: #{template}"
+      )
+    end
+  end
+
+  def test_ignores_incomplete_tag_delimter
+    output = Liquid::Template.parse("{% raw %}{% endraw {% endraw %}").render
+    assert_equal("{% endraw ", output)
+
+    output = Liquid::Template.parse("{% raw %}{%endraw{% endraw %}").render
+    assert_equal("{%endraw", output)
+
+    output = Liquid::Template.parse("{% raw %}{%- endraw {% endraw %}").render
+    assert_equal("{%- endraw ", output)
   end
 
   def test_does_not_allow_nbsp_in_tag_delimiter
     # these are valid
+    Liquid::Template.parse("{% raw %}body{%endraw%}")
+    Liquid::Template.parse("{% raw %}body{% endraw-%}")
+    Liquid::Template.parse("{% raw %}body{% endraw -%}")
+    Liquid::Template.parse("{% raw %}body{%-endraw %}")
+    Liquid::Template.parse("{% raw %}body{%- endraw %}")
+    Liquid::Template.parse("{% raw %}body{%-endraw-%}")
+    Liquid::Template.parse("{% raw %}body{%- endraw -%}")
     Liquid::Template.parse("{% raw %}body{% endraw\u00A0%}")
     Liquid::Template.parse("{% raw %}body{% endraw \u00A0%}")
     Liquid::Template.parse("{% raw %}body{% endraw\u00A0 %}")
@@ -31,6 +62,7 @@ class RawTest < Minitest::Test
       "{% \u00A0endraw%}",
       "{% \u00A0 endraw%}",
       "{%\u00A0endraw\u00A0%}",
+      "{% - endraw %}",
     ].each do |bad_delimiter|
       exception = assert_raises(
         Liquid::SyntaxError,

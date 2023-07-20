@@ -27,31 +27,36 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
     const char *curr_delimiter_start;
     long curr_delimiter_len = 0;
 
-    for (long i = len - 3; i >= 0; i--) {
+    for (long i = len - 3; i > 1; i--) {
         char c = str[i];
 
         // match \s
         bool is_whitespace = rb_isspace(c);
 
-        if (!is_word_char(c) && !is_whitespace && c != '%' && c != '-') {
-            match->delimiter_start = curr_delimiter_start = NULL;
-            match->delimiter_len = curr_delimiter_len = 0;
-        } else if (is_word_char(c)) {
+        if (is_word_char(c)) {
             curr_delimiter_start = str + i;
             curr_delimiter_len++;
-        } else if (is_whitespace) {
-            if (curr_delimiter_len > 0) {
-                match->delimiter_start = curr_delimiter_start;
-                match->delimiter_len = curr_delimiter_len;
-            }
+        } else if (!is_word_char(c) && !is_whitespace) {
             curr_delimiter_start = NULL;
             curr_delimiter_len = 0;
         }
 
-        if (c == '%' && match->delimiter_len > 0 &&
-                i - 1 >= 0 && str[i - 1] == '{') {
-            match->body_len = i - 1;
-            return true;
+        if (curr_delimiter_len > 0) {
+            if (
+                (str[i - 1] == '%' && str[i - 2] == '{') ||
+                (i - 3 >= 0 && str[i - 1] == '-' && str[i - 2] == '%' && str[i - 3] == '{')
+            ) {
+                match->delimiter_start = curr_delimiter_start;
+                match->delimiter_len = curr_delimiter_len;
+
+                if (str[i - 1] == '-') {
+                    match->body_len = i - 3;
+                } else {
+                    match->body_len = i - 2;
+                }
+
+                return true;
+            }
         }
     }
 

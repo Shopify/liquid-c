@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class ExpressionTest < MiniTest::Test
+class ExpressionTest < Minitest::Test
   def test_constant_literals
     assert_equal(true, Liquid::C::Expression.strict_parse("true"))
     assert_equal(false, Liquid::C::Expression.strict_parse("false"))

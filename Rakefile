@@ -9,8 +9,6 @@ require "ruby_memcheck"
 
 ENV["DEBUG"] ||= "true"
 
-RubyMemcheck.config(binary_name: "liquid_c")
-
 task default: [:test, :rubocop]
 
 task test: ["test:unit", "test:integration:all"]

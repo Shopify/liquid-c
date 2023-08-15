@@ -34,8 +34,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: ruby/setup-ruby@v1
         with:
-          # We have to use Ruby head until Ruby 3.3 is released due to https://bugs.ruby-lang.org/issues/19436
-          ruby-version: ruby-head
+          ruby-version: 3.2
       - run: sudo apt-get install -y valgrind
       - uses: actions/cache@v1
         with:

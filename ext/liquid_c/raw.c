@@ -27,6 +27,12 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
     const char *curr_delimiter_start;
     long curr_delimiter_len = 0;
 
+    bool is_last_char_whitespace = true;
+
+    // Search from the end of the string.
+    // The token could have a part of the body like this:
+    // {% endraw {% endraw %}
+    // In this case, we need to return body_len to 10 to preserve the body content.
     for (long i = len - 3; i > 1; i--) {
         char c = str[i];
 
@@ -35,13 +41,22 @@ static bool match_full_token_possibly_invalid(token_t *token, struct full_token_
 
         if (is_word_char(c)) {
             curr_delimiter_start = str + i;
-            curr_delimiter_len++;
+
+            if (is_last_char_whitespace) {
+                // start a new delimiter match
+                curr_delimiter_len = 1;
+            } else {
+                curr_delimiter_len++;
+            }
         } else if (!is_word_char(c) && !is_whitespace) {
             curr_delimiter_start = NULL;
             curr_delimiter_len = 0;
         }
 
+        is_last_char_whitespace = is_whitespace;
+
         if (curr_delimiter_len > 0) {
+            // match start of a tag which is {% or {%-
             if (
                 (str[i - 1] == '%' && str[i - 2] == '{') ||
                 (i - 3 >= 0 && str[i - 1] == '-' && str[i - 2] == '%' && str[i - 3] == '{')

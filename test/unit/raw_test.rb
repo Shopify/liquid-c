@@ -30,6 +30,14 @@ class RawTest < Minitest::Test
     end
   end
 
+  def test_allows_extra_string_after_tag_delimiter
+    output = Liquid::Template.parse("{% raw %}message{% endraw this_is_allowed %}").render
+    assert_equal("message", output)
+
+    output = Liquid::Template.parse("{% raw %}message{%   endraw r%}").render
+    assert_equal("message", output)
+  end
+
   def test_ignores_incomplete_tag_delimter
     output = Liquid::Template.parse("{% raw %}{% endraw {% endraw %}").render
     assert_equal("{% endraw ", output)
@@ -55,6 +63,7 @@ class RawTest < Minitest::Test
     Liquid::Template.parse("{% raw %}body{% endraw\u00A0 %}")
     Liquid::Template.parse("{% raw %}body{% endraw \u00A0 %}")
     Liquid::Template.parse("{% raw %}body{% endraw \u00A0 endraw %}")
+    Liquid::Template.parse("{% raw %}body{% endraw\u00A0endraw %}")
 
     [
       "{%\u00A0endraw%}",
@@ -63,6 +72,7 @@ class RawTest < Minitest::Test
       "{% \u00A0 endraw%}",
       "{%\u00A0endraw\u00A0%}",
       "{% - endraw %}",
+      "{% endnot endraw %}",
     ].each do |bad_delimiter|
       exception = assert_raises(
         Liquid::SyntaxError,

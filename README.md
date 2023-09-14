@@ -1,5 +1,5 @@
 # Liquid::C
-[![Build Status](https://travis-ci.org/Shopify/liquid-c.svg?branch=master)](https://travis-ci.org/Shopify/liquid-c)
+[![Build Status](https://travis-ci.org/Shopify/liquid-c.svg?branch=main)](https://travis-ci.org/Shopify/liquid-c)
 
 Partial native implementation of the liquid ruby gem in C.
 
@@ -7,8 +7,8 @@ Partial native implementation of the liquid ruby gem in C.
 
 Add these lines to your application's Gemfile:
 
-    gem 'liquid', github: 'Shopify/liquid', branch: 'master'
-    gem 'liquid-c', github: 'Shopify/liquid-c', branch: 'master'
+    gem 'liquid', github: 'Shopify/liquid', branch: 'main'
+    gem 'liquid-c', github: 'Shopify/liquid-c', branch: 'main'
 
 And then execute:
 

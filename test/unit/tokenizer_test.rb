@@ -6,7 +6,7 @@ require "test_helper"
 class TokenizerTest < Minitest::Test
   def test_tokenizer_nil
     tokenizer = new_tokenizer(nil)
-    assert_nil(tokenizer.send(:shift))
+    assert_nil(tokenizer.shift)
   end
 
   def test_tokenize_strings
@@ -60,10 +60,10 @@ class TokenizerTest < Minitest::Test
   def test_utf8_compatible_source
     source = String.new("ascii", encoding: Encoding::ASCII)
     tokenizer = new_tokenizer(source)
-    output = tokenizer.send(:shift)
+    output = tokenizer.shift
     assert_equal(Encoding::UTF_8, output.encoding)
     assert_equal(source, output)
-    assert_nil(tokenizer.send(:shift))
+    assert_nil(tokenizer.shift)
   end
 
   def test_non_utf8_compatible_source
@@ -105,7 +105,7 @@ class TokenizerTest < Minitest::Test
   def tokenize(source, for_liquid_tag: false, trimmed: false)
     tokenizer = Liquid::C::Tokenizer.new(source, 1, for_liquid_tag)
     tokens = []
-    while (t = trimmed ? tokenizer.send(:shift_trimmed) : tokenizer.send(:shift))
+    while (t = trimmed ? tokenizer.send(:shift_trimmed) : tokenizer.shift)
       tokens << t
     end
     tokens

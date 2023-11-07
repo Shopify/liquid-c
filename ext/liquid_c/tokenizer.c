@@ -290,9 +290,9 @@ void liquid_define_tokenizer(void)
     rb_define_method(cLiquidTokenizer, "line_number", tokenizer_line_number_method, 0);
     rb_define_method(cLiquidTokenizer, "for_liquid_tag", tokenizer_for_liquid_tag_method, 0);
     rb_define_method(cLiquidTokenizer, "bug_compatible_whitespace_trimming!", tokenizer_bug_compatible_whitespace_trimming, 0);
+    rb_define_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
 
     // For testing the internal token representation.
-    rb_define_private_method(cLiquidTokenizer, "shift", tokenizer_shift_method, 0);
     rb_define_private_method(cLiquidTokenizer, "shift_trimmed", tokenizer_shift_trimmed_method, 0);
 }
 

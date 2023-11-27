@@ -144,7 +144,24 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
 
     if (is_special(c)) RETURN_TOKEN(c, 1);
 
-    rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c", c);
+    // read multibyte UTF-8 character
+    if ((c & 0x80) == 0) {
+        // 1-byte character
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c", c);
+    } else if ((c & 0xE0) == 0xC0) {
+        // 2-byte character
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c%c", c, str[1]);
+    } else if ((c & 0xF0) == 0xE0) {
+        // 3-byte character
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c%c%c", c, str[1], str[2]);
+    } else if ((c & 0xF8) == 0xF0) {
+        // 4-byte character
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c%c%c%c", c, str[1], str[2], str[3]);
+    } else {
+        // this should never happen
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c", c);
+    }
+
     return NULL;
 }
 

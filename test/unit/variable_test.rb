@@ -254,6 +254,35 @@ class VariableTest < Minitest::Test
     assert_equal("2", output)
   end
 
+  def test_encoding_error_message_with_multi_byte_characters
+    # 2 byte character
+    exc = assert_raises(Liquid::SyntaxError) do
+      variable_strict_parse("\u00A0")
+    end
+    assert_equal(
+      "Liquid syntax error: Unexpected character \u00A0 in \"{{\u00a0}}\"",
+      exc.message
+    )
+
+    # 3 byte character
+    exc = assert_raises(Liquid::SyntaxError) do
+      variable_strict_parse("\u3042")
+    end
+    assert_equal(
+      "Liquid syntax error: Unexpected character \u3042 in \"{{\u3042}}\"",
+      exc.message
+    )
+
+    # 4 byte character
+    exc = assert_raises(Liquid::SyntaxError) do
+      variable_strict_parse("\u{1F600}")
+    end
+    assert_equal(
+      "Liquid syntax error: Unexpected character \u{1F600} in \"{{\u{1F600}}}\"",
+      exc.message
+    )
+  end
+
   private
 
   def variable_strict_parse(markup)

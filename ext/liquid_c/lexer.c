@@ -144,7 +144,7 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
 
     if (is_special(c)) RETURN_TOKEN(c, 1);
 
-    int remaining_str_len = end - str;
+    long remaining_str_len = end - str;
     int char_len = 0;
 
     // read multibyte UTF-8 character

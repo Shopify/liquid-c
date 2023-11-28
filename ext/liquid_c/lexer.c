@@ -145,35 +145,36 @@ const char *lex_one(const char *start, const char *end, lexer_token_t *token)
     if (is_special(c)) RETURN_TOKEN(c, 1);
 
     int remaining_str_len = end - str;
+    int char_len = 0;
 
     // read multibyte UTF-8 character
     if ((c & 0x80) == 0) {
         // 1-byte character
-        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c", c);
+        char_len = 1;
     } else if ((c & 0xE0) == 0xC0) {
         // 2-byte character
-        if (remaining_str_len < 2) {
-            rb_raise(rb_eArgError, "invalid byte sequence in UTF-8");
-        } else {
-            rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c%c", c, str[1]);
+        if (remaining_str_len >= 2) {
+            char_len = 2;
         }
     } else if ((c & 0xF0) == 0xE0) {
         // 3-byte character
-        if (remaining_str_len < 3) {
-            rb_raise(rb_eArgError, "invalid byte sequence in UTF-8");
-        } else {
-            rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c%c%c", c, str[1], str[2]);
+        if (remaining_str_len >= 3) {
+            char_len = 3;
         }
     } else if ((c & 0xF8) == 0xF0) {
         // 4-byte character
-        if (remaining_str_len < 4) {
-            rb_raise(rb_eArgError, "invalid byte sequence in UTF-8");
-        } else {
-            rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c%c%c%c", c, str[1], str[2], str[3]);
+        if (remaining_str_len >= 4) {
+            char_len = 4;
         }
     } else {
         // this should never happen
         rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %c", c);
+    }
+
+    if (char_len > 0) {
+        rb_enc_raise(utf8_encoding, cLiquidSyntaxError, "Unexpected character %.*s", char_len, str);
+    } else {
+        rb_raise(rb_eArgError, "invalid byte sequence in UTF-8");
     }
 
     return NULL;

@@ -254,6 +254,73 @@ class VariableTest < Minitest::Test
     assert_equal("2", output)
   end
 
+  def test_encoding_error_message_with_multi_byte_characters
+    # 2 byte character
+    exc = assert_raises(Liquid::SyntaxError) do
+      variable_strict_parse("\u00A0")
+    end
+    assert_equal(
+      "Liquid syntax error: Unexpected character \u00A0 in \"{{\u00a0}}\"",
+      exc.message
+    )
+
+    # 3 byte character
+    exc = assert_raises(Liquid::SyntaxError) do
+      variable_strict_parse("\u3042")
+    end
+    assert_equal(
+      "Liquid syntax error: Unexpected character \u3042 in \"{{\u3042}}\"",
+      exc.message
+    )
+
+    # 4 byte character
+    exc = assert_raises(Liquid::SyntaxError) do
+      variable_strict_parse("\u{1F600}")
+    end
+    assert_equal(
+      "Liquid syntax error: Unexpected character \u{1F600} in \"{{\u{1F600}}}\"",
+      exc.message
+    )
+  end
+
+  def test_invalid_utf8_sequence
+    # 2 byte character with 1 byte missing
+    exc = assert_raises(ArgumentError) do
+      variable_strict_parse("\xC0")
+    end
+    assert_equal("invalid byte sequence in UTF-8", exc.message)
+
+    # 3 byte character with 1 byte missing
+    exc = assert_raises(ArgumentError) do
+      variable_strict_parse("\xE0\x01")
+    end
+    assert_equal("invalid byte sequence in UTF-8", exc.message)
+
+    # 3 byte character with 2 byte missing
+    exc = assert_raises(ArgumentError) do
+      variable_strict_parse("\xE0")
+    end
+    assert_equal("invalid byte sequence in UTF-8", exc.message)
+
+    # 4 byte character with 1 byte missing
+    exc = assert_raises(ArgumentError) do
+      variable_strict_parse("\xF0\x01\x01")
+    end
+    assert_equal("invalid byte sequence in UTF-8", exc.message)
+
+    # 4 byte character with 2 byte missing
+    exc = assert_raises(ArgumentError) do
+      variable_strict_parse("\xF0\x01")
+    end
+    assert_equal("invalid byte sequence in UTF-8", exc.message)
+
+    # 4 byte character with 3 byte missing
+    exc = assert_raises(ArgumentError) do
+      variable_strict_parse("\xF0")
+    end
+    assert_equal("invalid byte sequence in UTF-8", exc.message)
+  end
+
   private
 
   def variable_strict_parse(markup)

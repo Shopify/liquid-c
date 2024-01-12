@@ -38,7 +38,7 @@ inline static VALUE value_to_liquid_and_set_context(VALUE value, VALUE context_t
     if (RB_SPECIAL_CONST_P(value))
         return value;
 
-    VALUE klass = RBASIC(value)->klass;
+    VALUE klass = RBASIC_CLASS(value);
 
     // More basic types having #to_liquid of self and no #context=
     if (klass == rb_cString || klass == rb_cArray || klass == rb_cHash)

@@ -20,9 +20,7 @@ else
   $CFLAGS << " -DNDEBUG"
 end
 
-if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("2.7.0") # added in 2.7
-  $CFLAGS << " -DHAVE_RB_HASH_BULK_INSERT"
-end
+have_func "rb_hash_bulk_insert"
 
 $warnflags&.gsub!(/-Wdeclaration-after-statement/, "")
 create_makefile("liquid_c")

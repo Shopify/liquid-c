@@ -5,28 +5,28 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        entry:
+        include:
           - { ruby: '2.7', allowed-failure: false }
           - { ruby: '3.0', allowed-failure: false }
           - { ruby: '3.1', allowed-failure: false }
           - { ruby: ruby-head, allowed-failure: true }
           - { ruby: truffleruby-head, allowed-failure: true }
-    name: test (${{ matrix.entry.ruby }})
+    name: test (${{ matrix.ruby }})
     steps:
       - uses: actions/checkout@v2
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.entry.ruby }}
+          ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
 
       - run: bundle exec rake
-        continue-on-error: ${{ matrix.entry.allowed-failure }}
+        continue-on-error: ${{ matrix.allowed-failure }}
         env:
           LIQUID_C_PEDANTIC: 'true'
         if: matrix.ruby != 'truffleruby-head'
 
       - run: bundle exec rake test:unit
-        continue-on-error: ${{ matrix.entry.allowed-failure }}
+        continue-on-error: ${{ matrix.allowed-failure }}
         env:
           LIQUID_C_PEDANTIC: 'true'
         if: matrix.ruby == 'truffleruby-head'

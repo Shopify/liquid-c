@@ -29,6 +29,8 @@ class ContextTest < Minitest::Test
   end
 
   def test_evaluating_a_variable_entirely_within_c
+    skip("TracePoint :call not yet supported") if RUBY_ENGINE == "truffleruby"
+
     context = Liquid::Context.new({ "var" => 42 })
     lookup = Liquid::C::Expression.strict_parse("var")
     context.evaluate(lookup) # memoize vm_internal_new calls

@@ -10,6 +10,7 @@ gemspec
 gem "liquid", github: "Shopify/liquid", ref: "master"
 
 group :test do
+  gem "base64", require: false # for older rubocop on Ruby 3.4
   gem "rubocop", "~> 1.24.1", require: false
   gem "rubocop-performance", "~> 1.13.2", require: false
   gem "rubocop-shopify", "~> 2.4.0", require: false

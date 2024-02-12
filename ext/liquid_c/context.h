@@ -44,12 +44,16 @@ inline static VALUE value_to_liquid_and_set_context(VALUE value, VALUE context_t
     if (klass == rb_cString || klass == rb_cArray || klass == rb_cHash)
         return value;
 
-    value = rb_funcall(value, id_to_liquid, 0);
-
+    // set value's context before invoking #to_liquid
     if (rb_respond_to(value, id_set_context))
         rb_funcall(value, id_set_context, 1, context_to_set);
 
-    return value;
+    VALUE liquid_value = rb_funcall(value, id_to_liquid, 0);
+
+    if (liquid_value != value && rb_respond_to(liquid_value, id_set_context))
+        rb_funcall(liquid_value, id_set_context, 1, context_to_set);
+
+    return liquid_value;
 }
 
 

@@ -362,7 +362,7 @@ void vm_assembler_add_filter(vm_assembler_t *code, VALUE filter_name, size_t arg
     } else {
         VALUE filter_args = rb_ary_new_capa(2);
         rb_ary_push(filter_args, filter_name);
-        rb_ary_push(filter_args, arg_count + 1);
+        rb_ary_push(filter_args, LONG2FIX((long)(arg_count + 1)));
         vm_assembler_add_op_with_constant(code, filter_args, OP_FILTER);
     }
 }

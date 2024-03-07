@@ -166,7 +166,7 @@ static inline void vm_stack_reserve_for_write(vm_t *vm, size_t num_values)
     c_buffer_reserve_for_write(&vm->stack, num_values * sizeof(VALUE));
 }
 
-static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args)
+static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, size_t num_args)
 {
     VALUE *popped_args = vm_stack_pop_n(vm, num_args);
     /* We have to copy popped_args_ptr to the stack because the VM
@@ -185,7 +185,7 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, int num_args)
     }
 
     vm->invoking_filter = true;
-    VALUE result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), num_args, args);
+    VALUE result = rb_funcallv(vm->context.strainer, RB_SYM2ID(filter_name), (int)num_args, args);
     vm->invoking_filter = false;
     return rb_funcall(result, id_to_liquid, 0);
 }
@@ -334,13 +334,13 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             case OP_BUILTIN_FILTER:
             {
                 VALUE filter_name;
-                uint8_t num_args;
+                unsigned long num_args;
 
                 if (ip[-1] == OP_FILTER) {
                     constant_index = (ip[0] << 8) | ip[1];
                     constant = constants[constant_index];
                     filter_name = RARRAY_AREF(constant, 0);
-                    num_args = RARRAY_AREF(constant, 1);
+                    num_args = FIX2ULONG(RARRAY_AREF(constant, 1));
                     ip += 2;
                 } else {
                     assert(ip[-1] == OP_BUILTIN_FILTER);

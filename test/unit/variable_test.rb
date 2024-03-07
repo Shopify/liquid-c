@@ -80,6 +80,9 @@ class VariableTest < Minitest::Test
     output = variable_strict_parse("name | filter1 : a , b : c , d : e").render!(context, render_opts)
     assert_equal('{ filter: :filter1, input: "Bob", args: [1, {"b"=>3, "d"=>5}] }', output)
 
+    output = variable_strict_parse("name | filter1: 1, 2, 3, 4, 5, 6, 7").render!(context, render_opts)
+    assert_equal('{ filter: :filter1, input: "Bob", args: [1, 2, 3, 4, 5, 6, 7] }', output)
+
     assert_raises(Liquid::SyntaxError) do
       variable_strict_parse("name | filter : a : b : c : d : e")
     end

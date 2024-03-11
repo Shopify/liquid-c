@@ -81,9 +81,10 @@ static void write_fixnum(VALUE output, VALUE fixnum)
     long capacity = rb_str_capacity(output);
 
     if (new_size > capacity) {
-        do {
-            capacity *= 2;
-        } while (new_size > capacity);
+        capacity *= 2;
+        if (new_size > capacity) {
+            capacity = new_size;
+        }
         rb_str_resize(output, capacity);
     }
     rb_str_set_len(output, new_size);

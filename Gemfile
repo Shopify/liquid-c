@@ -7,7 +7,7 @@ end
 
 gemspec
 
-gem "liquid", github: "Shopify/liquid", ref: "master"
+gem "liquid", github: "Shopify/liquid", ref: "main"
 
 group :test do
   gem "base64", require: false # for older rubocop on Ruby 3.4

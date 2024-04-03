@@ -288,40 +288,40 @@ class VariableTest < Minitest::Test
 
   def test_invalid_utf8_sequence
     # 2 byte character with 1 byte missing
-    exc = assert_raises(ArgumentError) do
+    exc = assert_raises(Liquid::TemplateEncodingError) do
       variable_strict_parse("\xC0")
     end
-    assert_equal("invalid byte sequence in UTF-8", exc.message)
+    assert_equal("Liquid error: Invalid template encoding", exc.message)
 
     # 3 byte character with 1 byte missing
-    exc = assert_raises(ArgumentError) do
+    exc = assert_raises(Liquid::TemplateEncodingError) do
       variable_strict_parse("\xE0\x01")
     end
-    assert_equal("invalid byte sequence in UTF-8", exc.message)
+    assert_equal("Liquid error: Invalid template encoding", exc.message)
 
     # 3 byte character with 2 byte missing
-    exc = assert_raises(ArgumentError) do
+    exc = assert_raises(Liquid::TemplateEncodingError) do
       variable_strict_parse("\xE0")
     end
-    assert_equal("invalid byte sequence in UTF-8", exc.message)
+    assert_equal("Liquid error: Invalid template encoding", exc.message)
 
     # 4 byte character with 1 byte missing
-    exc = assert_raises(ArgumentError) do
+    exc = assert_raises(Liquid::TemplateEncodingError) do
       variable_strict_parse("\xF0\x01\x01")
     end
-    assert_equal("invalid byte sequence in UTF-8", exc.message)
+    assert_equal("Liquid error: Invalid template encoding", exc.message)
 
     # 4 byte character with 2 byte missing
-    exc = assert_raises(ArgumentError) do
+    exc = assert_raises(Liquid::TemplateEncodingError) do
       variable_strict_parse("\xF0\x01")
     end
-    assert_equal("invalid byte sequence in UTF-8", exc.message)
+    assert_equal("Liquid error: Invalid template encoding", exc.message)
 
     # 4 byte character with 3 byte missing
-    exc = assert_raises(ArgumentError) do
+    exc = assert_raises(Liquid::TemplateEncodingError) do
       variable_strict_parse("\xF0")
     end
-    assert_equal("invalid byte sequence in UTF-8", exc.message)
+    assert_equal("Liquid error: Invalid template encoding", exc.message)
   end
 
   private

@@ -4,7 +4,6 @@ inherit_gem:
 require: rubocop-performance
 
 AllCops:
-  TargetRubyVersion: 2.5
   Exclude:
     - 'vendor/bundle/**/*'
     - 'tmp/**/*'

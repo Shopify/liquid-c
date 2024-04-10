@@ -25,7 +25,7 @@ class RawTest < Minitest::Test
       assert_equal(
         "<body>",
         output,
-        "Template: #{template}"
+        "Template: #{template}",
       )
     end
   end
@@ -76,10 +76,10 @@ class RawTest < Minitest::Test
     ].each do |bad_delimiter|
       exception = assert_raises(
         Liquid::SyntaxError,
-        "#{bad_delimiter.inspect} did not raise Liquid::SyntaxError"
+        "#{bad_delimiter.inspect} did not raise Liquid::SyntaxError",
       ) do
         Liquid::Template.parse(
-          "{% raw %}body#{bad_delimiter}"
+          "{% raw %}body#{bad_delimiter}",
         )
       end
 

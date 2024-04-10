@@ -160,7 +160,7 @@ class VariableTest < Minitest::Test
     end
     assert_equal(
       "VariableTest::StringConvertible#to_s returned a non-String convertible value of type Integer",
-      exc.message
+      exc.message,
     )
   end
 
@@ -264,7 +264,7 @@ class VariableTest < Minitest::Test
     end
     assert_equal(
       "Liquid syntax error: Unexpected character \u00A0 in \"{{\u00a0}}\"",
-      exc.message
+      exc.message,
     )
 
     # 3 byte character
@@ -273,7 +273,7 @@ class VariableTest < Minitest::Test
     end
     assert_equal(
       "Liquid syntax error: Unexpected character \u3042 in \"{{\u3042}}\"",
-      exc.message
+      exc.message,
     )
 
     # 4 byte character
@@ -282,7 +282,7 @@ class VariableTest < Minitest::Test
     end
     assert_equal(
       "Liquid syntax error: Unexpected character \u{1F600} in \"{{\u{1F600}}}\"",
-      exc.message
+      exc.message,
     )
   end
 

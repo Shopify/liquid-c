@@ -78,8 +78,8 @@ class BlockTest < Minitest::Test
       0x0000: write_raw("raw")
       0x0005: render_variable_rescue(line_number: 2)
       0x0009: find_static_var("var")
-      0x000c: push_const(\"none\")
-      0x000f: push_const(\"allow_false\")
+      0x000c: push_const("none")
+      0x000f: push_const("allow_false")
       0x0012: push_true
       0x0013: hash_new(1)
       0x0015: builtin_filter(name: :default, num_args: 3)
@@ -97,6 +97,7 @@ class BlockTest < Minitest::Test
       if exc == original_error
         raise(handler_error)
       end
+
       exc
     end
     template = Liquid::Template.parse("{% assign x = raise_error %}")

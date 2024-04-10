@@ -13,15 +13,17 @@ end
 
 module Liquid
   BlockBody.class_eval do
-    def self.c_rescue_render_node(context, output, line_number, exc, blank_tag)
-      # There seems to be a MRI ruby bug with how the rb_rescue C function,
-      # where $! gets set for its rescue callback, but it doesn't stay set
-      # after a nested exception is raised and handled as is the case in
-      # Liquid::Context#internal_error. This isn't a problem for plain ruby code,
-      # so use a ruby rescue block to have setup $! properly.
-      raise(exc)
-    rescue => exc
-      rescue_render_node(context, output, line_number, exc, blank_tag)
+    class << self
+      def c_rescue_render_node(context, output, line_number, exc, blank_tag)
+        # There seems to be a MRI ruby bug with how the rb_rescue C function,
+        # where $! gets set for its rescue callback, but it doesn't stay set
+        # after a nested exception is raised and handled as is the case in
+        # Liquid::Context#internal_error. This isn't a problem for plain ruby code,
+        # so use a ruby rescue block to have setup $! properly.
+        raise(exc)
+      rescue => exc
+        rescue_render_node(context, output, line_number, exc, blank_tag)
+      end
     end
   end
 end
@@ -100,6 +102,7 @@ Liquid::ParseContext.class_eval do
     # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
     # so the profiler can use it on future runs.
     return @liquid_c_nodes_disabled if defined?(@liquid_c_nodes_disabled)
+
     @liquid_c_nodes_disabled = !Liquid::C.enabled || @template_options[:profile] ||
       @template_options[:disable_liquid_c_nodes] || self.class.liquid_c_nodes_disabled
   end
@@ -234,15 +237,17 @@ Liquid::Context.class_eval do
 end
 
 Liquid::ResourceLimits.class_eval do
-  def self.new(limits)
-    if Liquid::C.enabled
-      Liquid::C::ResourceLimits.new(
-        limits[:render_length_limit],
-        limits[:render_score_limit],
-        limits[:assign_score_limit]
-      )
-    else
-      super
+  class << self
+    def new(limits)
+      if Liquid::C.enabled
+        Liquid::C::ResourceLimits.new(
+          limits[:render_length_limit],
+          limits[:render_score_limit],
+          limits[:assign_score_limit],
+        )
+      else
+        super
+      end
     end
   end
 end

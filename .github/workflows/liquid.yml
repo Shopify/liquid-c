@@ -7,7 +7,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - { ruby: '2.7', allowed-failure: false }
           - { ruby: '3.0', allowed-failure: false }
           - { ruby: '3.1', allowed-failure: false }
           - { ruby: '3.2', allowed-failure: false }
@@ -44,7 +43,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3
           bundler-cache: true
       - run: sudo apt-get install -y valgrind
       - run: bundle exec rake test:valgrind

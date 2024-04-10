@@ -22,5 +22,5 @@ end
 
 have_func "rb_hash_bulk_insert"
 
-$warnflags&.gsub!(/-Wdeclaration-after-statement/, "")
+$warnflags&.gsub!("-Wdeclaration-after-statement", "")
 create_makefile("liquid_c")

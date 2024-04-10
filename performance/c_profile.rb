@@ -10,6 +10,7 @@ task_name = ARGV.first || "run"
 unless TASK_NAMES.include?(task_name)
   raise "Unsupported task '#{task_name}' (must be one of #{TASK_NAMES})"
 end
+
 task = ThemeRunner.new.method(task_name)
 
 runner_id = fork do

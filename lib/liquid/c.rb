@@ -73,17 +73,9 @@ Liquid::ParseContext.class_eval do
 
   alias_method :ruby_new_tokenizer, :new_tokenizer
   def new_tokenizer(source, start_line_number: nil, for_liquid_tag: false)
-    unless liquid_c_nodes_disabled?
-      source = source.to_s.to_str
-      if source.bytesize <= Liquid::C::Tokenizer::MAX_SOURCE_BYTE_SIZE
-        source = source.encode(Encoding::UTF_8)
-        return Liquid::C::Tokenizer.new(source, start_line_number || 0, for_liquid_tag)
-      else
-        @liquid_c_nodes_disabled = true
-      end
-    end
-
-    ruby_new_tokenizer(source, start_line_number: start_line_number, for_liquid_tag: for_liquid_tag)
+    source = source.to_s.to_str
+    source = source.encode(Encoding::UTF_8)
+    Liquid::C::Tokenizer.new(source, start_line_number || 0, for_liquid_tag)
   end
 
   def parse_expression(markup)
@@ -96,15 +88,7 @@ Liquid::ParseContext.class_eval do
 
   # @api private
   def liquid_c_nodes_disabled?
-    # Liquid::Profiler exposes the internal parse tree that we don't want to build when
-    # parsing with liquid-c, so consider liquid-c to be disabled when using it.
-    # Also, some templates are parsed before the profiler is running, on which case we
-    # provide the `disable_liquid_c_nodes` option to enable the Ruby AST to be produced
-    # so the profiler can use it on future runs.
-    return @liquid_c_nodes_disabled if defined?(@liquid_c_nodes_disabled)
-
-    @liquid_c_nodes_disabled = !Liquid::C.enabled || @template_options[:profile] ||
-      @template_options[:disable_liquid_c_nodes] || self.class.liquid_c_nodes_disabled
+    false
   end
 end
 

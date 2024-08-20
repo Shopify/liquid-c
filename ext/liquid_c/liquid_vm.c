@@ -194,7 +194,7 @@ static VALUE vm_invoke_filter(vm_t *vm, VALUE filter_name, size_t num_args)
 typedef struct vm_render_until_error_args {
     vm_t *vm;
     const uint8_t *ip; // use for initial address and to save an address for rescuing
-    const size_t *const_ptr;
+    const VALUE *const_ptr;
 
     /* rendering fields */
     VALUE output;

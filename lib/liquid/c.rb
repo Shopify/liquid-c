@@ -88,7 +88,7 @@ Liquid::ParseContext.class_eval do
 
   def parse_expression(markup)
     if liquid_c_nodes_disabled?
-      Liquid::Expression.parse(markup)
+      Liquid::Expression.parse(markup, string_scanner, expression_cache)
     else
       Liquid::C::Expression.lax_parse(markup)
     end

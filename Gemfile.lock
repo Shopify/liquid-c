@@ -35,7 +35,8 @@ GEM
     rake-compiler (1.2.7)
       rake
     regexp_parser (2.9.0)
-    rexml (3.2.6)
+    rexml (3.2.8)
+      strscan (>= 3.0.9)
     rubocop (1.61.0)
       json (~> 2.3)
       language_server-protocol (>= 3.17.0)
@@ -59,6 +60,7 @@ GEM
       nokogiri
     spy (0.4.1)
     stackprof (0.2.26)
+    strscan (3.1.0)
     unicode-display_width (2.5.0)
 
 PLATFORMS

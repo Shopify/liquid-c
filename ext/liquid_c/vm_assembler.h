@@ -76,6 +76,10 @@ enum opcode {
     OP_TABLEROW_COL_START,/* Write <td> with class */
     OP_TABLEROW_COL_END,  /* Write </td>, maybe </tr><tr> */
     OP_TABLEROW_CLEANUP,  /* Write final </tr> if needed */
+
+    /* Stack manipulation */
+    OP_DUP,               /* Duplicate top of stack */
+    OP_POP_DISCARD,       /* Pop and discard top of stack */
 };
 
 typedef struct {
@@ -482,6 +486,28 @@ static inline void vm_assembler_add_for_cleanup(vm_assembler_t *code)
 {
     code->stack_size--; /* pops iterator state */
     vm_assembler_write_opcode(code, OP_FOR_CLEANUP);
+}
+
+/*
+ * OP_DUP: Duplicate top of stack
+ * Operands: none
+ * Stack: [value] -> [value, value]
+ */
+static inline void vm_assembler_add_dup(vm_assembler_t *code)
+{
+    code->stack_size++; /* duplicates top value */
+    vm_assembler_write_opcode(code, OP_DUP);
+}
+
+/*
+ * OP_POP_DISCARD: Pop and discard top of stack
+ * Operands: none
+ * Stack: [value] -> []
+ */
+static inline void vm_assembler_add_pop_discard(vm_assembler_t *code)
+{
+    code->stack_size--; /* pops and discards top value */
+    vm_assembler_write_opcode(code, OP_POP_DISCARD);
 }
 
 #endif

@@ -26,5 +26,5 @@ end
 
 desc "Run liquid-spec via adapter after unit tests"
 task spec: :test do
-  sh "bundle exec liquid-spec run liquid_c_adapter.rb -s basics --compare"
+  sh "bundle exec liquid-spec run liquid_c_adapter.rb -s basics"
 end

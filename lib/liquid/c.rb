@@ -34,6 +34,11 @@ module Liquid
         ""
       end
 
+      # When blank is assigned to a variable and then output, return empty string
+      def to_liquid
+        ""
+      end
+
       def inspect
         "Liquid::C::Blank"
       end
@@ -64,6 +69,11 @@ module Liquid
 
       # Used by variable_lookup_key when empty is used as a hash key
       def to_liquid_value
+        ""
+      end
+
+      # When empty is assigned to a variable and then output, return empty string
+      def to_liquid
         ""
       end
 

@@ -222,50 +222,105 @@ static void codegen_case(codegen_t *gen, ast_node_t *node)
 {
     vm_assembler_t *code = gen->code;
 
-    /* Note: We don't pre-push the target expression - we re-evaluate it
-     * for each when branch. This is simpler and matches Ruby's semantics
-     * where the case target could have side effects. */
+    /*
+     * Shopify Liquid case statement quirks:
+     * 1. Multiple else clauses are allowed
+     * 2. When tags can appear after else
+     * 3. Multiple matching when clauses ALL execute (fall-through behavior)
+     *
+     * Key semantics:
+     * - else executes only if NO when has matched SO FAR (before this else)
+     * - Once a when matches, subsequent else clauses don't execute
+     * - But subsequent when clauses that match DO execute (fall-through for whens)
+     *
+     * We track "has any when matched" using a boolean on the stack.
+     * Push false initially, set to true when a when matches.
+     */
 
     ast_branch_t *branch = node->data.case_stmt.branches;
 
-    size_t end_jumps[64];
-    size_t end_jump_count = 0;
+    /* Check if we have any else branches - if not, use simpler codegen */
+    bool has_else = false;
+    for (ast_branch_t *b = branch; b != NULL; b = b->next) {
+        if (b->condition == NULL) {
+            has_else = true;
+            break;
+        }
+    }
+
+    if (!has_else) {
+        /* Simple case: no else branches, just check each when */
+        while (branch != NULL) {
+            if (branch->condition != NULL) {
+                /* when branch - push target, push when value, compare */
+                vm_assembler_concat(code, &node->data.case_stmt.target_expr);
+                vm_assembler_concat(code, &branch->condition->left_expr);
+
+                /* Compare with == */
+                vm_assembler_add_cmp_eq(code);
+
+                /* Jump past body if not equal */
+                size_t skip_body_jump = vm_assembler_add_jump_if_false(code);
+
+                /* Emit body */
+                codegen_node_list(gen, &branch->body);
+
+                /* Patch conditional jump to here (after body) */
+                vm_assembler_patch_jump(code, skip_body_jump, vm_assembler_current_offset(code));
+            }
+            branch = branch->next;
+        }
+        return;
+    }
+
+    /* Complex case: has else branches, need to track "matched" state */
+    /* Push initial "matched = false" state onto stack */
+    vm_assembler_add_push_false(code);
 
     while (branch != NULL) {
         if (branch->condition != NULL) {
-            /* when branch - push target, push when value, compare */
+            /* when branch - check if matches */
             vm_assembler_concat(code, &node->data.case_stmt.target_expr);
             vm_assembler_concat(code, &branch->condition->left_expr);
 
             /* Compare with == */
             vm_assembler_add_cmp_eq(code);
 
-            /* Jump to next when if not equal */
-            size_t next_when_jump = vm_assembler_add_jump_if_false(code);
+            /* Jump past body if not equal */
+            size_t skip_body_jump = vm_assembler_add_jump_if_false(code);
+
+            /* When matches: set matched = true on stack.
+             * Stack currently has: [..., matched_flag]
+             * We need to replace it with true. Pop the old value and push true. */
+            vm_assembler_add_pop_discard(code);
+            vm_assembler_add_push_true(code);
 
             /* Emit body */
             codegen_node_list(gen, &branch->body);
 
-            /* Jump to end */
-            if (branch->next != NULL && end_jump_count < 64) {
-                end_jumps[end_jump_count++] = vm_assembler_add_jump_placeholder(code, OP_JUMP);
-            }
+            /* Patch conditional jump to here (after body) */
+            vm_assembler_patch_jump(code, skip_body_jump, vm_assembler_current_offset(code));
+        } else {
+            /* else branch - execute only if matched_flag is false */
+            /* Stack has: [..., matched_flag] */
+            /* Duplicate the flag to check it without consuming */
+            vm_assembler_add_dup(code);
+
+            /* Jump past body if matched (flag is true) */
+            size_t skip_body_jump = vm_assembler_add_jump_if_true(code);
+
+            /* Emit body */
+            codegen_node_list(gen, &branch->body);
 
             /* Patch conditional jump to here */
-            vm_assembler_patch_jump(code, next_when_jump, vm_assembler_current_offset(code));
-        } else {
-            /* else branch */
-            codegen_node_list(gen, &branch->body);
+            vm_assembler_patch_jump(code, skip_body_jump, vm_assembler_current_offset(code));
         }
 
         branch = branch->next;
     }
 
-    /* Patch all end jumps */
-    size_t end_offset = vm_assembler_current_offset(code);
-    for (size_t i = 0; i < end_jump_count; i++) {
-        vm_assembler_patch_jump(code, end_jumps[i], end_offset);
-    }
+    /* Pop the matched flag from stack */
+    vm_assembler_add_pop_discard(code);
 }
 
 static void codegen_for(codegen_t *gen, ast_node_t *node)

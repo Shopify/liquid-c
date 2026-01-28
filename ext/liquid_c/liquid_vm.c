@@ -9,6 +9,7 @@
 
 ID id_render_node;
 ID id_vm;
+static ID id_to_liquid_value;
 
 static VALUE cLiquidCVM;
 
@@ -74,6 +75,18 @@ static bool is_value_empty(VALUE val)
  * Blank values: nil, false, empty strings, whitespace-only strings,
  * empty arrays, and empty hashes.
  */
+/* Unwrap a drop value by calling to_liquid_value if it responds to it.
+ * This is used for comparisons and truthiness checks to get the underlying value.
+ */
+static VALUE unwrap_drop_value(VALUE val)
+{
+    VALUE unwrapped = rb_check_funcall(val, id_to_liquid_value, 0, 0);
+    if (unwrapped != Qundef) {
+        return unwrapped;
+    }
+    return val;
+}
+
 static bool is_value_blank(VALUE val)
 {
     if (val == Qnil || val == Qfalse) {
@@ -623,7 +636,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_JUMP_IF_FALSE:
             {
-                VALUE cond = vm_stack_pop(vm);
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
                 int16_t offset = (int16_t)((ip[0] << 8) | ip[1]);
                 ip += 2;
                 /* Liquid truthiness: only nil and false are falsy */
@@ -634,7 +647,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_JUMP_IF_FALSE_W:
             {
-                VALUE cond = vm_stack_pop(vm);
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
                 int32_t offset = (int32_t)((ip[0] << 16) | (ip[1] << 8) | ip[2]);
                 if (offset & 0x800000) offset |= 0xFF000000;
                 ip += 3;
@@ -645,7 +658,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_JUMP_IF_TRUE:
             {
-                VALUE cond = vm_stack_pop(vm);
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
                 int16_t offset = (int16_t)((ip[0] << 8) | ip[1]);
                 ip += 2;
                 /* Liquid truthiness: only nil and false are falsy */
@@ -656,7 +669,7 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_JUMP_IF_TRUE_W:
             {
-                VALUE cond = vm_stack_pop(vm);
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
                 int32_t offset = (int32_t)((ip[0] << 16) | (ip[1] << 8) | ip[2]);
                 if (offset & 0x800000) offset |= 0xFF000000;
                 ip += 3;
@@ -685,34 +698,74 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             }
             case OP_CMP_LT:
             {
-                VALUE b = vm_stack_pop(vm);
-                VALUE a = vm_stack_pop(vm);
-                int cmp = rb_cmpint(rb_funcall(a, rb_intern("<=>"), 1, b), a, b);
-                vm_stack_push(vm, cmp < 0 ? Qtrue : Qfalse);
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp < 0 ? Qtrue : Qfalse);
+                    }
+                }
                 break;
             }
             case OP_CMP_GT:
             {
-                VALUE b = vm_stack_pop(vm);
-                VALUE a = vm_stack_pop(vm);
-                int cmp = rb_cmpint(rb_funcall(a, rb_intern("<=>"), 1, b), a, b);
-                vm_stack_push(vm, cmp > 0 ? Qtrue : Qfalse);
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp > 0 ? Qtrue : Qfalse);
+                    }
+                }
                 break;
             }
             case OP_CMP_LE:
             {
-                VALUE b = vm_stack_pop(vm);
-                VALUE a = vm_stack_pop(vm);
-                int cmp = rb_cmpint(rb_funcall(a, rb_intern("<=>"), 1, b), a, b);
-                vm_stack_push(vm, cmp <= 0 ? Qtrue : Qfalse);
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp <= 0 ? Qtrue : Qfalse);
+                    }
+                }
                 break;
             }
             case OP_CMP_GE:
             {
-                VALUE b = vm_stack_pop(vm);
-                VALUE a = vm_stack_pop(vm);
-                int cmp = rb_cmpint(rb_funcall(a, rb_intern("<=>"), 1, b), a, b);
-                vm_stack_push(vm, cmp >= 0 ? Qtrue : Qfalse);
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp >= 0 ? Qtrue : Qfalse);
+                    }
+                }
                 break;
             }
             case OP_CMP_CONTAINS:
@@ -737,14 +790,14 @@ static VALUE vm_render_until_error(VALUE uncast_args)
             /* Logical operators */
             case OP_NOT:
             {
-                VALUE val = vm_stack_pop(vm);
+                VALUE val = unwrap_drop_value(vm_stack_pop(vm));
                 /* Liquid truthiness: only nil and false are falsy */
                 vm_stack_push(vm, (val == Qnil || val == Qfalse) ? Qtrue : Qfalse);
                 break;
             }
             case OP_TRUTHY:
             {
-                VALUE val = vm_stack_pop(vm);
+                VALUE val = unwrap_drop_value(vm_stack_pop(vm));
                 vm_stack_push(vm, (val != Qnil && val != Qfalse) ? Qtrue : Qfalse);
                 break;
             }
@@ -944,6 +997,21 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                     /* Remove loop variable from scope */
                     rb_hash_delete(scope, var_name);
                 }
+                break;
+            }
+
+            case OP_DUP:
+            {
+                /* Duplicate top of stack */
+                VALUE *top = vm_stack_peek_n(vm, 1);
+                vm_stack_push(vm, *top);
+                break;
+            }
+
+            case OP_POP_DISCARD:
+            {
+                /* Pop and discard top of stack */
+                vm_stack_pop(vm);
                 break;
             }
 
@@ -1162,6 +1230,7 @@ void liquid_define_vm(void)
     id_render_node = rb_intern("render_node");
     id_vm = rb_intern("vm");
     id_variable_name = rb_intern("variable_name");
+    id_to_liquid_value = rb_intern("to_liquid_value");
 
     /* For loop support */
     id_new = rb_intern("new");

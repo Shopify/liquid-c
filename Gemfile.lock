@@ -7,10 +7,12 @@ GIT
 
 GIT
   remote: https://github.com/Shopify/liquid.git
-  revision: 77bc56a1c28a707c2b222559ffb0b7b1c5588928
+  revision: d897899f6654c476e58e884bc8e24924600e5801
   ref: main
   specs:
-    liquid (5.5.0)
+    liquid (5.11.0)
+      bigdecimal
+      strscan (>= 3.1.1)
 
 PATH
   remote: .
@@ -25,6 +27,7 @@ GEM
     attr_extras (7.1.0)
     base64 (0.2.0)
     benchmark-ips (2.13.0)
+    bigdecimal (4.0.1)
     byebug (11.1.3)
     diff-lcs (1.6.2)
     json (2.7.2)
@@ -71,6 +74,7 @@ GEM
       nokogiri
     spy (0.4.1)
     stackprof (0.2.26)
+    strscan (3.1.7)
     super_diff (0.18.0)
       attr_extras (>= 6.2.4)
       diff-lcs

@@ -178,9 +178,9 @@ Liquid::ParseContext.class_eval do
     ruby_new_tokenizer(source, start_line_number: start_line_number, for_liquid_tag: for_liquid_tag)
   end
 
-  def parse_expression(markup)
+  def parse_expression(markup, safe: false)
     if liquid_c_nodes_disabled?
-      Liquid::Expression.parse(markup)
+      Liquid::Expression.parse(markup, @string_scanner, @expression_cache)
     else
       Liquid::C::Expression.lax_parse(markup)
     end

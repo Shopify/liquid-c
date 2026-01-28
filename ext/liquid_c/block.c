@@ -572,13 +572,8 @@ static bool parse_native_control_flow(block_body_t *body, parse_context_t *parse
                 }
                 last_branch = else_branch;
 
-                const char *final_tags[] = { "endcase" };
-                end_tag = template_parser_parse_body(&parser, &last_branch->body, final_tags, 1);
-
-                if (end_tag == Qnil) {
-                    goto cleanup;
-                }
-                break;
+                /* Shopify Liquid quirk: when and else tags can appear after else.
+                 * Continue parsing with all three end tags, not just endcase. */
             }
         }
     } else {

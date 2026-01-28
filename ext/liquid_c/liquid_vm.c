@@ -1089,6 +1089,8 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr)
         case OP_TABLEROW_COL_START:
         case OP_TABLEROW_COL_END:
         case OP_TABLEROW_CLEANUP:
+        case OP_DUP:
+        case OP_POP_DISCARD:
             break;
 
         case OP_HASH_NEW:

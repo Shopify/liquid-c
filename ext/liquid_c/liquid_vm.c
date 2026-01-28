@@ -9,8 +9,19 @@
 
 ID id_render_node;
 ID id_vm;
+static ID id_to_liquid_value;
 
 static VALUE cLiquidCVM;
+
+/* Cached Ruby classes for native tag optimization */
+static VALUE cLiquidIncrement = Qnil;
+static VALUE cLiquidDecrement = Qnil;
+static VALUE cLiquidComment = Qnil;
+static ID id_variable_name;
+
+/* Singletons for blank/empty keyword comparisons */
+static VALUE blank_singleton = Qnil;
+static VALUE empty_singleton = Qnil;
 
 static void vm_mark(void *ptr)
 {
@@ -38,6 +49,139 @@ const rb_data_type_t vm_data_type = {
     { vm_mark, vm_free, vm_memsize, },
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
+
+/* Check if a value is considered "empty" in Liquid.
+ * Empty values: empty strings, empty arrays, and empty hashes.
+ * Note: nil and false are NOT empty (use blank for those).
+ */
+static bool is_value_empty(VALUE val)
+{
+    if (RB_TYPE_P(val, T_STRING)) {
+        return RSTRING_LEN(val) == 0;
+    }
+
+    if (RB_TYPE_P(val, T_ARRAY)) {
+        return RARRAY_LEN(val) == 0;
+    }
+
+    if (RB_TYPE_P(val, T_HASH)) {
+        return RHASH_SIZE(val) == 0;
+    }
+
+    return false;
+}
+
+/* Check if a value is considered "blank" in Liquid.
+ * Blank values: nil, false, empty strings, whitespace-only strings,
+ * empty arrays, and empty hashes.
+ */
+/* Unwrap a drop value by calling to_liquid_value if it responds to it.
+ * This is used for comparisons and truthiness checks to get the underlying value.
+ */
+static VALUE unwrap_drop_value(VALUE val)
+{
+    VALUE unwrapped = rb_check_funcall(val, id_to_liquid_value, 0, 0);
+    if (unwrapped != Qundef) {
+        return unwrapped;
+    }
+    return val;
+}
+
+static bool is_value_blank(VALUE val)
+{
+    if (val == Qnil || val == Qfalse) {
+        return true;
+    }
+
+    if (RB_TYPE_P(val, T_STRING)) {
+        const char *ptr = RSTRING_PTR(val);
+        long len = RSTRING_LEN(val);
+
+        /* Check if empty or all whitespace */
+        for (long i = 0; i < len; i++) {
+            if (!rb_isspace(ptr[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (RB_TYPE_P(val, T_ARRAY)) {
+        return RARRAY_LEN(val) == 0;
+    }
+
+    if (RB_TYPE_P(val, T_HASH)) {
+        return RHASH_SIZE(val) == 0;
+    }
+
+    return false;
+}
+
+/* Helper for blank/empty-aware equality comparison.
+ * When either operand is the blank or empty singleton, check if the other value is blank/empty.
+ * This matches Ruby Liquid's MethodLiteral behavior.
+ */
+static VALUE vm_equal_variables(VALUE a, VALUE b)
+{
+    /* Check for empty singleton */
+    if (empty_singleton != Qnil) {
+        if (a == empty_singleton) {
+            return is_value_empty(b) ? Qtrue : Qfalse;
+        }
+        if (b == empty_singleton) {
+            return is_value_empty(a) ? Qtrue : Qfalse;
+        }
+    }
+
+    /* Check for blank singleton */
+    if (blank_singleton != Qnil) {
+        if (a == blank_singleton) {
+            return is_value_blank(b) ? Qtrue : Qfalse;
+        }
+        if (b == blank_singleton) {
+            return is_value_blank(a) ? Qtrue : Qfalse;
+        }
+    }
+    return rb_equal(a, b) ? Qtrue : Qfalse;
+}
+
+/*
+ * For loop iterator state.
+ * Stored on the VM stack as a Ruby Array: [items, index, length, var_name, forloop_drop, parent_forloop]
+ * This allows GC to properly track all values.
+ */
+#define FORLOOP_STATE_ITEMS     0
+#define FORLOOP_STATE_INDEX     1
+#define FORLOOP_STATE_LENGTH    2
+#define FORLOOP_STATE_VAR_NAME  3
+#define FORLOOP_STATE_DROP      4
+#define FORLOOP_STATE_PARENT    5
+#define FORLOOP_STATE_SIZE      6
+
+/* Cached ForloopDrop class and related methods */
+static VALUE cLiquidForloopDrop = Qnil;
+static VALUE str_forloop = Qnil;  /* "forloop" string for scope key */
+static ID id_new;
+static ID id_send;
+static ID id_increment_bang;
+static ID id_to_a;
+
+/* Create a new forloop drop object */
+static VALUE create_forloop_drop(long length, VALUE name, VALUE parent_forloop)
+{
+    if (cLiquidForloopDrop == Qnil) {
+        /* Fallback: try to get the class at runtime */
+        if (rb_const_defined(mLiquid, rb_intern("ForloopDrop"))) {
+            cLiquidForloopDrop = rb_const_get(mLiquid, rb_intern("ForloopDrop"));
+        } else {
+            /* No ForloopDrop available, return nil */
+            return Qnil;
+        }
+    }
+
+    /* ForloopDrop.new(name, length, parentloop) */
+    return rb_funcall(cLiquidForloopDrop, id_new, 3, name, LONG2NUM(length), parent_forloop);
+}
 
 static VALUE vm_internal_new(VALUE context)
 {
@@ -402,10 +546,55 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 constant_index = (ip[0] << 8) | ip[1];
                 constant = constants[constant_index];
                 ip += 2;
-                rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, constant);
 
-                if (RARRAY_LEN(vm->context.interrupts)) {
-                    return false;
+                /* Optimize common tags by handling them natively instead of calling Ruby */
+                VALUE node_class = rb_obj_class(constant);
+
+                if (cLiquidIncrement != Qnil && node_class == cLiquidIncrement) {
+                    /* Handle Increment tag natively */
+                    VALUE var_name = rb_funcall(constant, id_variable_name, 0);
+                    VALUE environments = vm->context.environments;
+                    VALUE counters = Qnil;
+                    if (RARRAY_LEN(environments) > 0) {
+                        counters = RARRAY_AREF(environments, 0);
+                    }
+                    long val = 0;
+                    if (counters != Qnil && RB_TYPE_P(counters, T_HASH)) {
+                        VALUE current = rb_hash_aref(counters, var_name);
+                        if (current != Qnil) {
+                            val = NUM2LONG(current);
+                        }
+                        rb_hash_aset(counters, var_name, LONG2NUM(val + 1));
+                    }
+                    write_fixnum(output, LONG2NUM(val));
+                } else if (cLiquidDecrement != Qnil && node_class == cLiquidDecrement) {
+                    /* Handle Decrement tag natively */
+                    VALUE var_name = rb_funcall(constant, id_variable_name, 0);
+                    VALUE environments = vm->context.environments;
+                    VALUE counters = Qnil;
+                    if (RARRAY_LEN(environments) > 0) {
+                        counters = RARRAY_AREF(environments, 0);
+                    }
+                    long val = 0;
+                    if (counters != Qnil && RB_TYPE_P(counters, T_HASH)) {
+                        VALUE current = rb_hash_aref(counters, var_name);
+                        if (current != Qnil) {
+                            val = NUM2LONG(current);
+                        }
+                        val--;
+                        rb_hash_aset(counters, var_name, LONG2NUM(val));
+                    }
+                    write_fixnum(output, LONG2NUM(val));
+                } else if (cLiquidComment != Qnil && node_class == cLiquidComment) {
+                    /* Handle Comment tag natively - just do nothing */
+                    /* Comment.render_to_output_buffer returns output unchanged */
+                } else {
+                    /* Default: call Ruby render_node */
+                    rb_funcall(cLiquidBlockBody, id_render_node, 3, vm->context.self, output, constant);
+
+                    if (RARRAY_LEN(vm->context.interrupts)) {
+                        return false;
+                    }
                 }
 
                 resource_limits_increment_write_score(vm->context.resource_limits, output);
@@ -427,6 +616,402 @@ static VALUE vm_render_until_error(VALUE uncast_args)
                 write_obj(output, var_result);
                 args->ip = NULL; // mark the end of a rescue block, used by vm_render_rescue
                 resource_limits_increment_write_score(vm->context.resource_limits, output);
+                break;
+            }
+
+            /* New control flow opcodes */
+            case OP_JUMP:
+            {
+                int16_t offset = (int16_t)((ip[0] << 8) | ip[1]);
+                ip += 2 + offset;
+                break;
+            }
+            case OP_JUMP_W:
+            {
+                int32_t offset = (int32_t)((ip[0] << 16) | (ip[1] << 8) | ip[2]);
+                /* Sign extend from 24-bit */
+                if (offset & 0x800000) offset |= 0xFF000000;
+                ip += 3 + offset;
+                break;
+            }
+            case OP_JUMP_IF_FALSE:
+            {
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
+                int16_t offset = (int16_t)((ip[0] << 8) | ip[1]);
+                ip += 2;
+                /* Liquid truthiness: only nil and false are falsy */
+                if (cond == Qnil || cond == Qfalse) {
+                    ip += offset;
+                }
+                break;
+            }
+            case OP_JUMP_IF_FALSE_W:
+            {
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
+                int32_t offset = (int32_t)((ip[0] << 16) | (ip[1] << 8) | ip[2]);
+                if (offset & 0x800000) offset |= 0xFF000000;
+                ip += 3;
+                if (cond == Qnil || cond == Qfalse) {
+                    ip += offset;
+                }
+                break;
+            }
+            case OP_JUMP_IF_TRUE:
+            {
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
+                int16_t offset = (int16_t)((ip[0] << 8) | ip[1]);
+                ip += 2;
+                /* Liquid truthiness: only nil and false are falsy */
+                if (cond != Qnil && cond != Qfalse) {
+                    ip += offset;
+                }
+                break;
+            }
+            case OP_JUMP_IF_TRUE_W:
+            {
+                VALUE cond = unwrap_drop_value(vm_stack_pop(vm));
+                int32_t offset = (int32_t)((ip[0] << 16) | (ip[1] << 8) | ip[2]);
+                if (offset & 0x800000) offset |= 0xFF000000;
+                ip += 3;
+                if (cond != Qnil && cond != Qfalse) {
+                    ip += offset;
+                }
+                break;
+            }
+
+            /* Comparison operators */
+            case OP_CMP_EQ:
+            {
+                VALUE b = vm_stack_pop(vm);
+                VALUE a = vm_stack_pop(vm);
+                VALUE result = vm_equal_variables(a, b);
+                vm_stack_push(vm, (result != Qnil && result != Qfalse) ? Qtrue : Qfalse);
+                break;
+            }
+            case OP_CMP_NE:
+            {
+                VALUE b = vm_stack_pop(vm);
+                VALUE a = vm_stack_pop(vm);
+                VALUE result = vm_equal_variables(a, b);
+                vm_stack_push(vm, (result != Qnil && result != Qfalse) ? Qfalse : Qtrue);
+                break;
+            }
+            case OP_CMP_LT:
+            {
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp < 0 ? Qtrue : Qfalse);
+                    }
+                }
+                break;
+            }
+            case OP_CMP_GT:
+            {
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp > 0 ? Qtrue : Qfalse);
+                    }
+                }
+                break;
+            }
+            case OP_CMP_LE:
+            {
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp <= 0 ? Qtrue : Qfalse);
+                    }
+                }
+                break;
+            }
+            case OP_CMP_GE:
+            {
+                VALUE b = unwrap_drop_value(vm_stack_pop(vm));
+                VALUE a = unwrap_drop_value(vm_stack_pop(vm));
+                /* Ordering comparisons with nil return false (not an error) */
+                if (a == Qnil || b == Qnil) {
+                    vm_stack_push(vm, Qfalse);
+                } else {
+                    VALUE cmp_result = rb_funcall(a, rb_intern("<=>"), 1, b);
+                    if (cmp_result == Qnil) {
+                        vm_stack_push(vm, Qfalse);
+                    } else {
+                        int cmp = rb_cmpint(cmp_result, a, b);
+                        vm_stack_push(vm, cmp >= 0 ? Qtrue : Qfalse);
+                    }
+                }
+                break;
+            }
+            case OP_CMP_CONTAINS:
+            {
+                VALUE b = vm_stack_pop(vm);
+                VALUE a = vm_stack_pop(vm);
+                VALUE result = Qfalse;
+                /* nil is not a valid operand for contains - always return false */
+                if (b != Qnil) {
+                    if (RB_TYPE_P(a, T_STRING) && RB_TYPE_P(b, T_STRING)) {
+                        result = rb_funcall(a, rb_intern("include?"), 1, b);
+                    } else if (RB_TYPE_P(a, T_ARRAY)) {
+                        result = rb_funcall(a, rb_intern("include?"), 1, b);
+                    } else if (RB_TYPE_P(a, T_HASH)) {
+                        result = rb_funcall(a, rb_intern("key?"), 1, b);
+                    }
+                }
+                vm_stack_push(vm, RTEST(result) ? Qtrue : Qfalse);
+                break;
+            }
+
+            /* Logical operators */
+            case OP_NOT:
+            {
+                VALUE val = unwrap_drop_value(vm_stack_pop(vm));
+                /* Liquid truthiness: only nil and false are falsy */
+                vm_stack_push(vm, (val == Qnil || val == Qfalse) ? Qtrue : Qfalse);
+                break;
+            }
+            case OP_TRUTHY:
+            {
+                VALUE val = unwrap_drop_value(vm_stack_pop(vm));
+                vm_stack_push(vm, (val != Qnil && val != Qfalse) ? Qtrue : Qfalse);
+                break;
+            }
+
+            /* Variable assignment */
+            case OP_ASSIGN:
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                VALUE value = vm_stack_pop(vm);
+                /* Assign to the innermost scope */
+                VALUE scopes = vm->context.scopes;
+                if (RARRAY_LEN(scopes) > 0) {
+                    VALUE scope = RARRAY_AREF(scopes, RARRAY_LEN(scopes) - 1);
+                    rb_hash_aset(scope, constant, value);
+                }
+                break;
+            }
+
+            /* Counter operations */
+            case OP_INCREMENT:
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                /* Get current value, default to 0 */
+                VALUE environments = vm->context.environments;
+                VALUE counters = Qnil;
+                if (RARRAY_LEN(environments) > 0) {
+                    counters = RARRAY_AREF(environments, 0);
+                }
+                long val = 0;
+                if (counters != Qnil && RB_TYPE_P(counters, T_HASH)) {
+                    VALUE current = rb_hash_aref(counters, constant);
+                    if (current != Qnil) {
+                        val = NUM2LONG(current);
+                    }
+                    rb_hash_aset(counters, constant, LONG2NUM(val + 1));
+                }
+                write_fixnum(output, LONG2NUM(val));
+                resource_limits_increment_write_score(vm->context.resource_limits, output);
+                break;
+            }
+            case OP_DECREMENT:
+            {
+                constant_index = (ip[0] << 8) | ip[1];
+                constant = constants[constant_index];
+                ip += 2;
+                VALUE environments = vm->context.environments;
+                VALUE counters = Qnil;
+                if (RARRAY_LEN(environments) > 0) {
+                    counters = RARRAY_AREF(environments, 0);
+                }
+                long val = 0;
+                if (counters != Qnil && RB_TYPE_P(counters, T_HASH)) {
+                    VALUE current = rb_hash_aref(counters, constant);
+                    if (current != Qnil) {
+                        val = NUM2LONG(current);
+                    }
+                    val--;
+                    rb_hash_aset(counters, constant, LONG2NUM(val));
+                }
+                write_fixnum(output, LONG2NUM(val));
+                resource_limits_increment_write_score(vm->context.resource_limits, output);
+                break;
+            }
+
+            /* For loop opcodes */
+            case OP_FOR_INIT:
+            {
+                /* Operands: uint16 var_name_idx, uint8 flags */
+                constant_index = (ip[0] << 8) | ip[1];
+                VALUE var_name = constants[constant_index];
+                uint8_t flags = ip[2];
+                ip += 3;
+
+                /* Pop collection from stack */
+                VALUE collection = vm_stack_pop(vm);
+
+                /* Convert to array */
+                VALUE items;
+                if (RB_TYPE_P(collection, T_ARRAY)) {
+                    items = collection;
+                } else if (collection == Qnil) {
+                    items = rb_ary_new();
+                } else {
+                    /* Call to_a on the collection */
+                    items = rb_funcall(collection, id_to_a, 0);
+                }
+
+                /* Handle reversed flag */
+                if (flags & 0x01) {  /* FOR_FLAG_REVERSED */
+                    items = rb_ary_reverse(rb_ary_dup(items));
+                }
+
+                long length = RARRAY_LEN(items);
+
+                /* Get current forloop (parent) from scope if it exists */
+                VALUE parent_forloop = Qnil;
+                VALUE scopes = vm->context.scopes;
+                if (RARRAY_LEN(scopes) > 0) {
+                    VALUE scope = RARRAY_AREF(scopes, RARRAY_LEN(scopes) - 1);
+                    VALUE existing = rb_hash_aref(scope, str_forloop);
+                    if (existing != Qnil) {
+                        parent_forloop = existing;
+                    }
+                }
+
+                /* Create ForloopDrop object */
+                VALUE forloop_drop = create_forloop_drop(length, var_name, parent_forloop);
+
+                /* Create iterator state array */
+                VALUE state = rb_ary_new_capa(FORLOOP_STATE_SIZE);
+                rb_ary_store(state, FORLOOP_STATE_ITEMS, items);
+                rb_ary_store(state, FORLOOP_STATE_INDEX, LONG2NUM(-1));  /* Start at -1, FOR_NEXT increments to 0 */
+                rb_ary_store(state, FORLOOP_STATE_LENGTH, LONG2NUM(length));
+                rb_ary_store(state, FORLOOP_STATE_VAR_NAME, var_name);
+                rb_ary_store(state, FORLOOP_STATE_DROP, forloop_drop);
+                rb_ary_store(state, FORLOOP_STATE_PARENT, parent_forloop);
+
+                /* Push forloop to current scope */
+                if (RARRAY_LEN(scopes) > 0) {
+                    VALUE scope = RARRAY_AREF(scopes, RARRAY_LEN(scopes) - 1);
+                    if (forloop_drop != Qnil) {
+                        rb_hash_aset(scope, str_forloop, forloop_drop);
+                    }
+                }
+
+                /* Push state onto stack */
+                vm_stack_push(vm, state);
+                break;
+            }
+
+            case OP_FOR_NEXT:
+            {
+                /* Operands: int16 done_offset (where to jump if iteration complete) */
+                int16_t done_offset = (int16_t)((ip[0] << 8) | ip[1]);
+                ip += 2;
+
+                /* Peek at iterator state (don't pop - we need it for the loop body) */
+                VALUE state = *vm_stack_peek_n(vm, 1);
+
+                VALUE items = RARRAY_AREF(state, FORLOOP_STATE_ITEMS);
+                long index = NUM2LONG(RARRAY_AREF(state, FORLOOP_STATE_INDEX));
+                long length = NUM2LONG(RARRAY_AREF(state, FORLOOP_STATE_LENGTH));
+                VALUE var_name = RARRAY_AREF(state, FORLOOP_STATE_VAR_NAME);
+                VALUE forloop_drop = RARRAY_AREF(state, FORLOOP_STATE_DROP);
+
+                /* Increment index */
+                index++;
+                rb_ary_store(state, FORLOOP_STATE_INDEX, LONG2NUM(index));
+
+                /* Check if we're done */
+                if (index >= length) {
+                    /* Jump to done offset */
+                    ip += done_offset;
+                } else {
+                    /* Get current item and assign to loop variable */
+                    VALUE item = RARRAY_AREF(items, index);
+
+                    /* Assign item to loop variable in scope */
+                    VALUE scopes = vm->context.scopes;
+                    if (RARRAY_LEN(scopes) > 0) {
+                        VALUE scope = RARRAY_AREF(scopes, RARRAY_LEN(scopes) - 1);
+                        rb_hash_aset(scope, var_name, item);
+                    }
+
+                    /* Update forloop drop (increment! advances internal state).
+                     * ForloopDrop starts with correct state for first item (index=1, first=true),
+                     * so we only call increment! after the first iteration (index > 0). */
+                    if (forloop_drop != Qnil && index > 0) {
+                        rb_funcall(forloop_drop, id_increment_bang, 0);
+                    }
+                }
+                break;
+            }
+
+            case OP_FOR_CLEANUP:
+            {
+                /* No operands */
+                /* Pop iterator state from stack */
+                VALUE state = vm_stack_pop(vm);
+
+                /* Restore parent forloop in scope */
+                VALUE parent_forloop = RARRAY_AREF(state, FORLOOP_STATE_PARENT);
+                VALUE var_name = RARRAY_AREF(state, FORLOOP_STATE_VAR_NAME);
+
+                VALUE scopes = vm->context.scopes;
+                if (RARRAY_LEN(scopes) > 0) {
+                    VALUE scope = RARRAY_AREF(scopes, RARRAY_LEN(scopes) - 1);
+                    if (parent_forloop != Qnil) {
+                        rb_hash_aset(scope, str_forloop, parent_forloop);
+                    } else {
+                        rb_hash_delete(scope, str_forloop);
+                    }
+                    /* Remove loop variable from scope */
+                    rb_hash_delete(scope, var_name);
+                }
+                break;
+            }
+
+            case OP_DUP:
+            {
+                /* Duplicate top of stack */
+                VALUE *top = vm_stack_peek_n(vm, 1);
+                vm_stack_push(vm, *top);
+                break;
+            }
+
+            case OP_POP_DISCARD:
+            {
+                /* Pop and discard top of stack */
+                vm_stack_pop(vm);
                 break;
             }
 
@@ -489,6 +1074,23 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr)
         case OP_FIND_VAR:
         case OP_LOOKUP_KEY:
         case OP_NEW_INT_RANGE:
+        /* New no-operand opcodes */
+        case OP_CMP_EQ:
+        case OP_CMP_NE:
+        case OP_CMP_LT:
+        case OP_CMP_GT:
+        case OP_CMP_LE:
+        case OP_CMP_GE:
+        case OP_CMP_CONTAINS:
+        case OP_NOT:
+        case OP_TRUTHY:
+        case OP_FOR_CLEANUP:
+        case OP_CAPTURE_START:
+        case OP_TABLEROW_COL_START:
+        case OP_TABLEROW_COL_END:
+        case OP_TABLEROW_CLEANUP:
+        case OP_DUP:
+        case OP_POP_DISCARD:
             break;
 
         case OP_HASH_NEW:
@@ -504,10 +1106,27 @@ void liquid_vm_next_instruction(const uint8_t **ip_ptr)
         case OP_LOOKUP_CONST_KEY:
         case OP_LOOKUP_COMMAND:
         case OP_FILTER:
+        /* New 2-byte operand opcodes */
+        case OP_JUMP:
+        case OP_JUMP_IF_FALSE:
+        case OP_JUMP_IF_TRUE:
+        case OP_FOR_NEXT:
+        case OP_TABLEROW_NEXT:
+        case OP_ASSIGN:
+        case OP_CAPTURE_END:
+        case OP_INCREMENT:
+        case OP_DECREMENT:
             ip += 2;
             break;
 
         case OP_RENDER_VARIABLE_RESCUE:
+        /* New 3-byte operand opcodes */
+        case OP_JUMP_W:
+        case OP_JUMP_IF_FALSE_W:
+        case OP_JUMP_IF_TRUE_W:
+        case OP_FOR_INIT:
+        case OP_TABLEROW_INIT:
+        case OP_CYCLE:
             ip += 3;
             break;
 
@@ -612,8 +1231,53 @@ void liquid_define_vm(void)
 {
     id_render_node = rb_intern("render_node");
     id_vm = rb_intern("vm");
+    id_variable_name = rb_intern("variable_name");
+    id_to_liquid_value = rb_intern("to_liquid_value");
+
+    /* For loop support */
+    id_new = rb_intern("new");
+    id_send = rb_intern("send");
+    id_increment_bang = rb_intern("increment!");
+    id_to_a = rb_intern("to_a");
+
+    /* Initialize the "forloop" string for scope key lookups */
+    str_forloop = rb_str_new_cstr("forloop");
+    rb_str_freeze(str_forloop);
+    rb_global_variable(&str_forloop);
 
     cLiquidCVM = rb_define_class_under(mLiquidC, "VM", rb_cObject);
     rb_undef_alloc_func(cLiquidCVM);
     rb_global_variable(&cLiquidCVM);
+
+    /* Get Liquid::C::Empty::INSTANCE for empty keyword comparisons */
+    VALUE cLiquidCEmpty = rb_const_get(mLiquidC, rb_intern("Empty"));
+    empty_singleton = rb_const_get(cLiquidCEmpty, rb_intern("INSTANCE"));
+    rb_global_variable(&empty_singleton);
+
+    /* Get Liquid::C::Blank::INSTANCE for blank keyword comparisons */
+    VALUE cLiquidCBlank = rb_const_get(mLiquidC, rb_intern("Blank"));
+    blank_singleton = rb_const_get(cLiquidCBlank, rb_intern("INSTANCE"));
+    rb_global_variable(&blank_singleton);
+
+    /* Cache ForloopDrop class for native for loops */
+    if (rb_const_defined(mLiquid, rb_intern("ForloopDrop"))) {
+        cLiquidForloopDrop = rb_const_get(mLiquid, rb_intern("ForloopDrop"));
+        rb_global_variable(&cLiquidForloopDrop);
+    }
+
+    /* Cache tag classes for native optimization.
+     * These are looked up at runtime because they may not exist
+     * when the extension is loaded. */
+    if (rb_const_defined(mLiquid, rb_intern("Increment"))) {
+        cLiquidIncrement = rb_const_get(mLiquid, rb_intern("Increment"));
+        rb_global_variable(&cLiquidIncrement);
+    }
+    if (rb_const_defined(mLiquid, rb_intern("Decrement"))) {
+        cLiquidDecrement = rb_const_get(mLiquid, rb_intern("Decrement"));
+        rb_global_variable(&cLiquidDecrement);
+    }
+    if (rb_const_defined(mLiquid, rb_intern("Comment"))) {
+        cLiquidComment = rb_const_get(mLiquid, rb_intern("Comment"));
+        rb_global_variable(&cLiquidComment);
+    }
 }

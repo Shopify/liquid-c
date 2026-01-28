@@ -72,8 +72,11 @@ class BlockTest < Minitest::Test
     LIQUID
     template = Liquid::Template.parse(source, line_numbers: true)
     block_body = template.root.body
-    increment_node = block_body.nodelist[2]
-    assert_instance_of(Liquid::Increment, increment_node)
+    # Native increment parsing emits OP_INCREMENT directly (faster)
+    # instead of creating Ruby tag objects via OP_WRITE_NODE.
+    # The nodelist now contains the variable name as a placeholder.
+    increment_var_name = block_body.nodelist[2]
+    assert_equal("counter", increment_var_name)
     assert_equal(<<~ASM, block_body.disassemble)
       0x0000: write_raw("raw")
       0x0005: render_variable_rescue(line_number: 2)
@@ -84,7 +87,7 @@ class BlockTest < Minitest::Test
       0x0013: hash_new(1)
       0x0015: builtin_filter(name: :default, num_args: 3)
       0x0018: pop_write
-      0x0019: write_node(#{increment_node.inspect})
+      0x0019: increment("counter")
       0x001c: leave
     ASM
   end

@@ -219,6 +219,79 @@ VALUE vm_assembler_disassemble(const uint8_t *start_ip, const uint8_t *end_ip, c
                 rb_str_catf(output, "builtin_filter(name: :%s, num_args: %u)\n", builtin_filters[ip[1]].name, ip[2]);
                 break;
 
+            /* Native control flow opcodes */
+            case OP_INCREMENT:
+                rb_str_catf(output, "increment(%+"PRIsVALUE")\n", constant);
+                break;
+
+            case OP_DECREMENT:
+                rb_str_catf(output, "decrement(%+"PRIsVALUE")\n", constant);
+                break;
+
+            case OP_ASSIGN:
+                rb_str_catf(output, "assign(%+"PRIsVALUE")\n", constant);
+                break;
+
+            case OP_JUMP:
+            {
+                int16_t offset = (int16_t)((ip[1] << 8) | ip[2]);
+                size_t target = (ip - start_ip) + 3 + offset;
+                rb_str_catf(output, "jump(0x%04lx)\n", target);
+                break;
+            }
+
+            case OP_JUMP_IF_FALSE:
+            {
+                int16_t offset = (int16_t)((ip[1] << 8) | ip[2]);
+                size_t target = (ip - start_ip) + 3 + offset;
+                rb_str_catf(output, "jump_if_false(0x%04lx)\n", target);
+                break;
+            }
+
+            case OP_JUMP_IF_TRUE:
+            {
+                int16_t offset = (int16_t)((ip[1] << 8) | ip[2]);
+                size_t target = (ip - start_ip) + 3 + offset;
+                rb_str_catf(output, "jump_if_true(0x%04lx)\n", target);
+                break;
+            }
+
+            case OP_CMP_EQ:
+                rb_str_catf(output, "cmp_eq\n");
+                break;
+
+            case OP_CMP_NE:
+                rb_str_catf(output, "cmp_ne\n");
+                break;
+
+            case OP_CMP_LT:
+                rb_str_catf(output, "cmp_lt\n");
+                break;
+
+            case OP_CMP_GT:
+                rb_str_catf(output, "cmp_gt\n");
+                break;
+
+            case OP_CMP_LE:
+                rb_str_catf(output, "cmp_le\n");
+                break;
+
+            case OP_CMP_GE:
+                rb_str_catf(output, "cmp_ge\n");
+                break;
+
+            case OP_CMP_CONTAINS:
+                rb_str_catf(output, "cmp_contains\n");
+                break;
+
+            case OP_NOT:
+                rb_str_catf(output, "not\n");
+                break;
+
+            case OP_TRUTHY:
+                rb_str_catf(output, "truthy\n");
+                break;
+
             default:
                 rb_str_catf(output, "<opcode number %d disassembly not implemented>\n", ip[0]);
                 break;
@@ -272,8 +345,21 @@ void vm_assembler_concat(vm_assembler_t *dest, vm_assembler_t *src)
     // merge constants array
     c_buffer_concat(&dest->constants, &src->constants);
 
-    update_instructions_constants_table_index_ref(&src->instructions, dest_element_count, &dest->constants);
+    // Copy instructions to dest first, then update indices in dest (not src)
+    // This is critical: we must not mutate src->instructions because the same
+    // assembler may be concatenated multiple times (e.g., case target_expr for each when branch)
+    size_t dest_instructions_start = c_buffer_size(&dest->instructions);
     c_buffer_concat(&dest->instructions, &src->instructions);
+
+    // Update constant indices in the newly copied instructions (in dest buffer)
+    if (dest_element_count > 0) {
+        c_buffer_t copied_instructions = {
+            .data = dest->instructions.data + dest_instructions_start,
+            .data_end = dest->instructions.data_end,
+            .capacity_end = dest->instructions.capacity_end
+        };
+        update_instructions_constants_table_index_ref(&copied_instructions, dest_element_count, &dest->constants);
+    }
 
     size_t max_src_stack_size = dest->stack_size + src->max_stack_size;
     if (max_src_stack_size > dest->max_stack_size)
@@ -473,7 +559,10 @@ bool vm_assembler_opcode_has_constant(uint8_t ip) {
         ip == OP_FIND_STATIC_VAR ||
         ip == OP_LOOKUP_CONST_KEY ||
         ip == OP_LOOKUP_COMMAND ||
-        ip == OP_FILTER
+        ip == OP_FILTER ||
+        ip == OP_INCREMENT ||
+        ip == OP_DECREMENT ||
+        ip == OP_ASSIGN
     ) {
         return true;
     }

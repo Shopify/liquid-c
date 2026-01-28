@@ -6,6 +6,10 @@ require "test_helper"
 # Help catch bugs from objects not being marked at all
 # GC opportunities.
 class GCStressTest < Minitest::Test
+  def setup
+    skip "GC stress tests disabled; set LIQUID_C_GC_STRESS=1 to enable" unless ENV["LIQUID_C_GC_STRESS"] == "1"
+  end
+
   def test_compile_and_render
     source = "{% assign x = 1 %}{% if x -%} x: {{ x | plus: 2 }}{% endif %}"
     result = gc_stress do

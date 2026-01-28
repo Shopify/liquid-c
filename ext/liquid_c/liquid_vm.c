@@ -1169,6 +1169,11 @@ void liquid_define_vm(void)
     id_increment_bang = rb_intern("increment!");
     id_to_a = rb_intern("to_a");
 
+    /* Initialize the "forloop" string for scope key lookups */
+    str_forloop = rb_str_new_cstr("forloop");
+    rb_str_freeze(str_forloop);
+    rb_global_variable(&str_forloop);
+
     cLiquidCVM = rb_define_class_under(mLiquidC, "VM", rb_cObject);
     rb_undef_alloc_func(cLiquidCVM);
     rb_global_variable(&cLiquidCVM);

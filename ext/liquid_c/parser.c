@@ -2,7 +2,8 @@
 #include "parser.h"
 #include "lexer.h"
 
-static VALUE empty_string;
+static VALUE empty_singleton;
+static VALUE blank_singleton;
 static ID id_to_i, idEvaluate;
 
 void init_parser(parser_t *p, const char *str, const char *end)
@@ -181,11 +182,11 @@ static VALUE try_parse_literal(parser_t *p)
                     break;
                 case 'b':
                     if (memcmp(str, "blank", size) == 0)
-                        result = empty_string;
+                        result = blank_singleton;
                     break;
                 case 'e':
                     if (memcmp(str, "empty", size) == 0)
-                        result = empty_string;
+                        result = empty_singleton;
                     break;
             }
             break;
@@ -277,7 +278,14 @@ void liquid_define_parser(void)
     id_to_i = rb_intern("to_i");
     idEvaluate = rb_intern("evaluate");
 
-    empty_string = rb_utf8_str_new_literal("");
-    rb_global_variable(&empty_string);
+    // Get Liquid::C::Empty::INSTANCE for empty keyword comparisons
+    VALUE cLiquidCEmpty = rb_const_get(mLiquidC, rb_intern("Empty"));
+    empty_singleton = rb_const_get(cLiquidCEmpty, rb_intern("INSTANCE"));
+    rb_global_variable(&empty_singleton);
+
+    // Get Liquid::C::Blank::INSTANCE for blank keyword comparisons
+    VALUE cLiquidCBlank = rb_const_get(mLiquidC, rb_intern("Blank"));
+    blank_singleton = rb_const_get(cLiquidCBlank, rb_intern("INSTANCE"));
+    rb_global_variable(&blank_singleton);
 }
 

@@ -9,9 +9,13 @@ class ExpressionTest < Minitest::Test
     assert_nil(Liquid::C::Expression.strict_parse("nil"))
     assert_nil(Liquid::C::Expression.strict_parse("null"))
 
+    # empty and blank are special singletons that compare using empty?/blank? semantics
+    # (like Ruby Liquid's MethodLiteral)
     empty = Liquid::C::Expression.strict_parse("empty")
-    assert_equal("", empty)
-    assert_same(empty, Liquid::C::Expression.strict_parse("blank"))
+    assert_same(Liquid::C::Empty::INSTANCE, empty)
+
+    blank = Liquid::C::Expression.strict_parse("blank")
+    assert_same(Liquid::C::Blank::INSTANCE, blank)
   end
 
   def test_push_literals

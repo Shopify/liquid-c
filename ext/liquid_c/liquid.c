@@ -14,6 +14,8 @@
 #include "vm_assembler_pool.h"
 #include "liquid_vm.h"
 #include "usage.h"
+#include "template_parser.h"
+#include "codegen.h"
 
 ID id_evaluate;
 ID id_to_liquid;
@@ -91,5 +93,7 @@ RUBY_FUNC_EXPORTED void Init_liquid_c(void)
     liquid_define_vm_assembler();
     liquid_define_vm();
     liquid_define_usage();
+    liquid_define_template_parser();
+    liquid_define_codegen();
 }
 

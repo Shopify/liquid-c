@@ -22,3 +22,5 @@ end
 group :development do
   gem "byebug"
 end
+
+gem "liquid-spec", "~> 0.9.1", :github => "Shopify/liquid-spec"

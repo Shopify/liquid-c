@@ -140,6 +140,14 @@ VALUE context_find_variable(context_t *context, VALUE key, VALUE raise_on_not_fo
     VALUE self = context->self;
     VALUE scope = Qnil, variable = Qnil;
 
+    /* Convert non-string keys via to_liquid_value (e.g., blank -> "") */
+    if (rb_obj_class(key) != rb_cString) {
+        VALUE key_value = rb_check_funcall(key, rb_intern("to_liquid_value"), 0, 0);
+        if (key_value != Qundef) {
+            key = key_value;
+        }
+    }
+
     VALUE scopes = context->scopes;
     for (long i = 0; i < RARRAY_LEN(scopes); i++) {
         VALUE this_scope = RARRAY_AREF(scopes, i);

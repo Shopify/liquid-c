@@ -2,12 +2,97 @@
 
 require "liquid/c/version"
 require "liquid"
+
+# Define Blank and Empty before loading C extension since parser.c needs them during Init
+module Liquid
+  module C
+    # Blank singleton for blank keyword comparisons.
+    # When compared with ==, checks if the other value is "blank".
+    # Blank values: nil, false, empty strings, whitespace-only strings,
+    # empty arrays, and empty hashes.
+    class Blank
+      INSTANCE = new.freeze
+
+      class << self
+        private :new
+      end
+
+      def ==(other)
+        if other.respond_to?(:blank?)
+          other.blank?
+        else
+          nil
+        end
+      end
+
+      def to_s
+        ""
+      end
+
+      # Used by variable_lookup_key when blank is used as a hash key
+      def to_liquid_value
+        ""
+      end
+
+      def inspect
+        "Liquid::C::Blank"
+      end
+    end
+
+    # Empty singleton for empty keyword comparisons.
+    # When compared with ==, checks if the other value is "empty".
+    # Empty values: empty strings, empty arrays, and empty hashes.
+    # Note: nil and false are NOT empty (unlike blank).
+    class Empty
+      INSTANCE = new.freeze
+
+      class << self
+        private :new
+      end
+
+      def ==(other)
+        if other.respond_to?(:empty?)
+          other.empty?
+        else
+          nil
+        end
+      end
+
+      def to_s
+        ""
+      end
+
+      # Used by variable_lookup_key when empty is used as a hash key
+      def to_liquid_value
+        ""
+      end
+
+      def inspect
+        "Liquid::C::Empty"
+      end
+    end
+  end
+end
+
 require "liquid_c"
 require "liquid/c/compile_ext"
 
 Liquid::C::BlockBody.class_eval do
   def render(context)
     render_to_output_buffer(context, +"")
+  end
+
+  # Try native parsing using template_parser + codegen for the entire template.
+  # Returns true if successful, false if should fall back to normal parsing.
+  def try_native_parse(tokenizer, parse_context)
+    return false unless Liquid::C.native_parse_enabled
+    return false unless tokenizer.is_a?(Liquid::C::Tokenizer)
+
+    # Try native parsing - returns true on success, false on failure
+    parse_native(tokenizer, parse_context)
+  rescue => e
+    # On any error, fall back to normal parsing
+    false
   end
 end
 
@@ -40,6 +125,13 @@ module Liquid
     class Tokenizer
       MAX_SOURCE_BYTE_SIZE = (1 << 24) - 1
     end
+
+    # Enable native parsing using template_parser + codegen for full templates.
+    # This provides better performance by parsing entire templates in C.
+    class << self
+      attr_accessor :native_parse_enabled
+    end
+    self.native_parse_enabled = false
   end
 end
 
@@ -130,6 +222,24 @@ module Liquid
       end
     end
     Liquid::Document.singleton_class.prepend(DocumentClassPatch)
+
+    # Patch the instance method to try native parsing
+    module DocumentInstancePatch
+      def parse(tokenizer, parse_context)
+        if Liquid::C.native_parse_enabled &&
+           tokenizer.is_a?(Liquid::C::Tokenizer) &&
+           @body.is_a?(Liquid::C::BlockBody)
+          # Try native parsing - parses entire template in C
+          if @body.try_native_parse(tokenizer, parse_context)
+            @body.freeze
+            return
+          end
+          # Native parsing failed, fall through to normal parsing
+        end
+        super
+      end
+    end
+    Liquid::Document.prepend(DocumentInstancePatch)
   end
 end
 
